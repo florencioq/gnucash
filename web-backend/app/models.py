@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum as PyEnum
 from typing import Optional, List
 
@@ -26,7 +26,7 @@ class Book(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     accounts: Mapped[List[Account]] = relationship(back_populates="book")
 
@@ -63,8 +63,8 @@ class Account(Base):
     commodity_id: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
     is_placeholder: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     book: Mapped[Book] = relationship(back_populates="accounts")
     commodity: Mapped[Commodity] = relationship(back_populates="accounts")
