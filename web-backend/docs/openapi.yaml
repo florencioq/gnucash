@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info:
+  title: Gnucash Web Backend
+  version: 0.1.0
+servers:
+  - url: http://localhost:PORT
+paths:
+  /books:
+    post: {summary: Create book}
+    get: {summary: List books}
+  /books/{id}:
+    get: {summary: Get book}
+  /commodities:
+    post: {summary: Create commodity}
+    get: {summary: List commodities}
+  /commodities/{id}:
+    get: {summary: Get commodity}
+  /accounts:
+    post: {summary: Create account}
+    get: {summary: List accounts}
+  /accounts/tree:
+    get: {summary: Get accounts tree, parameters: [{name: book_id, in: query, required: true, schema: {type: string}}]}
+  /accounts/{id}:
+    get: {summary: Get account}
+    patch: {summary: Update account}
+    delete: {summary: Delete account}
+  /accounts/{id}/move:
+    post: {summary: Move account}
