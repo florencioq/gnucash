@@ -43,7 +43,7 @@ def upgrade():
         sa.Column("name", sa.String(length=120), nullable=False),
         sa.Column("code", sa.String(length=64), nullable=True),
         sa.Column("description", sa.String(length=255), nullable=True),
-        sa.Column("type", sa.Enum("ASSET", "LIABILITY", "INCOME", "EXPENSE", "EQUITY", name="accounttype"), nullable=False),
+        sa.Column("type", sa.Enum("ASSET", "LIABILITY", "INCOME", "EXPENSE", "EQUITY", "ROOT", name="accounttype"), nullable=False),
         sa.Column("commodity_id", sa.String(length=36), sa.ForeignKey("commodities.id"), nullable=False),
         sa.Column("is_placeholder", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
