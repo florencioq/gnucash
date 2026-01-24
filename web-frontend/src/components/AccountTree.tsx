@@ -47,7 +47,8 @@ interface TreeNodeProps {
 }
 
 function TreeNode({ node, onEdit, onDelete, level }: TreeNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(level < 2) // Expandir primeiros 2 níveis por padrão
+  // Expandir todos os níveis por padrão para garantir que todas as contas sejam visíveis
+  const [isExpanded, setIsExpanded] = useState(true)
 
   const hasChildren = node.children && node.children.length > 0
 

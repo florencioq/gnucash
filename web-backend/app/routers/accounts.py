@@ -100,6 +100,8 @@ async def get_accounts_tree(book_id: str, depth: int | None = None, session: Asy
 
     def build(node: Account, current_depth: int) -> AccountNode:
         children_nodes: list[AccountNode] = []
+        # Se depth for None, não há limite - incluir todos os níveis
+        # Se depth for definido, só incluir até a profundidade especificada
         if depth is None or current_depth < depth:
             children = by_parent.get(node.id, [])
             # Ordenar filhos antes de construir
