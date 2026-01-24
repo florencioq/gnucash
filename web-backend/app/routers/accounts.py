@@ -68,14 +68,43 @@ async def get_accounts_tree(book_id: str, depth: int | None = None, session: Asy
     await ensure_book_exists(session, book_id)
     res = await session.execute(select(Account).where(Account.book_id == book_id))
     accounts = res.scalars().all()
+    
+    # Criar um set de IDs de contas válidas para detectar órfãs
+    valid_account_ids = {acc.id for acc in accounts}
+    
     by_parent: dict[str | None, list[Account]] = {}
+    orphaned_accounts: list[Account] = []  # Contas com parent_id inválido
+    
     for acc in accounts:
-        by_parent.setdefault(acc.parent_id, []).append(acc)
+        if acc.parent_id is None:
+            # Conta raiz
+            by_parent.setdefault(None, []).append(acc)
+        elif acc.parent_id in valid_account_ids:
+            # Conta com pai válido
+            by_parent.setdefault(acc.parent_id, []).append(acc)
+        else:
+            # Conta órfã (parent_id não existe) - mostrar como raiz
+            orphaned_accounts.append(acc)
+            by_parent.setdefault(None, []).append(acc)
+    
+    # Ordenar contas por código (se tiver) ou por nome
+    def sort_key(acc: Account) -> tuple:
+        # Retorna (tem_codigo, codigo_ou_nome) para ordenação
+        if acc.code:
+            return (0, acc.code)
+        return (1, acc.name)
+    
+    # Ordenar filhos de cada pai
+    for parent_id in by_parent:
+        by_parent[parent_id].sort(key=sort_key)
 
     def build(node: Account, current_depth: int) -> AccountNode:
         children_nodes: list[AccountNode] = []
         if depth is None or current_depth < depth:
-            for child in by_parent.get(node.id, []):
+            children = by_parent.get(node.id, [])
+            # Ordenar filhos antes de construir
+            children.sort(key=sort_key)
+            for child in children:
                 children_nodes.append(build(child, current_depth + 1))
         return AccountNode(
             id=node.id,
@@ -92,7 +121,9 @@ async def get_accounts_tree(book_id: str, depth: int | None = None, session: Asy
             children=children_nodes,
         )
 
+    # Pegar todas as contas raiz (parent_id = None ou órfãs) e ordenar
     roots = by_parent.get(None, [])
+    roots.sort(key=sort_key)
     return [build(r, 0) for r in roots]
 
 @router.get("/{account_id}", response_model=AccountOut)

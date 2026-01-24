@@ -11,6 +11,7 @@ class AccountType(str, Enum):
     INCOME = "INCOME"
     EXPENSE = "EXPENSE"
     EQUITY = "EQUITY"
+    ROOT = "ROOT"
 
 # Books
 class BookCreate(BaseModel):

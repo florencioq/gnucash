@@ -19,6 +19,7 @@ class AccountType(PyEnum):
     INCOME = "INCOME"
     EXPENSE = "EXPENSE"
     EQUITY = "EQUITY"
+    ROOT = "ROOT"
 
 
 class Book(Base):
