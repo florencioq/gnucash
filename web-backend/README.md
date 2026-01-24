@@ -14,7 +14,7 @@ Quick start
 3. Run Alembic migrations to create tables
 	- alembic upgrade head
 4. Start API
-	- uvicorn app.main:app --reload
+	- uvicorn app.main:app --reload --port 8001
 
 Tables in initial migration
 - books
