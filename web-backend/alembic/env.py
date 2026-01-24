@@ -32,7 +32,7 @@ try:
     from app.config import DATABASE_URL
     sqlalchemy_url = DATABASE_URL.replace("+asyncpg", "")  # Alembic uses sync driver
 except Exception:
-    sqlalchemy_url = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5433/gnucash_web")
+    sqlalchemy_url = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5433/gnucash_web_cursor")
 
 config.set_main_option("sqlalchemy_url", sqlalchemy_url)
 

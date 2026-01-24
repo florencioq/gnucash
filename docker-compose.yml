@@ -5,14 +5,14 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-gnucash}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gnucash}
-      POSTGRES_DB: ${POSTGRES_DB:-gnucash_web}
+      POSTGRES_DB: ${POSTGRES_DB:-gnucash_web_cursor}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gnucash} -d ${POSTGRES_DB:-gnucash_web}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gnucash} -d ${POSTGRES_DB:-gnucash_web_cursor}"]
       interval: 10s
       timeout: 5s
       retries: 5
