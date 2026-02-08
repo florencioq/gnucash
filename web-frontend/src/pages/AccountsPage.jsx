@@ -205,7 +205,6 @@ export default function AccountsPage() {
             onChange={(event) => setForm({ ...form, parent_id: event.target.value })}
             disabled={isRootType}
           >
-            <option value="">(root)</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.name}
