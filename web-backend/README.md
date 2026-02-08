@@ -41,6 +41,12 @@ Optional: seed minimum spec data on startup:
 export SEED_ON_STARTUP=true
 ```
 
+Optional: allow frontend origin(s) for CORS:
+
+```bash
+export CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
+
 ## Run
 
 ```bash
