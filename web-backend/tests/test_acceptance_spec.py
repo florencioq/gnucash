@@ -97,8 +97,9 @@ def test_scenario_6_prevent_hierarchy_cycles(client):
         client,
         book_id=book_id,
         commodity_id=commodity_id,
-        name="A",
+        name="Root",
         is_placeholder=True,
+        account_type="ROOT",
     )
     account_b = create_account(
         client,
@@ -126,15 +127,44 @@ def test_scenario_7_list_accounts_by_book(client):
     book_b = create_book(client, "B")
     commodity_id = create_commodity(client, mnemonic="USD", fullname="US Dollar")
 
-    account_a = create_account(client, book_id=book_a, commodity_id=commodity_id, name="Assets A")
-    create_account(client, book_id=book_b, commodity_id=commodity_id, name="Assets B")
+    root_a = create_account(
+        client,
+        book_id=book_a,
+        commodity_id=commodity_id,
+        name="Root A",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    root_b = create_account(
+        client,
+        book_id=book_b,
+        commodity_id=commodity_id,
+        name="Root B",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    account_a = create_account(
+        client,
+        book_id=book_a,
+        commodity_id=commodity_id,
+        parent_id=root_a,
+        name="Assets A",
+    )
+    create_account(
+        client,
+        book_id=book_b,
+        commodity_id=commodity_id,
+        parent_id=root_b,
+        name="Assets B",
+    )
 
     response = client.get(f"/accounts?book_id={book_a}")
     assert response.status_code == 200
     result = response.json()
-    assert len(result) == 1
-    assert result[0]["id"] == account_a
-    assert result[0]["book_id"] == book_a
+    assert len(result) == 2
+    ids = {item["id"] for item in result}
+    assert account_a in ids
+    assert all(item["book_id"] == book_a for item in result)
 
 
 def test_scenario_8_retrieve_tree_ordered_by_name(client):
@@ -144,8 +174,9 @@ def test_scenario_8_retrieve_tree_ordered_by_name(client):
         client,
         book_id=book_id,
         commodity_id=commodity_id,
-        name="Assets",
+        name="Root",
         is_placeholder=True,
+        account_type="ROOT",
     )
 
     create_account(client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Wallet")
@@ -156,7 +187,7 @@ def test_scenario_8_retrieve_tree_ordered_by_name(client):
     assert response.status_code == 200
     tree = response.json()
     assert len(tree) == 1
-    assert tree[0]["name"] == "Assets"
+    assert tree[0]["name"] == "Root"
     assert [child["name"] for child in tree[0]["children"]] == ["Bank", "Cash", "Wallet"]
 
 
@@ -167,15 +198,16 @@ def test_scenario_9_delete_restrictions(client):
         client,
         book_id=book_id,
         commodity_id=commodity_id,
-        name="Assets",
+        name="Root",
         is_placeholder=True,
+        account_type="ROOT",
     )
     create_account(
         client,
         book_id=book_id,
         commodity_id=commodity_id,
         parent_id=root_id,
-        name="Cash",
+        name="Assets",
     )
 
     account_delete = client.delete(f"/accounts/{root_id}")
