@@ -1,0 +1,79 @@
+:root {
+  --ink: #0c0f14;
+  --paper: #f7f4ef;
+  --accent: #2f6b55;
+  --accent-2: #d9c7a4;
+  --line: #d9d2c6;
+}
+
+body {
+  background: radial-gradient(circle at 20% 10%, #fdf9f3, var(--paper));
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino", "Book Antiqua", serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.brand-bar {
+  background: linear-gradient(135deg, #1b2b24, #2f6b55);
+  color: #f4efe6;
+  padding: 1.5rem 2rem;
+  border-bottom: 4px solid var(--accent-2);
+}
+
+.brand-title {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.section-card {
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(12, 15, 20, 0.08);
+  padding: 1.5rem;
+}
+
+.nav-pills .nav-link.active {
+  background: var(--accent);
+}
+
+.badge-soft {
+  background: #e8f2ed;
+  color: #204134;
+}
+
+.small-muted {
+  color: #6b6b6b;
+  font-size: 0.9rem;
+}
+
+.form-control,
+.form-select {
+  border-radius: 10px;
+  border-color: var(--line);
+}
+
+.btn-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-accent:hover {
+  background: #255744;
+  border-color: #255744;
+}
+
+.table thead th {
+  background: #f0e8dc;
+}
+
+.tree-node {
+  border-left: 2px solid #e1d8c7;
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+}
