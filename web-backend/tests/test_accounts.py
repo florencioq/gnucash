@@ -27,8 +27,8 @@ def test_account_tree_and_same_book_parent_rule(client):
         '/accounts',
         json={
             'book_id': book_a,
-            'name': 'Assets',
-            'type': 'ASSET',
+            'name': 'Root',
+            'type': 'ROOT',
             'commodity_id': commodity_id,
             'is_placeholder': True,
         },
@@ -55,7 +55,7 @@ def test_account_tree_and_same_book_parent_rule(client):
         json={
             'book_id': book_a,
             'parent_id': root_id,
-            'name': 'Cash',
+            'name': 'Assets',
             'type': 'ASSET',
             'commodity_id': commodity_id,
             'is_placeholder': False,
@@ -67,8 +67,8 @@ def test_account_tree_and_same_book_parent_rule(client):
     assert tree.status_code == 200
     roots = tree.json()
     assert len(roots) == 1
-    assert roots[0]['name'] == 'Assets'
-    assert roots[0]['children'][0]['name'] == 'Cash'
+    assert roots[0]['name'] == 'Root'
+    assert roots[0]['children'][0]['name'] == 'Assets'
 
 
 def test_delete_restriction_account_with_children(client):
@@ -79,8 +79,8 @@ def test_delete_restriction_account_with_children(client):
         '/accounts',
         json={
             'book_id': book_id,
-            'name': 'Assets',
-            'type': 'ASSET',
+            'name': 'Root',
+            'type': 'ROOT',
             'commodity_id': commodity_id,
             'is_placeholder': True,
         },
@@ -91,7 +91,7 @@ def test_delete_restriction_account_with_children(client):
         json={
             'book_id': book_id,
             'parent_id': root_id,
-            'name': 'Cash',
+            'name': 'Assets',
             'type': 'ASSET',
             'commodity_id': commodity_id,
             'is_placeholder': False,
