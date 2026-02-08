@@ -16,6 +16,7 @@ This document describes a reference implementation. It DOES NOT modify the norma
 ### Frontend
 
 - React
+- Typescript
 - Bootstrap 5
 
 ## Recommended conventions
