@@ -23,7 +23,7 @@
 ## Scenario 4: Create root and child accounts
 
 1. Create Book and Commodity.
-2. Send `POST /accounts` for root account `Root` with `type=ROOT`, `parent_id=null`, and `is_placeholder=true`.
+2. Send `POST /accounts` for root account `Root` with `type=ROOT` and `is_placeholder=true` (omit `parent_id` or set it to `null`).
 3. Validate `201`.
 4. Send `POST /accounts` for child account `Assets` with root account `parent_id`.
 5. Validate `201`.
