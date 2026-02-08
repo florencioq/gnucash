@@ -195,3 +195,4 @@ messages.mo
 /build/
 *.LCK
 .env
+web-frontend/node_modules/
