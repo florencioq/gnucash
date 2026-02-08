@@ -194,3 +194,4 @@ messages.mo
 /.settings/
 /build/
 *.LCK
+.env
