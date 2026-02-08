@@ -17,6 +17,8 @@ export default function AccountsPage() {
     is_placeholder: false
   });
 
+  const isRootType = form.type === "ROOT";
+
   const bookOptions = useMemo(() => books, [books]);
 
   const loadBooks = async () => {
@@ -89,7 +91,7 @@ export default function AccountsPage() {
       commodity_id: form.commodity_id,
       is_placeholder: form.is_placeholder
     };
-    if (form.parent_id) {
+    if (!isRootType && form.parent_id) {
       payload.parent_id = form.parent_id;
     }
     const res = await api.post("/accounts", payload);
@@ -157,9 +159,18 @@ export default function AccountsPage() {
           <select
             className="form-select"
             value={form.type}
-            onChange={(event) => setForm({ ...form, type: event.target.value })}
+            onChange={(event) => {
+              const nextType = event.target.value;
+              setForm({
+                ...form,
+                type: nextType,
+                parent_id: nextType === "ROOT" ? "" : form.parent_id,
+                is_placeholder: nextType === "ROOT" ? true : form.is_placeholder
+              });
+            }}
           >
             {[
+              "ROOT",
               "ASSET",
               "LIABILITY",
               "INCOME",
@@ -192,6 +203,7 @@ export default function AccountsPage() {
             className="form-select"
             value={form.parent_id}
             onChange={(event) => setForm({ ...form, parent_id: event.target.value })}
+            disabled={isRootType}
           >
             <option value="">(root)</option>
             {accounts.map((account) => (
@@ -200,6 +212,9 @@ export default function AccountsPage() {
               </option>
             ))}
           </select>
+          {isRootType ? (
+            <div className="small-muted mt-1">ROOT must not have a parent.</div>
+          ) : null}
         </div>
         <div className="col-md-2">
           <label className="form-label">Placeholder</label>
