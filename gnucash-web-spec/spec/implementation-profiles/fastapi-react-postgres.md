@@ -24,6 +24,7 @@ This document describes a reference implementation. It DOES NOT modify the norma
 2. Date/time values MUST be persisted and exposed in UTC.
 3. Error responses SHOULD map integrity exceptions to `400/409` using `code/message/details`.
 4. Migrations MUST encode constraints aligned with domain invariants.
+5. Backend implementation SHOULD provide a dependency manifest (for example `requirements.txt` or an equivalent lockfile).
 
 ## Suggested backend folder shape
 
