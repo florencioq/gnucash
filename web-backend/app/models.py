@@ -14,6 +14,7 @@ class Base(DeclarativeBase):
 
 
 class AccountType(PyEnum):
+    ROOT = "ROOT"
     ASSET = "ASSET"
     LIABILITY = "LIABILITY"
     INCOME = "INCOME"
