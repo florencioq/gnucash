@@ -1,0 +1,42 @@
+### Create BRL Commodity
+POST https://api.example.com/commodities
+Content-Type: application/json
+
+{
+  "namespace": "CURRENCY",
+  "mnemonic": "BRL",
+  "fullname": "Brazilian Real",
+  "fraction": 100,
+  "quote": false
+}
+
+### Expected 201
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "namespace": "CURRENCY",
+  "mnemonic": "BRL",
+  "fullname": "Brazilian Real",
+  "fraction": 100,
+  "quote": false
+}
+
+### List Commodities filtered by namespace
+GET https://api.example.com/commodities?namespace=CURRENCY
+
+### Expected 200
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+[
+  {
+    "id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+    "namespace": "CURRENCY",
+    "mnemonic": "BRL",
+    "fullname": "Brazilian Real",
+    "fraction": 100,
+    "quote": false
+  }
+]

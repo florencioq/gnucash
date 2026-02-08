@@ -1,0 +1,94 @@
+### Create root account: Assets
+POST https://api.example.com/accounts
+Content-Type: application/json
+
+{
+  "book_id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
+  "name": "Assets",
+  "type": "ASSET",
+  "commodity_id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "is_placeholder": true
+}
+
+### Expected 201
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "12ddf101-1f14-40b3-993a-f7ec70a0e8d4",
+  "book_id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
+  "parent_id": null,
+  "name": "Assets",
+  "code": null,
+  "description": null,
+  "type": "ASSET",
+  "commodity_id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "is_placeholder": true,
+  "created_at": "2026-02-08T12:01:00Z",
+  "updated_at": "2026-02-08T12:01:00Z"
+}
+
+### Create child account: Cash
+POST https://api.example.com/accounts
+Content-Type: application/json
+
+{
+  "book_id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
+  "parent_id": "12ddf101-1f14-40b3-993a-f7ec70a0e8d4",
+  "name": "Cash",
+  "type": "ASSET",
+  "commodity_id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "is_placeholder": false
+}
+
+### Expected 201
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "2dfd7a53-8899-4dfa-8b14-1749d5cb84d1",
+  "book_id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
+  "parent_id": "12ddf101-1f14-40b3-993a-f7ec70a0e8d4",
+  "name": "Cash",
+  "code": null,
+  "description": null,
+  "type": "ASSET",
+  "commodity_id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "is_placeholder": false,
+  "created_at": "2026-02-08T12:02:00Z",
+  "updated_at": "2026-02-08T12:02:00Z"
+}
+
+### List accounts by book
+GET https://api.example.com/accounts?book_id=6a0e4d1d-65f6-43e2-8f70-3748fdc75c06
+
+### Get tree
+GET https://api.example.com/accounts/tree?book_id=6a0e4d1d-65f6-43e2-8f70-3748fdc75c06
+
+### Expected 200 (tree)
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+[
+  {
+    "id": "12ddf101-1f14-40b3-993a-f7ec70a0e8d4",
+    "book_id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
+    "parent_id": null,
+    "name": "Assets",
+    "type": "ASSET",
+    "commodity_id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+    "is_placeholder": true,
+    "children": [
+      {
+        "id": "2dfd7a53-8899-4dfa-8b14-1749d5cb84d1",
+        "book_id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
+        "parent_id": "12ddf101-1f14-40b3-993a-f7ec70a0e8d4",
+        "name": "Cash",
+        "type": "ASSET",
+        "commodity_id": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+        "is_placeholder": false,
+        "children": []
+      }
+    ]
+  }
+]
