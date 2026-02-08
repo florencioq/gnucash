@@ -10,6 +10,7 @@ from typing import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "20260208_0001"
@@ -39,7 +40,15 @@ def upgrade() -> None:
     op.create_index("ix_commodities_namespace", "commodities", ["namespace"])
     op.create_index("ix_commodities_mnemonic", "commodities", ["mnemonic"])
 
-    account_type = sa.Enum("ASSET", "LIABILITY", "INCOME", "EXPENSE", "EQUITY", name="accounttype")
+    account_type = postgresql.ENUM(
+        "ASSET",
+        "LIABILITY",
+        "INCOME",
+        "EXPENSE",
+        "EQUITY",
+        name="accounttype",
+        create_type=False,
+    )
     account_type.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
@@ -77,4 +86,4 @@ def downgrade() -> None:
 
     op.drop_table("books")
 
-    sa.Enum(name="accounttype").drop(op.get_bind(), checkfirst=True)
+    postgresql.ENUM(name="accounttype").drop(op.get_bind(), checkfirst=True)
