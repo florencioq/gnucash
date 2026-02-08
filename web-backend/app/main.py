@@ -1,22 +1,29 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.db import engine
+from app.db import SessionLocal, engine
 from app.models import Base
 from app.routes.accounts import router as accounts_router
 from app.routes.books import router as books_router
 from app.routes.commodities import router as commodities_router
+from app.services.seeds import seed_minimum_data
 
-app = FastAPI(title=settings.app_name, version=settings.app_version)
-
-
-@app.on_event("startup")
-def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    if settings.seed_on_startup:
+        with SessionLocal() as db:
+            seed_minimum_data(db)
+    yield
+
+
+app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 
 
 @app.exception_handler(HTTPException)
