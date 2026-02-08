@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -67,7 +68,7 @@ def read_rows(path: str) -> Iterable[list[str]]:
         if not line.strip():
             continue
         if "\t" in line:
-            yield list(csv.reader([line], delimiter="\t")).__next__()
+            yield next(iter(csv.reader([line], delimiter="\t")))
         else:
             yield [col for col in line.split(" ") if col]
 
@@ -121,9 +122,12 @@ def main() -> int:
     parser.add_argument("--api-base", default="http://127.0.0.1:8000", help="API base URL")
     parser.add_argument("--book-id", required=True, help="Target book UUID")
     parser.add_argument("--input", required=True, help="Path to TSV file or '-' for stdin")
-    parser.add_argument("--default-commodity-id", help="Fallback commodity UUID if missing")
+    parser.add_argument("--default-commodity-id", help="Fallback commodity UUID if missing (or set DEFAULT_COMMODITY_ID)")
     parser.add_argument("--skip-existing", action="store_true", help="Skip accounts that already exist")
     args = parser.parse_args()
+
+    if not args.default_commodity_id:
+        args.default_commodity_id = os.getenv("DEFAULT_COMMODITY_ID")
 
     rows: list[AccountRow] = []
     for raw in read_rows(args.input):
