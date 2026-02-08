@@ -21,11 +21,17 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)) -> Acc
     commodity_id = str(payload.commodity_id)
     parent_id = str(payload.parent_id) if payload.parent_id else None
     account_id = str(payload.id or uuid4())
+    account_type = payload.type.value
 
     if db.get(Book, book_id) is None:
         raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id})
     if db.get(Commodity, commodity_id) is None:
         raise api_error(400, "INVALID_COMMODITY", "commodity_id must reference an existing commodity", {"commodity_id": commodity_id})
+
+    if parent_id is None and account_type != "ROOT":
+        raise api_error(400, "INVALID_PARENT", "root accounts must use type ROOT", {"type": account_type})
+    if parent_id is not None and account_type == "ROOT":
+        raise api_error(400, "INVALID_PARENT", "ROOT accounts cannot have a parent", {"parent_id": parent_id})
 
     validate_parent_constraints(db, account_id=account_id, book_id=book_id, parent_id=parent_id)
 
@@ -36,7 +42,7 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)) -> Acc
         name=payload.name,
         code=payload.code,
         description=payload.description,
-        type=payload.type.value,
+        type=account_type,
         commodity_id=commodity_id,
         is_placeholder=payload.is_placeholder,
     )
@@ -82,8 +88,15 @@ def patch_account(account_id: UUID, payload: AccountPatch, db: Session = Depends
             raise api_error(400, "INVALID_COMMODITY", "commodity_id must reference an existing commodity", {"commodity_id": commodity_id})
         data["commodity_id"] = commodity_id
 
+    new_type = account.type
     if "type" in data and data["type"] is not None:
-        data["type"] = data["type"].value
+        new_type = data["type"].value
+        data["type"] = new_type
+
+    if new_parent_id is None and new_type != "ROOT":
+        raise api_error(400, "INVALID_PARENT", "root accounts must use type ROOT", {"type": new_type})
+    if new_parent_id is not None and new_type == "ROOT":
+        raise api_error(400, "INVALID_PARENT", "ROOT accounts cannot have a parent", {"parent_id": new_parent_id})
 
     validate_parent_constraints(db, account_id=account.id, book_id=account.book_id, parent_id=new_parent_id)
     account.parent_id = new_parent_id
