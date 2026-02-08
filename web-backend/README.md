@@ -35,6 +35,12 @@ Set `DATABASE_URL` for the app before running:
 export DATABASE_URL=postgresql+psycopg://gnucash:gnucash@localhost:5433/gnucash_web
 ```
 
+Optional: seed minimum spec data on startup:
+
+```bash
+export SEED_ON_STARTUP=true
+```
+
 ## Run
 
 ```bash
