@@ -23,9 +23,9 @@
 ## Scenario 4: Create root and child accounts
 
 1. Create Book and Commodity.
-2. Send `POST /accounts` for root account `Assets` with `parent_id=null` and `is_placeholder=true`.
+2. Send `POST /accounts` for root account `Root` with `type=ROOT`, `parent_id=null`, and `is_placeholder=true`.
 3. Validate `201`.
-4. Send `POST /accounts` for child account `Cash` with root account `parent_id`.
+4. Send `POST /accounts` for child account `Assets` with root account `parent_id`.
 5. Validate `201`.
 
 ## Scenario 5: Enforce parent in same book
@@ -49,7 +49,7 @@
 
 ## Scenario 8: Retrieve tree ordered by name
 
-1. Under the same parent, create children `Wallet`, `Bank`, `Cash`.
+1. Under the root account, create children `Wallet`, `Bank`, `Cash`.
 2. Call `GET /accounts/tree?book_id=<id>`.
 3. Validate recursive structure and sibling alphabetical order (`Bank`, `Cash`, `Wallet`).
 

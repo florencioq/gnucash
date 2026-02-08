@@ -27,6 +27,7 @@ Chart-of-accounts node that belongs to a `Book` and references one `Commodity`.
 ## AccountType
 
 Account category. MUST be one of:
+- `ROOT`
 - `ASSET`
 - `LIABILITY`
 - `INCOME`
@@ -34,6 +35,7 @@ Account category. MUST be one of:
 - `EQUITY`
 
 Type meaning:
+- `ROOT`: synthetic root node for a book's account hierarchy.
 - `ASSET`: value owned or controlled by the book (for example, cash, bank balances, receivables, inventory).
 - `LIABILITY`: obligation owed by the book to another party (for example, loans, credit card balances, payables).
 - `INCOME`: inflow that increases economic benefit during a period (for example, salary, sales revenue, interest received).

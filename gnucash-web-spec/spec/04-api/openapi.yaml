@@ -493,7 +493,7 @@ components:
 
     AccountType:
       type: string
-      enum: [ASSET, LIABILITY, INCOME, EXPENSE, EQUITY]
+      enum: [ROOT, ASSET, LIABILITY, INCOME, EXPENSE, EQUITY]
 
     AccountCreate:
       type: object
