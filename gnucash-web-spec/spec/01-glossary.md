@@ -33,6 +33,13 @@ Account category. MUST be one of:
 - `EXPENSE`
 - `EQUITY`
 
+Type meaning:
+- `ASSET`: value owned or controlled by the book (for example, cash, bank balances, receivables, inventory).
+- `LIABILITY`: obligation owed by the book to another party (for example, loans, credit card balances, payables).
+- `INCOME`: inflow that increases economic benefit during a period (for example, salary, sales revenue, interest received).
+- `EXPENSE`: outflow or consumption that reduces economic benefit during a period (for example, rent, utilities, fees).
+- `EQUITY`: residual interest in assets after liabilities (owner's stake, retained earnings, capital accounts).
+
 ## Placeholder Account
 
 Account flagged with `is_placeholder = true` for hierarchical organization.
