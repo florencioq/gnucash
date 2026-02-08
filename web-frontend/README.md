@@ -21,3 +21,7 @@ By default the UI calls `http://localhost:8000`. Override with:
 ```bash
 VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
+
+## Root accounts
+
+Root accounts must be created with `type=ROOT`. The parent selector is disabled for ROOT and no explicit `(root)` option is provided.
