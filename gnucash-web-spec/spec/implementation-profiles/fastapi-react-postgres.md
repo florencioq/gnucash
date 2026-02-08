@@ -25,6 +25,7 @@ This document describes a reference implementation. It DOES NOT modify the norma
 3. Error responses SHOULD map integrity exceptions to `400/409` using `code/message/details`.
 4. Migrations MUST encode constraints aligned with domain invariants.
 5. Backend implementation SHOULD provide a dependency manifest (for example `requirements.txt` or an equivalent lockfile).
+6. Local development MUST provide a PostgreSQL service using Docker Compose (or an equivalent container-based setup), and the backend repository SHOULD include a ready-to-run compose file.
 
 ## Suggested backend folder shape
 
