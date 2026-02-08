@@ -1,0 +1,649 @@
+openapi: 3.1.0
+info:
+  title: GnuCash Web Spec API
+  version: 0.1.0
+  description: >-
+    MVP API contract for Book, Commodity, and Account CRUD with account tree retrieval.
+servers:
+  - url: https://api.example.com
+    description: Example server
+
+tags:
+  - name: Books
+  - name: Commodities
+  - name: Accounts
+
+paths:
+  /books:
+    post:
+      tags: [Books]
+      summary: Create book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreate'
+      responses:
+        '201':
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Books]
+      summary: List books
+      responses:
+        '200':
+          description: Book list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+
+  /books/{book_id}:
+    parameters:
+      - $ref: '#/components/parameters/BookId'
+    get:
+      tags: [Books]
+      summary: Get book by id
+      responses:
+        '200':
+          description: Book
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Books]
+      summary: Update book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookPatch'
+      responses:
+        '200':
+          description: Updated book
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Books]
+      summary: Delete book
+      description: MUST fail with 409 when book still has accounts.
+      responses:
+        '204':
+          description: Book deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /commodities:
+    post:
+      tags: [Commodities]
+      summary: Create commodity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommodityCreate'
+      responses:
+        '201':
+          description: Commodity created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commodity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Commodities]
+      summary: List commodities
+      parameters:
+        - in: query
+          name: namespace
+          required: false
+          schema:
+            type: string
+            maxLength: 32
+      responses:
+        '200':
+          description: Commodity list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Commodity'
+
+  /commodities/{commodity_id}:
+    parameters:
+      - $ref: '#/components/parameters/CommodityId'
+    get:
+      tags: [Commodities]
+      summary: Get commodity by id
+      responses:
+        '200':
+          description: Commodity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commodity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Commodities]
+      summary: Update commodity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommodityPatch'
+      responses:
+        '200':
+          description: Updated commodity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commodity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Commodities]
+      summary: Delete commodity
+      description: MUST fail with 409 when commodity is referenced by any account.
+      responses:
+        '204':
+          description: Commodity deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /accounts:
+    post:
+      tags: [Accounts]
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Accounts]
+      summary: List accounts by book
+      parameters:
+        - in: query
+          name: book_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account list for the provided book
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /accounts/{account_id}:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    get:
+      tags: [Accounts]
+      summary: Get account by id
+      responses:
+        '200':
+          description: Account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Accounts]
+      summary: Update account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountPatch'
+      responses:
+        '200':
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Accounts]
+      summary: Delete account
+      description: >-
+        MUST fail with 409 when account has children.
+        Future constraint: implementations MAY also block delete when referenced by future posting entities.
+      responses:
+        '204':
+          description: Account deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /accounts/tree:
+    get:
+      tags: [Accounts]
+      summary: Get account tree by book
+      description: Returns hierarchical tree sorted by account name at each level.
+      parameters:
+        - in: query
+          name: book_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Root nodes for the account hierarchy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountTreeNode'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  parameters:
+    BookId:
+      in: path
+      name: book_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CommodityId:
+      in: path
+      name: commodity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AccountId:
+      in: path
+      name: account_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Request violates validation or invariant rules.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_parent:
+              value:
+                code: INVALID_PARENT
+                message: parent_id must reference an account in the same book
+                details:
+                  field: parent_id
+    Conflict:
+      description: Resource conflicts with domain integrity constraints.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            has_children:
+              value:
+                code: ACCOUNT_HAS_CHILDREN
+                message: account cannot be deleted while children exist
+                details:
+                  account_id: 2dfd7a53-8899-4dfa-8b14-1749d5cb84d1
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            not_found:
+              value:
+                code: NOT_FOUND
+                message: requested resource was not found
+                details: {}
+
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    BookCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        name:
+          type: string
+          maxLength: 120
+          nullable: true
+      required: []
+
+    BookPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          nullable: true
+
+    Book:
+      type: object
+      additionalProperties: false
+      required: [id, name, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 120
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+
+    CommodityCreate:
+      type: object
+      additionalProperties: false
+      required: [namespace, mnemonic, fraction]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        namespace:
+          type: string
+          maxLength: 32
+        mnemonic:
+          type: string
+          maxLength: 16
+        fullname:
+          type: string
+          maxLength: 128
+          nullable: true
+        fraction:
+          type: integer
+          minimum: 1
+        quote:
+          type: boolean
+          default: false
+
+    CommodityPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        namespace:
+          type: string
+          maxLength: 32
+        mnemonic:
+          type: string
+          maxLength: 16
+        fullname:
+          type: string
+          maxLength: 128
+          nullable: true
+        fraction:
+          type: integer
+          minimum: 1
+        quote:
+          type: boolean
+
+    Commodity:
+      type: object
+      additionalProperties: false
+      required: [id, namespace, mnemonic, fullname, fraction, quote]
+      properties:
+        id:
+          type: string
+          format: uuid
+        namespace:
+          type: string
+          maxLength: 32
+        mnemonic:
+          type: string
+          maxLength: 16
+        fullname:
+          type: string
+          maxLength: 128
+          nullable: true
+        fraction:
+          type: integer
+          minimum: 1
+        quote:
+          type: boolean
+
+    AccountType:
+      type: string
+      enum: [ASSET, LIABILITY, INCOME, EXPENSE, EQUITY]
+
+    AccountCreate:
+      type: object
+      additionalProperties: false
+      required: [book_id, name, type, commodity_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        book_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        code:
+          type: string
+          maxLength: 64
+          nullable: true
+        description:
+          type: string
+          maxLength: 255
+          nullable: true
+        type:
+          $ref: '#/components/schemas/AccountType'
+        commodity_id:
+          type: string
+          format: uuid
+        is_placeholder:
+          type: boolean
+          default: false
+
+    AccountPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        code:
+          type: string
+          maxLength: 64
+          nullable: true
+        description:
+          type: string
+          maxLength: 255
+          nullable: true
+        type:
+          $ref: '#/components/schemas/AccountType'
+        commodity_id:
+          type: string
+          format: uuid
+        is_placeholder:
+          type: boolean
+
+    Account:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - book_id
+        - parent_id
+        - name
+        - code
+        - description
+        - type
+        - commodity_id
+        - is_placeholder
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        code:
+          type: string
+          maxLength: 64
+          nullable: true
+        description:
+          type: string
+          maxLength: 255
+          nullable: true
+        type:
+          $ref: '#/components/schemas/AccountType'
+        commodity_id:
+          type: string
+          format: uuid
+        is_placeholder:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+        updated_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+
+    AccountTreeNode:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - book_id
+        - parent_id
+        - name
+        - type
+        - commodity_id
+        - is_placeholder
+        - children
+      properties:
+        id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/AccountType'
+        commodity_id:
+          type: string
+          format: uuid
+        is_placeholder:
+          type: boolean
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountTreeNode'
