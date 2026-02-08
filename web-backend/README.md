@@ -15,6 +15,26 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Database (Docker Compose)
+
+Local development expects PostgreSQL via Docker Compose:
+
+```bash
+docker compose up -d db
+```
+
+To stop:
+
+```bash
+docker compose stop db
+```
+
+Set `DATABASE_URL` for the app before running:
+
+```bash
+export DATABASE_URL=postgresql+psycopg://gnucash:gnucash@localhost:5433/gnucash_web
+```
+
 ## Run
 
 ```bash
