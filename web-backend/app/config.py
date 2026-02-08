@@ -1,6 +1,22 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+
+def _load_dotenv() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    env_path = project_root / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("\"").strip("'")
+        os.environ.setdefault(key, value)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -8,6 +24,9 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+_load_dotenv()
 
 
 class Settings:
