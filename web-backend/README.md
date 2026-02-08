@@ -35,6 +35,8 @@ Set `DATABASE_URL` for the app before running:
 export DATABASE_URL=postgresql+psycopg://gnucash:gnucash@localhost:5433/gnucash_web
 ```
 
+This backend also loads `.env` automatically at runtime (keys are applied only if not already set in the environment).
+
 Optional: seed minimum spec data on startup:
 
 ```bash
