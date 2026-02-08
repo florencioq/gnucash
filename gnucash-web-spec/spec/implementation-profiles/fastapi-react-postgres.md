@@ -27,6 +27,8 @@ This document describes a reference implementation. It DOES NOT modify the norma
 4. Migrations MUST encode constraints aligned with domain invariants.
 5. Backend implementation SHOULD provide a dependency manifest (for example `requirements.txt` or an equivalent lockfile).
 6. Local development MUST provide a PostgreSQL service using Docker Compose (or an equivalent container-based setup), and the backend repository SHOULD include a ready-to-run compose file.
+7. The runtime and Alembic migrations SHOULD read `DATABASE_URL` and it MUST point to PostgreSQL for this profile.
+8. SQLite MAY be used only for lightweight local testing, but it is non-conformant with this profile and SHOULD NOT be the default configuration.
 
 ## Suggested backend folder shape
 
