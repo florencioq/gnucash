@@ -14,6 +14,7 @@ class ApiError(BaseModel):
 
 
 class AccountTypeSchema(str, Enum):
+    ROOT = "ROOT"
     ASSET = "ASSET"
     LIABILITY = "LIABILITY"
     INCOME = "INCOME"
