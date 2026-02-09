@@ -118,6 +118,39 @@ export default function AccountsPage() {
     await loadAll(selectedBook);
   };
 
+  const editAccount = async (account) => {
+    const nextName = window.prompt("New account name:", account.name);
+    if (nextName === null) {
+      return;
+    }
+    const trimmed = nextName.trim();
+    if (!trimmed) {
+      setError({ code: "VALIDATION_ERROR", message: "name cannot be empty", details: {} });
+      return;
+    }
+
+    let isPlaceholder = account.is_placeholder;
+    if (account.type !== "ROOT") {
+      const placeholderAnswer = window.prompt(
+        "Placeholder? (true/false)",
+        account.is_placeholder ? "true" : "false"
+      );
+      if (placeholderAnswer !== null) {
+        isPlaceholder = placeholderAnswer.trim().toLowerCase() === "true";
+      }
+    }
+
+    const res = await api.patch(`/accounts/${account.id}`, {
+      name: trimmed,
+      is_placeholder: isPlaceholder
+    });
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    await loadAll(selectedBook);
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -241,50 +274,13 @@ export default function AccountsPage() {
         </div>
       ) : null}
 
-      <div className="row g-4">
-        <div className="col-lg-7">
-          <div className="section-card">
-            <h5 className="mb-3">Account List</h5>
-            <div className="table-responsive">
-              <table className="table align-middle">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Commodity</th>
-                    <th>Parent</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accounts.map((account) => (
-                    <tr key={account.id}>
-                      <td className="fw-semibold">{account.name}</td>
-                      <td>{account.type}</td>
-                      <td className="small-muted">{account.commodity_id}</td>
-                      <td className="small-muted">{account.parent_id || "root"}</td>
-                      <td className="text-end">
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          type="button"
-                          onClick={() => remove(account.id)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-5">
-          <div className="section-card">
-            <h5 className="mb-3">Account Tree</h5>
-            <AccountTree nodes={tree} />
-          </div>
-        </div>
+      <div className="section-card">
+        <h5 className="mb-3">Account Tree</h5>
+        <AccountTree
+          nodes={tree}
+          onEdit={(node) => editAccount(node)}
+          onDelete={(node) => remove(node.id)}
+        />
       </div>
     </div>
   );
