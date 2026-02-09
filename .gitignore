@@ -196,3 +196,4 @@ messages.mo
 *.LCK
 .env
 web-frontend/node_modules/
+web-backend/.venv/
