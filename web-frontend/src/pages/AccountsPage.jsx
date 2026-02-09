@@ -9,6 +9,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
   const [tree, setTree] = useState([]);
   const [error, setError] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
     name: "",
     type: "ASSET",
@@ -119,28 +120,24 @@ export default function AccountsPage() {
   };
 
   const editAccount = async (account) => {
-    const nextName = window.prompt("New account name:", account.name);
-    if (nextName === null) {
-      return;
-    }
-    const trimmed = nextName.trim();
+    setEditing({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      is_placeholder: account.is_placeholder
+    });
+  };
+
+  const submitEdit = async (event) => {
+    event.preventDefault();
+    if (!editing) return;
+    const trimmed = editing.name.trim();
     if (!trimmed) {
       setError({ code: "VALIDATION_ERROR", message: "name cannot be empty", details: {} });
       return;
     }
-
-    let isPlaceholder = account.is_placeholder;
-    if (account.type !== "ROOT") {
-      const placeholderAnswer = window.prompt(
-        "Placeholder? (true/false)",
-        account.is_placeholder ? "true" : "false"
-      );
-      if (placeholderAnswer !== null) {
-        isPlaceholder = placeholderAnswer.trim().toLowerCase() === "true";
-      }
-    }
-
-    const res = await api.patch(`/accounts/${account.id}`, {
+    const isPlaceholder = editing.type === "ROOT" ? true : editing.is_placeholder;
+    const res = await api.patch(`/accounts/${editing.id}`, {
       name: trimmed,
       is_placeholder: isPlaceholder
     });
@@ -148,6 +145,7 @@ export default function AccountsPage() {
       setError(res.error);
       return;
     }
+    setEditing(null);
     await loadAll(selectedBook);
   };
 
@@ -276,6 +274,44 @@ export default function AccountsPage() {
 
       <div className="section-card">
         <h5 className="mb-3">Account Tree</h5>
+        {editing ? (
+          <form className="row g-2 align-items-end mb-3" onSubmit={submitEdit}>
+            <div className="col-md-4">
+              <label className="form-label">Edit Name</label>
+              <input
+                className="form-control"
+                value={editing.name}
+                onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+                required
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label">Placeholder</label>
+              <select
+                className="form-select"
+                value={editing.type === "ROOT" ? "true" : editing.is_placeholder ? "true" : "false"}
+                onChange={(event) =>
+                  setEditing({ ...editing, is_placeholder: event.target.value === "true" })
+                }
+                disabled={editing.type === "ROOT"}
+              >
+                <option value="false">False</option>
+                <option value="true">True</option>
+              </select>
+              {editing.type === "ROOT" ? (
+                <div className="small-muted mt-1">ROOT must be placeholder.</div>
+              ) : null}
+            </div>
+            <div className="col-md-3 d-flex gap-2">
+              <button className="btn btn-accent" type="submit">
+                Save Changes
+              </button>
+              <button className="btn btn-outline-secondary" type="button" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : null}
         <AccountTree
           nodes={tree}
           onEdit={(node) => editAccount(node)}
