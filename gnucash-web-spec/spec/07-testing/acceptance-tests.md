@@ -61,3 +61,9 @@
 4. Validate `409`.
 5. Attempt `DELETE /books/{id}` when accounts are linked.
 6. Validate `409`.
+
+## Scenario 10: Update account placeholder flag
+
+1. Create a Book and an Account with `is_placeholder=false`.
+2. Send `PATCH /accounts/{id}` with `is_placeholder=true`.
+3. Validate `200` and `is_placeholder=true`.

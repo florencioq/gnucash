@@ -53,6 +53,7 @@ This document describes a reference implementation. It DOES NOT modify the norma
 
 - The account tree view SHOULD be the primary UI for managing accounts.
 - Flat account lists MAY be omitted if the tree view provides editing and deletion affordances.
+- Account editing SHOULD allow toggling `is_placeholder` in addition to updating the name.
 
 ## Compliance note
 

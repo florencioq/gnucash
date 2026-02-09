@@ -37,6 +37,7 @@
 - `GET /accounts/{account_id}`: fetch by ID.
 - `PATCH /accounts/{account_id}`: partial update.
   - MUST preserve hierarchy acyclicity.
+  - SHOULD allow updating `is_placeholder` when editing accounts.
 - `DELETE /accounts/{account_id}`: delete an account.
   - MUST return `409` if the account has children.
   - Rule about references from future posting entities is reserved for a future phase.

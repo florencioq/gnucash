@@ -62,6 +62,14 @@ Content-Type: application/json
 ### List accounts by book
 GET https://api.example.com/accounts?book_id=6a0e4d1d-65f6-43e2-8f70-3748fdc75c06
 
+### Update account placeholder flag
+PATCH https://api.example.com/accounts/2dfd7a53-8899-4dfa-8b14-1749d5cb84d1
+Content-Type: application/json
+
+{
+  "is_placeholder": false
+}
+
 ### Get tree
 GET https://api.example.com/accounts/tree?book_id=6a0e4d1d-65f6-43e2-8f70-3748fdc75c06
 
