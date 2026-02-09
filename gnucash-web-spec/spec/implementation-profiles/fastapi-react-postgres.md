@@ -49,6 +49,11 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - `src/components/AccountTree.jsx`
 - `src/api/client.js`
 
+## UX guidance
+
+- The account tree view SHOULD be the primary UI for managing accounts.
+- Flat account lists MAY be omitted if the tree view provides editing and deletion affordances.
+
 ## Compliance note
 
 Implementation internals MAY differ, but observable behavior and invariants defined in the spec MUST be preserved.
