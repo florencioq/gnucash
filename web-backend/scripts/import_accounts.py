@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import sys
 import urllib.error
 import urllib.request
@@ -73,7 +72,7 @@ def read_rows(path: str) -> Iterable[list[str]]:
             yield [col for col in line.split(" ") if col]
 
 
-def parse_account(row: list[str], default_commodity_id: str | None) -> AccountRow | None:
+def parse_account(row: list[str], commodity_id: str) -> AccountRow | None:
     if len(row) < 3:
         return None
 
@@ -84,12 +83,8 @@ def parse_account(row: list[str], default_commodity_id: str | None) -> AccountRo
     if account_type is None:
         raise ValueError(f"unsupported account type: {raw_type}")
 
-    commodity_id = row[3].strip() if len(row) > 3 else ""
     if not commodity_id:
-        if default_commodity_id:
-            commodity_id = default_commodity_id
-        else:
-            raise ValueError(f"missing commodity_id for account {account_id}")
+        raise ValueError("missing commodity_id parameter")
 
     parent_id = row[6].strip() if len(row) > 6 else ""
     if parent_id == "":
@@ -122,17 +117,14 @@ def main() -> int:
     parser.add_argument("--api-base", default="http://127.0.0.1:8000", help="API base URL")
     parser.add_argument("--book-id", required=True, help="Target book UUID")
     parser.add_argument("--input", required=True, help="Path to TSV file or '-' for stdin")
-    parser.add_argument("--default-commodity-id", help="Fallback commodity UUID if missing (or set DEFAULT_COMMODITY_ID)")
+    parser.add_argument("--commodity-id", required=True, help="Commodity UUID to use for all accounts")
     parser.add_argument("--skip-existing", action="store_true", help="Skip accounts that already exist")
     args = parser.parse_args()
-
-    if not args.default_commodity_id:
-        args.default_commodity_id = os.getenv("DEFAULT_COMMODITY_ID")
 
     rows: list[AccountRow] = []
     for raw in read_rows(args.input):
         try:
-            parsed = parse_account(raw, args.default_commodity_id)
+            parsed = parse_account(raw, args.commodity_id)
         except ValueError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
