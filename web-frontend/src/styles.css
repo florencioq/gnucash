@@ -77,3 +77,88 @@ body {
   padding-left: 1rem;
   margin-left: 0.5rem;
 }
+
+.ledger-table td,
+.ledger-table th {
+  vertical-align: middle;
+}
+
+.ledger-table tbody tr:hover {
+  background: #faf6ef;
+}
+
+.tree-select {
+  position: relative;
+}
+
+.tree-select-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.tree-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-select-caret {
+  font-size: 0.8rem;
+  color: #5c5c5c;
+}
+
+.tree-select-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(12, 15, 20, 0.12);
+  padding: 0.5rem;
+}
+
+.counter-tree-panel {
+  max-height: 170px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.4rem;
+}
+
+.counter-tree-node {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink);
+}
+
+.counter-tree-node:hover:not(:disabled) {
+  background: #f2ece0;
+}
+
+.counter-tree-node:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.counter-tree-node.is-selected {
+  background: #dcebe3;
+  outline: 1px solid #b8d3c6;
+}
+
+.counter-tree-name {
+  font-weight: 600;
+}

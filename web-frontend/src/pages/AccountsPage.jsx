@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import AccountTree from "../components/AccountTree.jsx";
 
-export default function AccountsPage() {
+export default function AccountsPage({ onOpenLedger = () => {} }) {
   const [books, setBooks] = useState([]);
   const [commodities, setCommodities] = useState([]);
   const [selectedBook, setSelectedBook] = useState("");
@@ -67,8 +67,7 @@ export default function AccountsPage() {
   };
 
   const loadAll = async (bookId) => {
-    await loadAccounts(bookId);
-    await loadTree(bookId);
+    await Promise.all([loadAccounts(bookId), loadTree(bookId)]);
   };
 
   useEffect(() => {
@@ -147,6 +146,11 @@ export default function AccountsPage() {
     }
     setEditing(null);
     await loadAll(selectedBook);
+  };
+
+  const openLedgerFromTree = (node) => {
+    if (!selectedBook || !node?.id || node.type === "ROOT") return;
+    onOpenLedger({ bookId: selectedBook, accountId: node.id });
   };
 
   return (
@@ -302,7 +306,7 @@ export default function AccountsPage() {
                 <div className="small-muted mt-1">ROOT must be placeholder.</div>
               ) : null}
             </div>
-            <div className="col-md-3 d-flex gap-2">
+            <div className="col-md-4 d-flex gap-2">
               <button className="btn btn-accent" type="submit">
                 Save Changes
               </button>
@@ -314,6 +318,7 @@ export default function AccountsPage() {
         ) : null}
         <AccountTree
           nodes={tree}
+          onLedger={openLedgerFromTree}
           onEdit={(node) => editAccount(node)}
           onDelete={(node) => remove(node.id)}
         />

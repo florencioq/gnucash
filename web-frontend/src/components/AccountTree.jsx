@@ -35,7 +35,16 @@ function DeleteIcon() {
   );
 }
 
-function Node({ node, onEdit, onDelete }) {
+function LedgerIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M2 2.5A1.5 1.5 0 0 1 3.5 1h8A1.5 1.5 0 0 1 13 2.5V14l-2-1-2 1-2-1-2 1V2.5zM3.5 2a.5.5 0 0 0-.5.5v9.882l1-.5 2 1 2-1 2 1 2-1 1 .5V2.5a.5.5 0 0 0-.5-.5h-8z" />
+      <path d="M5 4h6v1H5zM5 6h6v1H5zM5 8h4v1H5z" />
+    </svg>
+  );
+}
+
+function Node({ node, onLedger, onEdit, onDelete }) {
   return (
     <div className="tree-node">
       <div className="d-flex align-items-center gap-2">
@@ -45,6 +54,11 @@ function Node({ node, onEdit, onDelete }) {
           <span className="badge text-bg-secondary">placeholder</span>
         ) : null}
         <div className="ms-auto d-flex gap-2">
+          {onLedger && node.type !== "ROOT" ? (
+            <IconButton title="Open ledger" onClick={() => onLedger(node)}>
+              <LedgerIcon />
+            </IconButton>
+          ) : null}
           <IconButton title="Edit account" onClick={() => onEdit(node)}>
             <EditIcon />
           </IconButton>
@@ -56,7 +70,7 @@ function Node({ node, onEdit, onDelete }) {
       {node.children && node.children.length > 0 ? (
         <div className="mt-2">
           {node.children.map((child) => (
-            <Node key={child.id} node={child} onEdit={onEdit} onDelete={onDelete} />
+            <Node key={child.id} node={child} onLedger={onLedger} onEdit={onEdit} onDelete={onDelete} />
           ))}
         </div>
       ) : null}
@@ -64,7 +78,7 @@ function Node({ node, onEdit, onDelete }) {
   );
 }
 
-export default function AccountTree({ nodes, onEdit, onDelete }) {
+export default function AccountTree({ nodes, onLedger, onEdit, onDelete }) {
   if (!nodes || nodes.length === 0) {
     return <div className="small-muted">No accounts yet.</div>;
   }
@@ -72,7 +86,7 @@ export default function AccountTree({ nodes, onEdit, onDelete }) {
   return (
     <div>
       {nodes.map((node) => (
-        <Node key={node.id} node={node} onEdit={onEdit} onDelete={onDelete} />
+        <Node key={node.id} node={node} onLedger={onLedger} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </div>
   );

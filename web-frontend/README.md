@@ -25,3 +25,10 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ## Root accounts
 
 Root accounts must be created with `type=ROOT`. The parent selector is disabled for ROOT and no explicit `(root)` option is provided.
+
+## Account ledger
+
+The app includes a dedicated `Ledger` tab:
+- list postings with running balance by account;
+- create a new posting directly from the ledger by selecting counter-account, date, history, and amount.
+- open ledger directly from the account tree using the ledger button on each non-root account.
