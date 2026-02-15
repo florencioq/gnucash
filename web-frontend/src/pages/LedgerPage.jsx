@@ -581,7 +581,6 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
             placeholder="0,00"
             required
           />
-          <div className="small-muted mt-1">Positivo ou negativo.</div>
         </div>
         <div className="col-md-5">
           <label className="form-label">Conta de contra-partida (arvore)</label>
