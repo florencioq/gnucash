@@ -242,8 +242,8 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
         date: movementDate,
         history: tx.description || ownSplit.memo || "-",
         contra: contraLabel,
-        debit: amount > 0 ? amount : 0,
-        credit: amount < 0 ? Math.abs(amount) : 0,
+        debit: amount < 0 ? Math.abs(amount) : 0,
+        credit: amount > 0 ? amount : 0,
         amount
       });
     }
