@@ -67,6 +67,7 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
   const [counterPickerOpen, setCounterPickerOpen] = useState(false);
   const [counterSearch, setCounterSearch] = useState("");
   const [error, setError] = useState(null);
+  const [deletingTxGuid, setDeletingTxGuid] = useState("");
   const [ledgerForm, setLedgerForm] = useState({
     counterAccountId: "",
     date: todayIsoDate(),
@@ -455,6 +456,23 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
     await loadTransactions(selectedBook);
   };
 
+  const deleteLedgerEntry = async (txGuid) => {
+    if (!txGuid) return;
+    const confirmed = window.confirm("Deseja excluir este lancamento do razao?");
+    if (!confirmed) return;
+
+    setError(null);
+    setDeletingTxGuid(txGuid);
+    const res = await api.del(`/transactions/${txGuid}`);
+    setDeletingTxGuid("");
+
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    await loadTransactions(selectedBook);
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -527,12 +545,13 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
               <th className="text-end">Debito</th>
               <th className="text-end">Credito</th>
               <th className="text-end">Saldo</th>
+              <th className="text-end">Acoes</th>
             </tr>
           </thead>
           <tbody>
             {ledgerRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="small-muted">
+                <td colSpan={7} className="small-muted">
                   Nenhum lancamento para a conta selecionada.
                 </td>
               </tr>
@@ -545,6 +564,16 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
                   <td className="text-end">{row.debit ? formatAmount(row.debit, ledgerCommodity?.mnemonic) : "-"}</td>
                   <td className="text-end">{row.credit ? formatAmount(row.credit, ledgerCommodity?.mnemonic) : "-"}</td>
                   <td className="text-end fw-semibold">{formatAmount(row.balance, ledgerCommodity?.mnemonic)}</td>
+                  <td className="text-end">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => deleteLedgerEntry(row.txGuid)}
+                      disabled={deletingTxGuid === row.txGuid}
+                    >
+                      {deletingTxGuid === row.txGuid ? "Excluindo..." : "Excluir"}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
