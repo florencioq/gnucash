@@ -46,14 +46,18 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - `src/pages/BooksPage.jsx`
 - `src/pages/CommoditiesPage.jsx`
 - `src/pages/AccountsPage.jsx`
+- `src/pages/LedgerPage.jsx`
 - `src/components/AccountTree.jsx`
 - `src/api/client.js`
 
 ## UX guidance
 
 - The account tree view SHOULD be the primary UI for managing accounts.
+- The account tree SHOULD support expand/collapse for nested account navigation.
+- Account tree rows SHOULD surface account `code` (when present) and current balance formatted with commodity mnemonic.
 - Flat account lists MAY be omitted if the tree view provides editing and deletion affordances.
 - Account editing SHOULD allow toggling `is_placeholder` in addition to updating the name.
+- Ledger UI SHOULD allow editing existing postings by reusing `PATCH /transactions/{tx_guid}`.
 
 ## Compliance note
 

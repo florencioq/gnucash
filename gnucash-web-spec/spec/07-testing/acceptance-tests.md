@@ -86,3 +86,21 @@
 1. Create two books with one account each.
 2. Send `POST /transactions` using split accounts from different books.
 3. Validate `409` for cross-book invariant violation.
+
+## Scenario 14: Retrieve tree with account code and balance
+
+1. Create a book, commodity, root account, and one child account with `code`.
+2. Post one balanced transaction touching the child account.
+3. Call `GET /accounts/tree?book_id=<id>`.
+4. Validate the child node returns:
+   - `code` (nullable by contract, populated in this scenario),
+   - `balance_num`,
+   - `balance_denom`.
+5. Validate returned balance represents the exact posted amount.
+
+## Scenario 15: Edit transaction with split replacement
+
+1. Create a balanced transaction with two splits.
+2. Send `PATCH /transactions/{tx_guid}` replacing description and splits with another balanced pair in the same book.
+3. Validate `200`.
+4. Validate updated payload reflects the new description and replacement splits.

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.0 - 2026-02-15
+
+Extended API and profile coverage:
+- added `code`, `balance_num`, and `balance_denom` to `AccountTreeNode` in OpenAPI
+- clarified `/accounts/tree` response expectations in human endpoint guide
+- added acceptance scenario for account tree code/balance payload
+- added acceptance scenario for transaction editing via `PATCH /transactions/{tx_guid}`
+- updated FastAPI+React+PostgreSQL implementation profile with account-tree UX and ledger-editing guidance
+
 ## v0.2.0 - 2026-02-15
 
 Extended specification with accounting postings:

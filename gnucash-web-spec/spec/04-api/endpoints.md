@@ -43,6 +43,7 @@
   - Rule about references from future posting entities is reserved for a future phase.
 - `GET /accounts/tree?book_id=`: return hierarchy for `book_id`.
   - sibling nodes MUST be ordered by `name`.
+  - each node MUST expose `code` (nullable) and current account balance as exact rational fields (`balance_num`, `balance_denom`).
 
 ## Transactions and Splits (Accounting Postings)
 
@@ -55,5 +56,6 @@
 - `GET /transactions/{tx_guid}`: fetch a transaction with its splits.
 - `PATCH /transactions/{tx_guid}`: partial update transaction fields and optionally replace splits.
   - when `splits` are provided, the same validation rules as create MUST apply.
+  - this endpoint MUST support editing an existing posting flow (for example, ledger UI editing).
 - `DELETE /transactions/{tx_guid}`: delete transaction.
   - deleting a transaction MUST remove associated splits (or fail atomically).

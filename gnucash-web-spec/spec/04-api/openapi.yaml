@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GnuCash Web Spec API
-  version: 0.2.0
+  version: 0.3.0
   description: >-
     API contract for Book, Commodity, Account, and Transaction/Split posting endpoints.
 servers:
@@ -284,7 +284,9 @@ paths:
     get:
       tags: [Accounts]
       summary: Get account tree by book
-      description: Returns hierarchical tree sorted by account name at each level.
+      description: >-
+        Returns hierarchical tree sorted by account name at each level.
+        Each node includes account code and exact current balance for that account.
       parameters:
         - in: query
           name: book_id
@@ -716,9 +718,12 @@ components:
         - book_id
         - parent_id
         - name
+        - code
         - type
         - commodity_id
         - is_placeholder
+        - balance_num
+        - balance_denom
         - children
       properties:
         id:
@@ -733,6 +738,10 @@ components:
           nullable: true
         name:
           type: string
+        code:
+          type: string
+          maxLength: 64
+          nullable: true
         type:
           $ref: '#/components/schemas/AccountType'
         commodity_id:
@@ -740,6 +749,15 @@ components:
           format: uuid
         is_placeholder:
           type: boolean
+        balance_num:
+          type: integer
+          format: int64
+          description: Numerator of exact account balance.
+        balance_denom:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Denominator of exact account balance.
         children:
           type: array
           items:
