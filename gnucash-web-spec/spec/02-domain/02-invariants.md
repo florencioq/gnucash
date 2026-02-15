@@ -27,3 +27,16 @@
 
 15. `is_placeholder = true` MAY be used to model grouping nodes and MAY have children.
 16. Blocking transactional postings on placeholders is a **future constraint** and is out of scope for v0.1.0.
+
+## Relational enforcement policy (legacy-aligned SQL)
+
+17. For SQL implementations aligned with `spec/03-data/04.gnucash-database.md`, invariants SHOULD be enforced with database constraints whenever deterministic.
+18. At minimum, SQL implementations SHOULD enforce foreign keys equivalent to:
+   - `accounts.commodity_guid -> commodities.guid`
+   - `accounts.parent_guid -> accounts.guid`
+   - `books.root_account_guid -> accounts.guid`
+19. SQL implementations SHOULD enforce:
+   - uniqueness equivalent to `Commodity(namespace, mnemonic)`;
+   - positive commodity fraction (`fraction > 0`);
+   - non-self-parent account rule (`parent != self`).
+20. In legacy datasets, constraints MAY be introduced incrementally (for example using `NOT VALID` followed by data remediation and `VALIDATE CONSTRAINT`) while preserving domain behavior.
