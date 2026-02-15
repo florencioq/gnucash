@@ -78,6 +78,40 @@ body {
   margin-left: 0.5rem;
 }
 
+.tree-node-toggle {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #5f574a;
+}
+
+.tree-node-toggle:hover {
+  background: #f0e8dc;
+}
+
+.tree-node-toggle-spacer {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: inline-block;
+}
+
+.tree-node-caret {
+  display: inline-block;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.tree-node-caret.is-collapsed {
+  transform: rotate(-90deg);
+}
+
 .ledger-table td,
 .ledger-table th {
   vertical-align: middle;

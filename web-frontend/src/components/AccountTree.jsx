@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 function IconButton({ title, onClick, children }) {
   return (
@@ -44,10 +44,29 @@ function LedgerIcon() {
   );
 }
 
-function Node({ node, onLedger, onEdit, onDelete }) {
+function Node({ node, collapsedIds, onToggleCollapse, onLedger, onEdit, onDelete }) {
+  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+  const isCollapsed = hasChildren && collapsedIds.has(node.id);
+
   return (
     <div className="tree-node">
       <div className="d-flex align-items-center gap-2">
+        {hasChildren ? (
+          <button
+            type="button"
+            className="tree-node-toggle"
+            onClick={() => onToggleCollapse(node.id)}
+            title={isCollapsed ? "Expand account" : "Collapse account"}
+            aria-label={isCollapsed ? "Expand account" : "Collapse account"}
+            aria-expanded={!isCollapsed}
+          >
+            <span className={`tree-node-caret ${isCollapsed ? "is-collapsed" : ""}`} aria-hidden="true">
+              ▾
+            </span>
+          </button>
+        ) : (
+          <span className="tree-node-toggle-spacer" aria-hidden="true" />
+        )}
         <span className="fw-semibold">{node.name}</span>
         <span className="badge badge-soft text-uppercase">{node.type}</span>
         {node.is_placeholder ? (
@@ -67,10 +86,18 @@ function Node({ node, onLedger, onEdit, onDelete }) {
           </IconButton>
         </div>
       </div>
-      {node.children && node.children.length > 0 ? (
+      {hasChildren && !isCollapsed ? (
         <div className="mt-2">
           {node.children.map((child) => (
-            <Node key={child.id} node={child} onLedger={onLedger} onEdit={onEdit} onDelete={onDelete} />
+            <Node
+              key={child.id}
+              node={child}
+              collapsedIds={collapsedIds}
+              onToggleCollapse={onToggleCollapse}
+              onLedger={onLedger}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           ))}
         </div>
       ) : null}
@@ -79,6 +106,38 @@ function Node({ node, onLedger, onEdit, onDelete }) {
 }
 
 export default function AccountTree({ nodes, onLedger, onEdit, onDelete }) {
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+
+  useEffect(() => {
+    const validIds = new Set();
+    const walk = (items) => {
+      items.forEach((item) => {
+        validIds.add(item.id);
+        if (item.children && item.children.length > 0) {
+          walk(item.children);
+        }
+      });
+    };
+    walk(nodes ?? []);
+
+    setCollapsedIds((prev) => {
+      const next = new Set([...prev].filter((id) => validIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [nodes]);
+
+  const toggleCollapse = (accountId) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(accountId)) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
+      }
+      return next;
+    });
+  };
+
   if (!nodes || nodes.length === 0) {
     return <div className="small-muted">No accounts yet.</div>;
   }
@@ -86,7 +145,15 @@ export default function AccountTree({ nodes, onLedger, onEdit, onDelete }) {
   return (
     <div>
       {nodes.map((node) => (
-        <Node key={node.id} node={node} onLedger={onLedger} onEdit={onEdit} onDelete={onDelete} />
+        <Node
+          key={node.id}
+          node={node}
+          collapsedIds={collapsedIds}
+          onToggleCollapse={toggleCollapse}
+          onLedger={onLedger}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       ))}
     </div>
   );
