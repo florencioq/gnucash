@@ -1,5 +1,22 @@
 import React, { useEffect, useState } from "react";
 
+function formatAmount(value, mnemonic) {
+  if (mnemonic && mnemonic.length === 3) {
+    try {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: mnemonic
+      }).format(value);
+    } catch (_error) {
+      // Fall through to decimal formatting.
+    }
+  }
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
 function IconButton({ title, onClick, children }) {
   return (
     <button
@@ -44,9 +61,20 @@ function LedgerIcon() {
   );
 }
 
-function Node({ node, collapsedIds, onToggleCollapse, onLedger, onEdit, onDelete }) {
+function Node({
+  node,
+  collapsedIds,
+  onToggleCollapse,
+  commodityMnemonicById,
+  onLedger,
+  onEdit,
+  onDelete
+}) {
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const isCollapsed = hasChildren && collapsedIds.has(node.id);
+  const balanceDenom = Number(node.balance_denom) || 1;
+  const balanceValue = Number(node.balance_num || 0) / balanceDenom;
+  const mnemonic = commodityMnemonicById?.get(node.commodity_id);
 
   return (
     <div className="tree-node">
@@ -72,6 +100,8 @@ function Node({ node, collapsedIds, onToggleCollapse, onLedger, onEdit, onDelete
         {node.is_placeholder ? (
           <span className="badge text-bg-secondary">placeholder</span>
         ) : null}
+        <span className="tree-node-code small-muted">Nº {node.code || "-"}</span>
+        <span className="tree-node-balance">{formatAmount(balanceValue, mnemonic)}</span>
         <div className="ms-auto d-flex gap-2">
           {onLedger && node.type !== "ROOT" ? (
             <IconButton title="Open ledger" onClick={() => onLedger(node)}>
@@ -94,6 +124,7 @@ function Node({ node, collapsedIds, onToggleCollapse, onLedger, onEdit, onDelete
               node={child}
               collapsedIds={collapsedIds}
               onToggleCollapse={onToggleCollapse}
+              commodityMnemonicById={commodityMnemonicById}
               onLedger={onLedger}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -105,7 +136,13 @@ function Node({ node, collapsedIds, onToggleCollapse, onLedger, onEdit, onDelete
   );
 }
 
-export default function AccountTree({ nodes, onLedger, onEdit, onDelete }) {
+export default function AccountTree({
+  nodes,
+  commodityMnemonicById,
+  onLedger,
+  onEdit,
+  onDelete
+}) {
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
 
   useEffect(() => {
@@ -150,6 +187,7 @@ export default function AccountTree({ nodes, onLedger, onEdit, onDelete }) {
           node={node}
           collapsedIds={collapsedIds}
           onToggleCollapse={toggleCollapse}
+          commodityMnemonicById={commodityMnemonicById}
           onLedger={onLedger}
           onEdit={onEdit}
           onDelete={onDelete}

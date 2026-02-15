@@ -116,9 +116,12 @@ class AccountTreeNode(BaseModel):
     book_id: str
     parent_id: str | None
     name: str
+    code: str | None = None
     type: AccountTypeSchema
     commodity_id: str
     is_placeholder: bool
+    balance_num: int = 0
+    balance_denom: int = 1
     children: list["AccountTreeNode"] = Field(default_factory=list)
 
 

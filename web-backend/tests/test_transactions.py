@@ -40,12 +40,36 @@ def create_root_account(client, *, book_id: str, commodity_id: str, name: str = 
 
 
 def create_child_account(client, *, book_id: str, commodity_id: str, parent_id: str, name: str, account_type: str) -> str:
+    payload = {
+        "book_id": book_id,
+        "parent_id": parent_id,
+        "name": name,
+        "type": account_type,
+        "commodity_id": commodity_id,
+        "is_placeholder": False,
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
+def create_child_account_with_code(
+    client,
+    *,
+    book_id: str,
+    commodity_id: str,
+    parent_id: str,
+    name: str,
+    account_type: str,
+    code: str,
+) -> str:
     response = client.post(
         "/accounts",
         json={
             "book_id": book_id,
             "parent_id": parent_id,
             "name": name,
+            "code": code,
             "type": account_type,
             "commodity_id": commodity_id,
             "is_placeholder": False,
@@ -53,6 +77,16 @@ def create_child_account(client, *, book_id: str, commodity_id: str, parent_id: 
     )
     assert response.status_code == 201
     return response.json()["id"]
+
+
+def find_tree_node(nodes: list[dict], account_id: str) -> dict | None:
+    for node in nodes:
+        if node["id"] == account_id:
+            return node
+        found = find_tree_node(node.get("children", []), account_id)
+        if found is not None:
+            return found
+    return None
 
 
 def test_create_and_get_transaction_with_balanced_splits(client):
@@ -109,6 +143,68 @@ def test_create_and_get_transaction_with_balanced_splits(client):
     fetched = client.get(f"/transactions/{payload['guid']}")
     assert fetched.status_code == 200
     assert fetched.json()["guid"] == payload["guid"]
+
+
+def test_account_tree_includes_code_and_balance(client):
+    book_id = create_book(client)
+    commodity_id = create_commodity(client)
+    root_id = create_root_account(client, book_id=book_id, commodity_id=commodity_id)
+    asset_id = create_child_account_with_code(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=root_id,
+        name="Cash",
+        account_type="ASSET",
+        code="1.1.01",
+    )
+    equity_id = create_child_account(
+        client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Opening", account_type="EQUITY"
+    )
+
+    created = client.post(
+        "/transactions",
+        json={
+            "currency_guid": commodity_id,
+            "description": "Initial balance",
+            "splits": [
+                {
+                    "account_guid": asset_id,
+                    "memo": "",
+                    "action": "",
+                    "reconcile_state": "n",
+                    "value_num": 12345,
+                    "value_denom": 100,
+                    "quantity_num": 12345,
+                    "quantity_denom": 100,
+                },
+                {
+                    "account_guid": equity_id,
+                    "memo": "",
+                    "action": "",
+                    "reconcile_state": "n",
+                    "value_num": -12345,
+                    "value_denom": 100,
+                    "quantity_num": -12345,
+                    "quantity_denom": 100,
+                },
+            ],
+        },
+    )
+    assert created.status_code == 201
+
+    tree = client.get(f"/accounts/tree?book_id={book_id}")
+    assert tree.status_code == 200
+    payload = tree.json()
+
+    asset_node = find_tree_node(payload, asset_id)
+    assert asset_node is not None
+    assert asset_node["code"] == "1.1.01"
+    assert Fraction(asset_node["balance_num"], asset_node["balance_denom"]) == Fraction(12345, 100)
+
+    equity_node = find_tree_node(payload, equity_id)
+    assert equity_node is not None
+    assert Fraction(equity_node["balance_num"], equity_node["balance_denom"]) == Fraction(-12345, 100)
 
 
 def test_reject_unbalanced_transaction(client):

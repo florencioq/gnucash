@@ -21,6 +21,10 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   const isRootType = form.type === "ROOT";
 
   const bookOptions = useMemo(() => books, [books]);
+  const commodityMnemonicById = useMemo(
+    () => new Map(commodities.map((commodity) => [commodity.id, commodity.mnemonic])),
+    [commodities]
+  );
 
   const loadBooks = async () => {
     const res = await api.get("/books");
@@ -318,6 +322,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
         ) : null}
         <AccountTree
           nodes={tree}
+          commodityMnemonicById={commodityMnemonicById}
           onLedger={openLedgerFromTree}
           onEdit={(node) => editAccount(node)}
           onDelete={(node) => remove(node.id)}
