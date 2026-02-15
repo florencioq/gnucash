@@ -1,31 +1,13 @@
 import React, { useEffect, useState } from "react";
 
-const CURRENCY_SYMBOLS = {
-  BRL: "R$",
-  USD: "US$",
-  EUR: "EUR",
-  GBP: "GBP",
-  JPY: "JPY"
-};
-
 function formatAmount(value, mnemonic) {
   const decimal = new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value);
 
-  if (mnemonic && mnemonic.length === 3) {
-    try {
-      return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: mnemonic,
-        currencyDisplay: "symbol"
-      }).format(value);
-    } catch (_error) {
-      const normalized = String(mnemonic).toUpperCase();
-      const symbol = CURRENCY_SYMBOLS[normalized] || normalized;
-      return `${symbol} ${decimal}`;
-    }
+  if (typeof mnemonic === "string" && mnemonic.trim()) {
+    return `${mnemonic.trim()} ${decimal}`;
   }
   return decimal;
 }
@@ -113,7 +95,7 @@ function Node({
         {node.is_placeholder ? (
           <span className="badge text-bg-secondary">placeholder</span>
         ) : null}
-        <span className="tree-node-code small-muted">Nº {node.code || "-"}</span>
+        {node.code ? <span className="tree-node-code small-muted">Nº {node.code}</span> : null}
         <span className="tree-node-balance">{formatAmount(balanceValue, mnemonic)}</span>
         <div className="ms-auto d-flex gap-2">
           {onLedger && node.type !== "ROOT" ? (
