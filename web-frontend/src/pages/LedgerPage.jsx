@@ -45,6 +45,13 @@ function formatAmount(value, mnemonic) {
   }).format(value);
 }
 
+function formatAmountInput(value) {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
 function filterTree(nodes, query) {
   const q = query.trim().toLowerCase();
   if (!q) return nodes;
@@ -76,6 +83,8 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
   const [counterPickerOpen, setCounterPickerOpen] = useState(false);
   const [counterSearch, setCounterSearch] = useState("");
   const [error, setError] = useState(null);
+  const [editingTxGuid, setEditingTxGuid] = useState("");
+  const [savingTxGuid, setSavingTxGuid] = useState("");
   const [deletingTxGuid, setDeletingTxGuid] = useState("");
   const [ledgerForm, setLedgerForm] = useState({
     counterAccountId: "",
@@ -91,6 +100,10 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
   const accountsById = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts]
+  );
+  const transactionsById = useMemo(
+    () => new Map(transactions.map((tx) => [tx.guid, tx])),
+    [transactions]
   );
   const accountFullNameById = useMemo(() => {
     const cache = new Map();
@@ -220,6 +233,18 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
       return { ...current, counterAccountId: nextCounter };
     });
   }, [ledgerAccountId, accounts]);
+
+  useEffect(() => {
+    setEditingTxGuid("");
+    setSavingTxGuid("");
+  }, [ledgerAccountId, selectedBook]);
+
+  useEffect(() => {
+    if (editingTxGuid && !transactionsById.has(editingTxGuid)) {
+      setEditingTxGuid("");
+      setSavingTxGuid("");
+    }
+  }, [editingTxGuid, transactionsById]);
 
   const ledgerRows = useMemo(() => {
     if (!ledgerAccountId) return [];
@@ -373,6 +398,59 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
     });
   };
 
+  const getEditableTransactionContext = (txGuid) => {
+    const tx = transactionsById.get(txGuid);
+    if (!tx) return null;
+
+    const ownSplits = tx.splits.filter((split) => split.account_guid === ledgerAccountId);
+    const contraSplits = tx.splits.filter((split) => split.account_guid !== ledgerAccountId);
+    if (ownSplits.length !== 1 || contraSplits.length !== 1) {
+      return null;
+    }
+
+    return { tx, ownSplit: ownSplits[0], contraSplit: contraSplits[0] };
+  };
+
+  const startEditingLedgerEntry = (txGuid) => {
+    setError(null);
+    const context = getEditableTransactionContext(txGuid);
+    if (!context) {
+      setError({
+        code: "VALIDATION_ERROR",
+        message: "edicao disponivel apenas para lancamentos com uma unica contra-partida",
+        details: {}
+      });
+      return;
+    }
+
+    const { tx, ownSplit, contraSplit } = context;
+    const movementDate = (tx.post_date || tx.enter_date || "").slice(0, 10) || todayIsoDate();
+    const history = (tx.description || ownSplit.memo || "").trim();
+    const amount = ownSplit.value_num / ownSplit.value_denom;
+
+    setLedgerForm((current) => ({
+      ...current,
+      counterAccountId: contraSplit.account_guid,
+      date: movementDate,
+      description: history,
+      amount: formatAmountInput(amount)
+    }));
+    setCounterPickerOpen(false);
+    setCounterSearch("");
+    setEditingTxGuid(txGuid);
+  };
+
+  const cancelEditingLedgerEntry = () => {
+    setEditingTxGuid("");
+    setSavingTxGuid("");
+    setError(null);
+    setLedgerForm((current) => ({
+      ...current,
+      description: "",
+      amount: ""
+    }));
+  };
+
   const createLedgerEntry = async (event) => {
     event.preventDefault();
     setError(null);
@@ -451,12 +529,23 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
       ]
     };
 
-    const res = await api.post("/transactions", payload);
+    const txGuidInFlight = editingTxGuid;
+    if (txGuidInFlight) {
+      setSavingTxGuid(txGuidInFlight);
+    }
+    const res = txGuidInFlight
+      ? await api.patch(`/transactions/${txGuidInFlight}`, payload)
+      : await api.post("/transactions", payload);
+    if (txGuidInFlight) {
+      setSavingTxGuid("");
+    }
+
     if (!res.ok) {
       setError(res.error);
       return;
     }
 
+    setEditingTxGuid("");
     setLedgerForm((current) => ({
       ...current,
       description: "",
@@ -478,6 +567,10 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
     if (!res.ok) {
       setError(res.error);
       return;
+    }
+    if (editingTxGuid === txGuid) {
+      setEditingTxGuid("");
+      setSavingTxGuid("");
     }
     await loadTransactions(selectedBook);
   };
@@ -565,30 +658,56 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
                 </td>
               </tr>
             ) : (
-              ledgerRows.map((row) => (
-                <tr key={row.key}>
-                  <td>{formatDate(row.date)}</td>
-                  <td>{row.history}</td>
-                  <td>{row.contra}</td>
-                  <td className="text-end">{row.debit ? formatAmount(row.debit, ledgerCommodity?.mnemonic) : "-"}</td>
-                  <td className="text-end">{row.credit ? formatAmount(row.credit, ledgerCommodity?.mnemonic) : "-"}</td>
-                  <td className="text-end fw-semibold">{formatAmount(row.balance, ledgerCommodity?.mnemonic)}</td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => deleteLedgerEntry(row.txGuid)}
-                      disabled={deletingTxGuid === row.txGuid}
-                    >
-                      {deletingTxGuid === row.txGuid ? "Excluindo..." : "Excluir"}
-                    </button>
-                  </td>
-                </tr>
-              ))
+              ledgerRows.map((row) => {
+                const isRowEditing = editingTxGuid === row.txGuid;
+                const isRowSaving = savingTxGuid === row.txGuid;
+                const canEdit = Boolean(getEditableTransactionContext(row.txGuid));
+                return (
+                  <tr key={row.key}>
+                    <td>{formatDate(row.date)}</td>
+                    <td>{row.history}</td>
+                    <td>{row.contra}</td>
+                    <td className="text-end">{row.debit ? formatAmount(row.debit, ledgerCommodity?.mnemonic) : "-"}</td>
+                    <td className="text-end">{row.credit ? formatAmount(row.credit, ledgerCommodity?.mnemonic) : "-"}</td>
+                    <td className="text-end fw-semibold">{formatAmount(row.balance, ledgerCommodity?.mnemonic)}</td>
+                    <td className="text-end">
+                      <div className="d-inline-flex gap-1">
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${isRowEditing ? "btn-secondary" : "btn-outline-secondary"}`}
+                          onClick={() => startEditingLedgerEntry(row.txGuid)}
+                          disabled={!canEdit || isRowSaving || deletingTxGuid === row.txGuid}
+                          title={
+                            canEdit
+                              ? "Editar lancamento"
+                              : "Somente lancamentos com uma unica contra-partida podem ser editados"
+                          }
+                        >
+                          {isRowEditing ? "Editando" : "Editar"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => deleteLedgerEntry(row.txGuid)}
+                          disabled={deletingTxGuid === row.txGuid || isRowSaving}
+                        >
+                          {deletingTxGuid === row.txGuid ? "Excluindo..." : "Excluir"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {editingTxGuid ? (
+        <div className="alert alert-info py-2">
+          Modo de edicao ativo. Ajuste os campos abaixo e clique em salvar.
+        </div>
+      ) : null}
 
       <form className="row g-2 align-items-end" onSubmit={createLedgerEntry}>
         <div className="col-md-2">
@@ -650,9 +769,18 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
             ) : null}
           </div>
         </div>
-        <div className="col-md-12 mt-2 d-flex justify-content-end">
-          <button className="btn btn-accent" type="submit">
-            Lancar no Razao
+        <div className="col-md-12 mt-2 d-flex justify-content-end gap-2">
+          {editingTxGuid ? (
+            <button className="btn btn-outline-secondary" type="button" onClick={cancelEditingLedgerEntry}>
+              Cancelar edicao
+            </button>
+          ) : null}
+          <button
+            className="btn btn-accent"
+            type="submit"
+            disabled={Boolean(editingTxGuid) && savingTxGuid === editingTxGuid}
+          >
+            {editingTxGuid ? (savingTxGuid === editingTxGuid ? "Salvando..." : "Salvar alteracoes") : "Lancar no Razao"}
           </button>
         </div>
       </form>
