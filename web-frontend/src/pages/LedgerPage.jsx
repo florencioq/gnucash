@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 
 function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function parseDecimal(input) {
@@ -14,9 +18,14 @@ function parseDecimal(input) {
 
 function formatDate(iso) {
   if (!iso) return "-";
+  const raw = String(iso);
+  const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymd) {
+    return `${ymd[3]}/${ymd[2]}/${ymd[1]}`;
+  }
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "-";
-  return new Intl.DateTimeFormat("pt-BR").format(date);
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(date);
 }
 
 function formatAmount(value, mnemonic) {
