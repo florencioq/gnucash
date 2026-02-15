@@ -1,6 +1,6 @@
 # 06 - Security
 
-## Scope for v0.1.0
+## Scope for v0.2.0
 
 - Detailed authentication and authorization are outside the scope of this domain.
 - Even outside current scope, interfaces SHOULD be designed for secure evolution.

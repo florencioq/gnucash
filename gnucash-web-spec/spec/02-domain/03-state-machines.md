@@ -1,10 +1,10 @@
 # 02.03 - State Machines
 
-## Current status (v0.1.0)
+## Current status (v0.2.0)
 
 There is no formal lifecycle state machine for `Book`, `Commodity`, or `Account`.
 
-In v0.1.0:
+In v0.2.0:
 - entities are considered active from creation;
 - updates are direct mutations of allowed attributes;
 - physical deletion is allowed, subject to integrity invariants.

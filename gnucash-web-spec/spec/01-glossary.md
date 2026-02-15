@@ -47,7 +47,7 @@ Type meaning:
 Account flagged with `is_placeholder = true` for hierarchical organization.
 
 - A placeholder account MAY have child accounts.
-- Preventing postings on placeholder accounts is a **future constraint** and is not defined in v0.1.0.
+- Preventing postings on placeholder accounts is a **future constraint** and is not defined in v0.2.0.
 
 ## Parent / Child
 
@@ -56,3 +56,20 @@ Hierarchical relationship between accounts:
 - `children`: immediate nodes below.
 
 Hierarchy MUST form an acyclic tree (or forest per `Book`).
+
+## Transaction
+
+Accounting entry header that groups one or more `Split` records.
+
+- A `Transaction` MUST reference one `Commodity` as entry currency.
+- A `Transaction` MUST contain at least two splits.
+- A `Transaction` is balanced only when the sum of all split `value` entries is zero.
+
+## Split
+
+One leg of a transaction posted to a specific account.
+
+- A `Split` MUST reference one `Transaction`.
+- A `Split` MUST reference one `Account`.
+- `value_num/value_denom` represent value in transaction currency.
+- `quantity_num/quantity_denom` represent quantity in account commodity units.

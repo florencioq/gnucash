@@ -2,7 +2,7 @@
 
 ## Target version
 
-- `v0.1.x`
+- `v0.2.x`
 
 ## Functional deliverables
 
@@ -10,7 +10,8 @@
 2. `Commodity` CRUD with `namespace` filter.
 3. `Account` CRUD with parent/children hierarchy.
 4. Endpoint `GET /accounts/tree?book_id=`.
-5. Standardized error payload (`code`, `message`, `details`).
+5. `Transaction` + `Split` posting API with balanced-entry validation.
+6. Standardized error payload (`code`, `message`, `details`).
 
 ## Quality gates
 

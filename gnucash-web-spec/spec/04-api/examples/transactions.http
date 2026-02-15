@@ -1,0 +1,77 @@
+### Create transaction with two balanced splits
+POST https://api.example.com/transactions
+Content-Type: application/json
+
+{
+  "currency_guid": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "num": "0001",
+  "description": "Initial balance",
+  "splits": [
+    {
+      "account_guid": "2dfd7a53-8899-4dfa-8b14-1749d5cb84d1",
+      "memo": "Debit cash",
+      "action": "",
+      "reconcile_state": "n",
+      "value_num": 10000,
+      "value_denom": 100,
+      "quantity_num": 10000,
+      "quantity_denom": 100
+    },
+    {
+      "account_guid": "7b8f5571-79bf-4b3f-bc40-8e62f7ca8f29",
+      "memo": "Credit equity",
+      "action": "",
+      "reconcile_state": "n",
+      "value_num": -10000,
+      "value_denom": 100,
+      "quantity_num": -10000,
+      "quantity_denom": 100
+    }
+  ]
+}
+
+### Expected 201
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "guid": "0a146fbf-8a9f-4ac6-9ce9-8a4172fd8cdf",
+  "currency_guid": "0e8db798-0f67-4d0f-a89f-bef7fefad9b1",
+  "num": "0001",
+  "post_date": null,
+  "enter_date": "2026-02-15T12:00:00Z",
+  "description": "Initial balance",
+  "splits": [
+    {
+      "guid": "da77163e-a2ad-43e6-a9f3-72692df0d6b0",
+      "tx_guid": "0a146fbf-8a9f-4ac6-9ce9-8a4172fd8cdf",
+      "account_guid": "2dfd7a53-8899-4dfa-8b14-1749d5cb84d1",
+      "memo": "Debit cash",
+      "action": "",
+      "reconcile_state": "n",
+      "reconcile_date": null,
+      "value_num": 10000,
+      "value_denom": 100,
+      "quantity_num": 10000,
+      "quantity_denom": 100,
+      "lot_guid": null
+    },
+    {
+      "guid": "3b98b8e9-6742-4331-af98-3590309e9954",
+      "tx_guid": "0a146fbf-8a9f-4ac6-9ce9-8a4172fd8cdf",
+      "account_guid": "7b8f5571-79bf-4b3f-bc40-8e62f7ca8f29",
+      "memo": "Credit equity",
+      "action": "",
+      "reconcile_state": "n",
+      "reconcile_date": null,
+      "value_num": -10000,
+      "value_denom": 100,
+      "quantity_num": -10000,
+      "quantity_denom": 100,
+      "lot_guid": null
+    }
+  ]
+}
+
+### List transactions by book
+GET https://api.example.com/transactions?book_id=6a0e4d1d-65f6-43e2-8f70-3748fdc75c06

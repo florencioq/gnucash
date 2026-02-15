@@ -9,4 +9,4 @@
 ## Scope boundary
 
 - Complete audit trail (who changed what, before/after, reason) is reserved for future phases.
-- v0.1.0 MAY include operational logs, but that is not a domain conformance requirement.
+- v0.2.0 MAY include operational logs, but that is not a domain conformance requirement.

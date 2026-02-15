@@ -13,6 +13,7 @@ from app.models import Base
 from app.routes.accounts import router as accounts_router
 from app.routes.books import router as books_router
 from app.routes.commodities import router as commodities_router
+from app.routes.transactions import router as transactions_router
 from app.services.seeds import seed_minimum_data
 
 @asynccontextmanager
@@ -64,3 +65,4 @@ def health() -> dict[str, str]:
 app.include_router(books_router)
 app.include_router(commodities_router)
 app.include_router(accounts_router)
+app.include_router(transactions_router)

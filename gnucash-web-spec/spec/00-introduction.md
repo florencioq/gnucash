@@ -15,15 +15,20 @@ Includes only:
 - Book
 - Commodity
 - Account
+- Transaction
+- Split
 - CRUD
 - account tree query by Book
+- transaction posting with balanced splits
 
 Does not include:
-- accounting postings
 - computed balances
 - billing
 - AP/AR
-- any financial flow beyond creating and maintaining the three entities
+- any financial flow beyond creating and maintaining the five entities
+
+Note:
+- This specification includes transaction posting persistence (`Transaction` + `Split`) but does not define reporting, closing, or derived accounting statements.
 
 ## Conformance
 

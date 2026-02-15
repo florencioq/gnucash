@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.0 - 2026-02-15
+
+Extended specification with accounting postings:
+- added `Transaction` and `Split` domain entities
+- added posting invariants (balanced splits, same-book splits, posting delete integrity)
+- added transaction API endpoints and schemas in OpenAPI
+- added acceptance scenarios for posting flows
+- aligned release plan with posting scope
+
 ## v0.1.0 - 2026-02-08
 
 Initial specification release with:

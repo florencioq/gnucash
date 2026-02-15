@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Book, Commodity
+from app.models import Account, Book, Commodity, Split
 from app.schemas import AccountCreate, AccountOut, AccountPatch, AccountTreeNode
 from app.services.accounts import build_account_tree, validate_parent_constraints
 
@@ -118,6 +118,17 @@ def delete_account(account_id: UUID, db: Session = Depends(get_db)) -> None:
     has_children = db.execute(select(Account.id).where(Account.parent_id == account.id).limit(1)).scalar_one_or_none()
     if has_children:
         raise api_error(409, "ACCOUNT_HAS_CHILDREN", "account cannot be deleted while children exist", {"account_id": account.id})
+
+    referenced_by_splits = db.execute(
+        select(Split.guid).where(Split.account_guid == account.id).limit(1)
+    ).scalar_one_or_none()
+    if referenced_by_splits:
+        raise api_error(
+            409,
+            "ACCOUNT_HAS_SPLITS",
+            "account cannot be deleted while it is referenced by accounting entries",
+            {"account_id": account.id},
+        )
 
     db.delete(account)
     db.commit()

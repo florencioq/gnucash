@@ -67,3 +67,22 @@
 1. Create a Book and an Account with `is_placeholder=false`.
 2. Send `PATCH /accounts/{id}` with `is_placeholder=true`.
 3. Validate `200` and `is_placeholder=true`.
+
+## Scenario 11: Create balanced transaction with two splits
+
+1. Create Book, Commodity, and two accounts in the same book.
+2. Send `POST /transactions` with two splits where `sum(value_num/value_denom) = 0`.
+3. Validate `201`.
+4. Validate transaction payload includes both splits.
+
+## Scenario 12: Reject unbalanced transaction
+
+1. Create Book, Commodity, and two accounts.
+2. Send `POST /transactions` with split values that do not sum to zero.
+3. Validate `409` with unbalanced transaction `code`.
+
+## Scenario 13: Reject cross-book splits
+
+1. Create two books with one account each.
+2. Send `POST /transactions` using split accounts from different books.
+3. Validate `409` for cross-book invariant violation.

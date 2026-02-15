@@ -2,10 +2,12 @@
 
 ## Overview
 
-Logical model with three entities:
+Logical model with five entities:
 - `Book`
 - `Commodity`
 - `Account`
+- `Transaction`
+- `Split`
 
 This logical model is the normative API/domain view and is aligned with the legacy relational baseline documented in `spec/03-data/04.gnucash-database.md`.
 
@@ -13,7 +15,10 @@ This logical model is the normative API/domain view and is aligned with the lega
 
 - `Book` 1:N `Account`
 - `Commodity` 1:N `Account`
+- `Commodity` 1:N `Transaction` (currency)
 - `Account` 1:N `Account` (self-reference via parent/children)
+- `Transaction` 1:N `Split`
+- `Account` 1:N `Split`
 
 ## Logical constraints
 
@@ -21,6 +26,10 @@ This logical model is the normative API/domain view and is aligned with the lega
 - Every `Account` references exactly one `Commodity`.
 - `parent_id` is optional and, when present, references an `Account` in the same `Book`.
 - The `Account` hierarchy per `Book` MUST be acyclic.
+- Every `Transaction` references exactly one `Commodity` as currency.
+- Every `Split` belongs to exactly one `Transaction` and exactly one `Account`.
+- Splits in a transaction MUST reference accounts from the same `Book`.
+- The exact rational sum of split values in a transaction MUST be zero.
 
 ## Representation independence
 

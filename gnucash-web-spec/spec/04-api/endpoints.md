@@ -43,3 +43,17 @@
   - Rule about references from future posting entities is reserved for a future phase.
 - `GET /accounts/tree?book_id=`: return hierarchy for `book_id`.
   - sibling nodes MUST be ordered by `name`.
+
+## Transactions and Splits (Accounting Postings)
+
+- `POST /transactions`: create a transaction with its splits.
+  - `currency_guid` is required and MUST reference an existing commodity.
+  - request MUST include at least two splits.
+  - all split accounts MUST belong to the same book.
+  - exact sum of split `value_num/value_denom` MUST be zero.
+- `GET /transactions?book_id=`: list transactions filtered by book through split accounts.
+- `GET /transactions/{tx_guid}`: fetch a transaction with its splits.
+- `PATCH /transactions/{tx_guid}`: partial update transaction fields and optionally replace splits.
+  - when `splits` are provided, the same validation rules as create MUST apply.
+- `DELETE /transactions/{tx_guid}`: delete transaction.
+  - deleting a transaction MUST remove associated splits (or fail atomically).

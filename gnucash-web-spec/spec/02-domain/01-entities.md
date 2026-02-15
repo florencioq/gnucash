@@ -43,3 +43,38 @@ Relationships:
 - `Account` N:1 `Commodity`.
 - `Account` N:1 `Account` (parent).
 - `Account` 1:N `Account` (children).
+- `Account` 1:N `Split`.
+
+## Transaction
+
+Fields:
+- `guid: string(36)` - textual UUID identifier.
+- `currency_guid: string(36)`.
+- `num: string(2048)`.
+- `post_date: timestamp UTC | null`.
+- `enter_date: timestamp UTC | null`.
+- `description: string(2048) | null`.
+
+Relationships:
+- `Transaction` N:1 `Commodity` (currency).
+- `Transaction` 1:N `Split`.
+
+## Split
+
+Fields:
+- `guid: string(36)`.
+- `tx_guid: string(36)`.
+- `account_guid: string(36)`.
+- `memo: string(2048)`.
+- `action: string(2048)`.
+- `reconcile_state: string(1)`.
+- `reconcile_date: timestamp UTC | null`.
+- `value_num: int64`.
+- `value_denom: int64` (MUST be > 0).
+- `quantity_num: int64`.
+- `quantity_denom: int64` (MUST be > 0).
+- `lot_guid: string(36) | null`.
+
+Relationships:
+- `Split` N:1 `Transaction`.
+- `Split` N:1 `Account`.

@@ -25,7 +25,7 @@ class AccountTypeSchema(str, Enum):
 class BaseOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    @field_serializer("created_at", "updated_at", check_fields=False)
+    @field_serializer("created_at", "updated_at", "post_date", "enter_date", "reconcile_date", check_fields=False)
     def serialize_dt(self, value: datetime | None) -> str | None:
         if value is None:
             return None
@@ -123,3 +123,61 @@ class AccountTreeNode(BaseModel):
 
 
 AccountTreeNode.model_rebuild()
+
+
+class SplitIn(BaseModel):
+    guid: UUID | None = None
+    account_guid: UUID
+    memo: str = Field(default="", max_length=2048)
+    action: str = Field(default="", max_length=2048)
+    reconcile_state: str = Field(default="n", min_length=1, max_length=1)
+    reconcile_date: datetime | None = None
+    value_num: int
+    value_denom: int = Field(gt=0)
+    quantity_num: int
+    quantity_denom: int = Field(gt=0)
+    lot_guid: UUID | None = None
+
+
+class TransactionCreate(BaseModel):
+    guid: UUID | None = None
+    currency_guid: UUID
+    num: str = Field(default="", max_length=2048)
+    post_date: datetime | None = None
+    enter_date: datetime | None = None
+    description: str | None = Field(default=None, max_length=2048)
+    splits: list[SplitIn] = Field(min_length=2)
+
+
+class TransactionPatch(BaseModel):
+    currency_guid: UUID | None = None
+    num: str | None = Field(default=None, max_length=2048)
+    post_date: datetime | None = None
+    enter_date: datetime | None = None
+    description: str | None = Field(default=None, max_length=2048)
+    splits: list[SplitIn] | None = Field(default=None, min_length=2)
+
+
+class SplitOut(BaseOut):
+    guid: str
+    tx_guid: str
+    account_guid: str
+    memo: str
+    action: str
+    reconcile_state: str
+    reconcile_date: datetime | None
+    value_num: int
+    value_denom: int
+    quantity_num: int
+    quantity_denom: int
+    lot_guid: str | None
+
+
+class TransactionOut(BaseOut):
+    guid: str
+    currency_guid: str
+    num: str
+    post_date: datetime | None
+    enter_date: datetime | None
+    description: str | None
+    splits: list[SplitOut]

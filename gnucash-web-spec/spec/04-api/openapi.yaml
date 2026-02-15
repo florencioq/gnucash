@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: GnuCash Web Spec API
-  version: 0.1.0
+  version: 0.2.0
   description: >-
-    MVP API contract for Book, Commodity, and Account CRUD with account tree retrieval.
+    API contract for Book, Commodity, Account, and Transaction/Split posting endpoints.
 servers:
   - url: https://api.example.com
     description: Example server
@@ -12,6 +12,7 @@ tags:
   - name: Books
   - name: Commodities
   - name: Accounts
+  - name: Transactions
 
 paths:
   /books:
@@ -303,6 +304,95 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /transactions:
+    post:
+      tags: [Transactions]
+      summary: Create transaction with splits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreate'
+      responses:
+        '201':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Transactions]
+      summary: List transactions by book
+      parameters:
+        - in: query
+          name: book_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transaction list for the provided book
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /transactions/{tx_guid}:
+    parameters:
+      - $ref: '#/components/parameters/TransactionGuid'
+    get:
+      tags: [Transactions]
+      summary: Get transaction by guid
+      responses:
+        '200':
+          description: Transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Transactions]
+      summary: Update transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionPatch'
+      responses:
+        '200':
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Transactions]
+      summary: Delete transaction
+      responses:
+        '204':
+          description: Transaction deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   parameters:
     BookId:
@@ -322,6 +412,13 @@ components:
     AccountId:
       in: path
       name: account_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TransactionGuid:
+      in: path
+      name: tx_guid
       required: true
       schema:
         type: string
@@ -647,3 +744,215 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountTreeNode'
+
+    SplitIn:
+      type: object
+      additionalProperties: false
+      required:
+        - account_guid
+        - memo
+        - action
+        - reconcile_state
+        - value_num
+        - value_denom
+        - quantity_num
+        - quantity_denom
+      properties:
+        guid:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        account_guid:
+          type: string
+          format: uuid
+        memo:
+          type: string
+          maxLength: 2048
+        action:
+          type: string
+          maxLength: 2048
+        reconcile_state:
+          type: string
+          minLength: 1
+          maxLength: 1
+        reconcile_date:
+          type: string
+          format: date-time
+          nullable: true
+        value_num:
+          type: integer
+          format: int64
+        value_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        quantity_num:
+          type: integer
+          format: int64
+        quantity_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        lot_guid:
+          type: string
+          format: uuid
+          nullable: true
+
+    Split:
+      type: object
+      additionalProperties: false
+      required:
+        - guid
+        - tx_guid
+        - account_guid
+        - memo
+        - action
+        - reconcile_state
+        - reconcile_date
+        - value_num
+        - value_denom
+        - quantity_num
+        - quantity_denom
+        - lot_guid
+      properties:
+        guid:
+          type: string
+          format: uuid
+        tx_guid:
+          type: string
+          format: uuid
+        account_guid:
+          type: string
+          format: uuid
+        memo:
+          type: string
+          maxLength: 2048
+        action:
+          type: string
+          maxLength: 2048
+        reconcile_state:
+          type: string
+          minLength: 1
+          maxLength: 1
+        reconcile_date:
+          type: string
+          format: date-time
+          nullable: true
+        value_num:
+          type: integer
+          format: int64
+        value_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        quantity_num:
+          type: integer
+          format: int64
+        quantity_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        lot_guid:
+          type: string
+          format: uuid
+          nullable: true
+
+    TransactionCreate:
+      type: object
+      additionalProperties: false
+      required: [currency_guid, splits]
+      properties:
+        guid:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        currency_guid:
+          type: string
+          format: uuid
+        num:
+          type: string
+          maxLength: 2048
+          default: ""
+        post_date:
+          type: string
+          format: date-time
+          nullable: true
+        enter_date:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 2048
+          nullable: true
+        splits:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/SplitIn'
+
+    TransactionPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        currency_guid:
+          type: string
+          format: uuid
+        num:
+          type: string
+          maxLength: 2048
+        post_date:
+          type: string
+          format: date-time
+          nullable: true
+        enter_date:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 2048
+          nullable: true
+        splits:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/SplitIn'
+
+    Transaction:
+      type: object
+      additionalProperties: false
+      required:
+        - guid
+        - currency_guid
+        - num
+        - post_date
+        - enter_date
+        - description
+        - splits
+      properties:
+        guid:
+          type: string
+          format: uuid
+        currency_guid:
+          type: string
+          format: uuid
+        num:
+          type: string
+          maxLength: 2048
+        post_date:
+          type: string
+          format: date-time
+          nullable: true
+        enter_date:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 2048
+          nullable: true
+        splits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Split'

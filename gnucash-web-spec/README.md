@@ -1,6 +1,6 @@
 # gnucash-web-spec
 
-Normative domain specification for the MVP accounting scope limited to **Book**, **Commodity**, and **Account** (with hierarchy), including API contracts and validation criteria.
+Normative domain specification for the accounting scope including **Book**, **Commodity**, **Account** (with hierarchy), and **Transaction/Split** postings, including API contracts and validation criteria.
 
 ## Objective
 
@@ -8,15 +8,17 @@ This repository defines stable contracts to guide multiple implementations witho
 
 This specification:
 - MUST define domain rules, invariants, and observable behaviors.
-- MUST keep strict focus on the v0.1.0 scope.
+- MUST keep strict focus on the v0.2.0 scope.
 - MUST remain technology-agnostic in `spec/**`, except in `spec/implementation-profiles/**`.
 
-## Scope v0.1.0
+## Scope v0.2.0
 
 Includes only:
 - Book
 - Commodity
 - Account (with parent/children)
+- Transaction
+- Split
 - CRUD for these entities
 - Account tree endpoint
 
@@ -24,7 +26,7 @@ Out of scope:
 - billing
 - accounts payable / accounts receivable
 - invoices, bills, payments
-- any entity outside the three listed above
+- any entity outside the five listed above
 
 ## How to use
 

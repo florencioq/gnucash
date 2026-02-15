@@ -26,7 +26,7 @@
 ## Placeholder note
 
 15. `is_placeholder = true` MAY be used to model grouping nodes and MAY have children.
-16. Blocking transactional postings on placeholders is a **future constraint** and is out of scope for v0.1.0.
+16. Blocking transactional postings on placeholders is a **future constraint** and is out of scope for v0.2.0.
 
 ## Relational enforcement policy (legacy-aligned SQL)
 
@@ -40,3 +40,16 @@
    - positive commodity fraction (`fraction > 0`);
    - non-self-parent account rule (`parent != self`).
 20. In legacy datasets, constraints MAY be introduced incrementally (for example using `NOT VALID` followed by data remediation and `VALIDATE CONSTRAINT`) while preserving domain behavior.
+
+## Posting rules
+
+21. `Transaction.currency_guid` MUST reference an existing `Commodity`.
+22. `Split.tx_guid` MUST reference an existing `Transaction`.
+23. `Split.account_guid` MUST reference an existing `Account`.
+24. A transaction MUST contain at least two splits.
+25. All split accounts in the same transaction MUST belong to the same `Book`.
+26. A transaction is valid only if the exact rational sum of `Split(value_num / value_denom)` is zero.
+27. `Split.value_denom` and `Split.quantity_denom` MUST be positive integers.
+28. Deleting an `Account` MUST fail when there are `Split` records linked to it.
+29. Deleting a `Commodity` MUST fail when there are `Transaction` records linked via `currency_guid`.
+30. Deleting a `Transaction` MUST remove its `Split` records (or reject deletion if removal cannot be guaranteed).

@@ -1,6 +1,10 @@
 # web-backend
 
-FastAPI backend implementation for the `gnucash-web-spec` MVP scope.
+FastAPI backend implementation for the `gnucash-web-spec` scope, including:
+- Book CRUD
+- Commodity CRUD
+- Account CRUD and account tree
+- Transaction posting with split validation (balanced entries)
 
 ## Dependencies
 
