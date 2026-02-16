@@ -422,6 +422,12 @@ class InvoicePatch(BaseModel):
     billing_id: str | None = Field(default=None, max_length=2048)
 
 
+class InvoicePostRequest(BaseModel):
+    post_account_guid: UUID
+    post_date: datetime | None = None
+    memo: str | None = Field(default=None, max_length=2048)
+
+
 class InvoiceOut(BaseOut):
     guid: str
     book_id: str
@@ -435,6 +441,9 @@ class InvoiceOut(BaseOut):
     customer_guid: str
     terms: str | None
     billing_id: str | None
+    post_tx_guid: str | None
+    post_lot_guid: str | None
+    post_account_guid: str | None
     status: str
     subtotal_num: int
     subtotal_denom: int

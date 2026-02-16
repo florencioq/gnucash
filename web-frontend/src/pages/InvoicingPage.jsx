@@ -105,13 +105,13 @@ function filterTree(nodes, query) {
   return nodes.map(visit).filter(Boolean);
 }
 
-function keepIncomeBranches(nodes) {
+function keepTypeBranches(nodes, allowedTypes) {
   const visit = (node) => {
     const children = (node.children || []).map(visit).filter(Boolean);
     if (node.type === "ROOT") {
       return children.length > 0 ? { ...node, children } : null;
     }
-    if (node.type === "INCOME" || children.length > 0) {
+    if (allowedTypes.has(node.type) || children.length > 0) {
       return { ...node, children };
     }
     return null;
@@ -131,6 +131,9 @@ export default function InvoicingPage() {
   const [entryForm, setEntryForm] = useState(defaultEntryForm());
   const [incomePickerOpen, setIncomePickerOpen] = useState(false);
   const [incomeSearch, setIncomeSearch] = useState("");
+  const [postingAccountGuid, setPostingAccountGuid] = useState("");
+  const [postingPickerOpen, setPostingPickerOpen] = useState(false);
+  const [postingSearch, setPostingSearch] = useState("");
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
@@ -196,6 +199,10 @@ export default function InvoicingPage() {
     () => accounts.filter((account) => account.type === "INCOME"),
     [accounts]
   );
+  const postingAccounts = useMemo(
+    () => accounts.filter((account) => account.type === "ASSET"),
+    [accounts]
+  );
   const selectedInvoice = useMemo(
     () => invoices.find((invoice) => invoice.guid === selectedInvoiceGuid) || null,
     [invoices, selectedInvoiceGuid]
@@ -203,17 +210,33 @@ export default function InvoicingPage() {
   const selectedInvoiceCustomer = selectedInvoice
     ? customersById.get(selectedInvoice.customer_guid) || null
     : null;
+  const isInvoicePosted = selectedInvoice?.status === "POSTED";
   const selectedInvoiceMnemonic = selectedInvoice
     ? commoditiesById.get(selectedInvoice.currency_guid)?.mnemonic || ""
     : "";
   const selectedIncomeAccount = accountsById.get(entryForm.income_account_guid) || null;
+  const selectedPostingAccount = accountsById.get(postingAccountGuid) || null;
   const incomeAccountLabel = selectedIncomeAccount
     ? `${accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name} (${selectedIncomeAccount.type})`
     : "Selecione a conta de receita";
-  const incomeTree = useMemo(() => keepIncomeBranches(accountTree), [accountTree]);
+  const postingAccountLabel = selectedPostingAccount
+    ? `${accountFullNameById.get(selectedPostingAccount.id) || selectedPostingAccount.name} (${selectedPostingAccount.type})`
+    : "Selecione a conta de postagem";
+  const incomeTree = useMemo(
+    () => keepTypeBranches(accountTree, new Set(["INCOME"])),
+    [accountTree]
+  );
+  const postingTree = useMemo(
+    () => keepTypeBranches(accountTree, new Set(["ASSET"])),
+    [accountTree]
+  );
   const visibleIncomeTree = useMemo(
     () => filterTree(incomeTree, incomeSearch),
     [incomeTree, incomeSearch]
+  );
+  const visiblePostingTree = useMemo(
+    () => filterTree(postingTree, postingSearch),
+    [postingTree, postingSearch]
   );
 
   const loadCommodities = async () => {
@@ -285,6 +308,7 @@ export default function InvoicingPage() {
     ]);
     const defaultCustomer = loadedCustomers[0]?.guid || "";
     const defaultIncome = loadedAccounts.find((account) => account.type === "INCOME")?.id || "";
+    const defaultPosting = loadedAccounts.find((account) => account.type === "ASSET")?.id || "";
     setCreateForm((current) => ({
       ...current,
       customer_guid: current.customer_guid && loadedCustomers.some((customer) => customer.guid === current.customer_guid)
@@ -300,6 +324,11 @@ export default function InvoicingPage() {
           ? current.income_account_guid
           : defaultIncome
     }));
+    setPostingAccountGuid((current) =>
+      current && loadedAccounts.some((account) => account.id === current && account.type === "ASSET")
+        ? current
+        : defaultPosting
+    );
   };
 
   useEffect(() => {
@@ -321,8 +350,20 @@ export default function InvoicingPage() {
   }, [selectedInvoiceGuid, incomeAccounts]);
 
   useEffect(() => {
+    if (!selectedInvoice) return;
+    if (
+      selectedInvoice.post_account_guid &&
+      postingAccounts.some((account) => account.id === selectedInvoice.post_account_guid)
+    ) {
+      setPostingAccountGuid(selectedInvoice.post_account_guid);
+    }
+  }, [selectedInvoice, postingAccounts]);
+
+  useEffect(() => {
     setIncomePickerOpen(false);
     setIncomeSearch("");
+    setPostingPickerOpen(false);
+    setPostingSearch("");
   }, [selectedInvoiceGuid, editingEntryGuid, accountTree]);
 
   const selectIncomeAccount = (accountId) => {
@@ -374,6 +415,89 @@ export default function InvoicingPage() {
         </div>
       );
     });
+  };
+
+  const selectPostingAccount = (accountId) => {
+    setPostingAccountGuid(accountId);
+    setPostingSearch("");
+    setPostingPickerOpen(false);
+  };
+
+  const togglePostingPicker = () => {
+    setPostingPickerOpen((current) => {
+      const next = !current;
+      if (next) setPostingSearch("");
+      return next;
+    });
+  };
+
+  const renderPostingTreeNodes = (nodes, depth = 0) => {
+    return nodes.map((node) => {
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderPostingTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
+      const selected = postingAccountGuid === node.id;
+      const selectable = node.type === "ASSET";
+
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            className={`counter-tree-node ${selected ? "is-selected" : ""}`}
+            style={{ marginLeft: `${depth * 14}px` }}
+            disabled={!selectable}
+            onClick={() => {
+              if (selectable) selectPostingAccount(node.id);
+            }}
+          >
+            <span className="counter-tree-name">{node.name}</span>
+            <span className="badge badge-soft text-uppercase">{node.type}</span>
+          </button>
+          {node.children && node.children.length > 0
+            ? renderPostingTreeNodes(node.children, depth + 1)
+            : null}
+        </div>
+      );
+    });
+  };
+
+  const postSelectedInvoice = async () => {
+    if (!selectedInvoice) return;
+    if (!postingAccountGuid) {
+      setError({ code: "VALIDATION_ERROR", message: "Selecione a conta de postagem", details: {} });
+      return;
+    }
+    const postingDate = invoiceDateInput(selectedInvoice.date_opened) || todayIsoDate();
+
+    const response = await api.post(`/invoices/${selectedInvoice.guid}/post`, {
+      post_account_guid: postingAccountGuid,
+      post_date: `${postingDate}T00:00:00Z`
+    });
+    if (!response.ok) {
+      setError(response.error);
+      return;
+    }
+
+    await loadBookData(activeBookId, selectedInvoice.guid);
+  };
+
+  const unpostSelectedInvoice = async () => {
+    if (!selectedInvoice) return;
+
+    const response = await api.post(`/invoices/${selectedInvoice.guid}/unpost`, {});
+    if (!response.ok) {
+      setError(response.error);
+      return;
+    }
+
+    await loadBookData(activeBookId, selectedInvoice.guid);
   };
 
   const openCreateDialog = () => {
@@ -429,17 +553,22 @@ export default function InvoicingPage() {
     event.preventDefault();
     if (!selectedInvoice) return;
 
-    const payload = {
-      type: selectedInvoice.type,
-      id: selectedInvoice.id,
-      date_opened: selectedInvoice.date_opened || null,
-      notes: selectedInvoice.notes || "",
-      active: Boolean(selectedInvoice.active),
-      currency_guid: selectedInvoice.currency_guid,
-      customer_guid: selectedInvoice.customer_guid,
-      billing_id: selectedInvoice.billing_id || null,
-      terms: selectedInvoice.terms || null
-    };
+    const payload = isInvoicePosted
+      ? {
+          notes: selectedInvoice.notes || "",
+          active: Boolean(selectedInvoice.active)
+        }
+      : {
+          type: selectedInvoice.type,
+          id: selectedInvoice.id,
+          date_opened: selectedInvoice.date_opened || null,
+          notes: selectedInvoice.notes || "",
+          active: Boolean(selectedInvoice.active),
+          currency_guid: selectedInvoice.currency_guid,
+          customer_guid: selectedInvoice.customer_guid,
+          billing_id: selectedInvoice.billing_id || null,
+          terms: selectedInvoice.terms || null
+        };
 
     const response = await api.patch(`/invoices/${selectedInvoice.guid}`, payload);
     if (!response.ok) {
@@ -761,6 +890,7 @@ export default function InvoicingPage() {
                   type="button"
                   className="btn btn-outline-danger btn-sm"
                   onClick={() => removeInvoice(selectedInvoice.guid)}
+                  disabled={isInvoicePosted}
                 >
                   Excluir fatura
                 </button>
@@ -772,6 +902,7 @@ export default function InvoicingPage() {
                   <select
                     className="form-select"
                     value={selectedInvoice.type}
+                    disabled={isInvoicePosted}
                     onChange={(event) =>
                       setInvoices((current) =>
                         current.map((invoice) =>
@@ -791,6 +922,7 @@ export default function InvoicingPage() {
                   <input
                     className="form-control"
                     value={selectedInvoice.id}
+                    disabled={isInvoicePosted}
                     onChange={(event) =>
                       setInvoices((current) =>
                         current.map((invoice) =>
@@ -808,6 +940,7 @@ export default function InvoicingPage() {
                     type="date"
                     className="form-control"
                     value={invoiceDateInput(selectedInvoice.date_opened)}
+                    disabled={isInvoicePosted}
                     onChange={(event) =>
                       setInvoices((current) =>
                         current.map((invoice) =>
@@ -827,6 +960,7 @@ export default function InvoicingPage() {
                   <select
                     className="form-select"
                     value={selectedInvoice.customer_guid}
+                    disabled={isInvoicePosted}
                     onChange={(event) =>
                       setInvoices((current) =>
                         current.map((invoice) => {
@@ -853,6 +987,7 @@ export default function InvoicingPage() {
                   <input
                     className="form-control"
                     value={selectedInvoice.billing_id || ""}
+                    disabled={isInvoicePosted}
                     onChange={(event) =>
                       setInvoices((current) =>
                         current.map((invoice) =>
@@ -869,6 +1004,7 @@ export default function InvoicingPage() {
                   <select
                     className="form-select"
                     value={selectedInvoice.terms || "None"}
+                    disabled={isInvoicePosted}
                     onChange={(event) =>
                       setInvoices((current) =>
                         current.map((invoice) =>
@@ -882,7 +1018,7 @@ export default function InvoicingPage() {
                     <option value="None">None</option>
                   </select>
                 </div>
-                <div className="col-md-8">
+                <div className="col-md-6">
                   <label className="form-label">Notas</label>
                   <input
                     className="form-control"
@@ -897,6 +1033,36 @@ export default function InvoicingPage() {
                       )
                     }
                   />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label">Conta de postagem (A/R)</label>
+                  <div className="tree-select">
+                    <button
+                      type="button"
+                      className="form-select tree-select-toggle"
+                      onClick={togglePostingPicker}
+                    >
+                      <span className="tree-select-label">{postingAccountLabel}</span>
+                      <span className="tree-select-caret">{postingPickerOpen ? "▲" : "▼"}</span>
+                    </button>
+                    {postingPickerOpen ? (
+                      <div className="tree-select-menu">
+                        <input
+                          className="form-control mb-2"
+                          value={postingSearch}
+                          onChange={(event) => setPostingSearch(event.target.value)}
+                          placeholder="Filtrar conta de postagem"
+                        />
+                        <div className="counter-tree-panel">
+                          {visiblePostingTree.length > 0 ? (
+                            renderPostingTreeNodes(visiblePostingTree)
+                          ) : (
+                            <div className="small-muted">Nenhuma conta de ativo encontrada para o filtro.</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="col-md-2">
                   <label className="form-label d-block">Ativo</label>
@@ -919,7 +1085,21 @@ export default function InvoicingPage() {
                   <label className="form-label">Status</label>
                   <div className="invoice-status">{selectedInvoice.status}</div>
                 </div>
-                <div className="col-md-12 d-flex justify-content-end">
+                <div className="col-md-8 d-flex justify-content-end gap-2">
+                  {isInvoicePosted ? (
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={unpostSelectedInvoice}>
+                      Desfazer postagem
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm"
+                      onClick={postSelectedInvoice}
+                      disabled={!postingAccountGuid || selectedInvoice.entries.length === 0}
+                    >
+                      Postar fatura
+                    </button>
+                  )}
                   <button type="submit" className="btn btn-accent btn-sm">
                     Salvar cabecalho
                   </button>
@@ -973,6 +1153,7 @@ export default function InvoicingPage() {
                                 type="button"
                                 className="btn btn-outline-secondary btn-sm"
                                 onClick={() => startEditEntry(entry)}
+                                disabled={isInvoicePosted}
                               >
                                 Editar
                               </button>
@@ -980,6 +1161,7 @@ export default function InvoicingPage() {
                                 type="button"
                                 className="btn btn-outline-danger btn-sm"
                                 onClick={() => removeEntry(entry.guid)}
+                                disabled={isInvoicePosted}
                               >
                                 Excluir
                               </button>
@@ -1000,7 +1182,11 @@ export default function InvoicingPage() {
               </div>
 
               <form onSubmit={submitEntry} className="invoice-entry-form mb-3">
-                <div className="row g-2">
+                {isInvoicePosted ? (
+                  <div className="small-muted mb-2">Fatura postada. Desfaca a postagem para editar linhas.</div>
+                ) : null}
+                <fieldset disabled={isInvoicePosted}>
+                  <div className="row g-2">
                   <div className="col-md-2">
                     <label className="form-label">Data</label>
                     <input
@@ -1113,28 +1299,29 @@ export default function InvoicingPage() {
                       <label className="form-check-label">Trib.</label>
                     </div>
                   </div>
-                </div>
+                  </div>
 
-                <div className="row g-2 mt-1">
-                  <div className="col-md-4">
-                    <label className="form-label">Notas da linha</label>
-                    <input
-                      className="form-control"
-                      value={entryForm.notes}
-                      onChange={(event) => setEntryForm((current) => ({ ...current, notes: event.target.value }))}
-                    />
-                  </div>
-                  <div className="col-md-8 d-flex justify-content-end align-items-end gap-2">
-                    {editingEntryGuid ? (
-                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetEntryEditor}>
-                        Cancelar edicao
+                  <div className="row g-2 mt-1">
+                    <div className="col-md-4">
+                      <label className="form-label">Notas da linha</label>
+                      <input
+                        className="form-control"
+                        value={entryForm.notes}
+                        onChange={(event) => setEntryForm((current) => ({ ...current, notes: event.target.value }))}
+                      />
+                    </div>
+                    <div className="col-md-8 d-flex justify-content-end align-items-end gap-2">
+                      {editingEntryGuid ? (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetEntryEditor}>
+                          Cancelar edicao
+                        </button>
+                      ) : null}
+                      <button type="submit" className="btn btn-accent btn-sm">
+                        {editingEntryGuid ? "Salvar linha" : "Adicionar linha"}
                       </button>
-                    ) : null}
-                    <button type="submit" className="btn btn-accent btn-sm">
-                      {editingEntryGuid ? "Salvar linha" : "Adicionar linha"}
-                    </button>
+                    </div>
                   </div>
-                </div>
+                </fieldset>
               </form>
 
               <div className="invoice-totals">

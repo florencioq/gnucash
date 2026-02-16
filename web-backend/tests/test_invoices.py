@@ -406,5 +406,236 @@ def test_invoice_delete_restrictions(client):
     assert book_delete.json()["code"] == "BOOK_HAS_INVOICES"
 
 
+def test_invoice_post_and_unpost_flow(client):
+    book_id = create_book(client, "Book Post")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid)
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+    receivable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    created = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "000200",
+            "date_opened": "2026-02-16T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert created.status_code == 201
+    invoice_guid = created.json()["guid"]
+
+    entry = client.post(
+        f"/invoices/{invoice_guid}/entries",
+        json={
+            "date": "2026-02-16T00:00:00Z",
+            "description": "Servico",
+            "income_account_guid": income_account_guid,
+            "quantity_num": 1,
+            "quantity_denom": 1,
+            "unit_price_num": 10000,
+            "unit_price_denom": 100,
+        },
+    )
+    assert entry.status_code == 201
+
+    posted = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={
+            "post_account_guid": receivable_account_guid,
+            "post_date": "2026-02-16T12:00:00Z",
+        },
+    )
+    assert posted.status_code == 200
+    posted_payload = posted.json()
+    assert posted_payload["status"] == "POSTED"
+    assert posted_payload["post_tx_guid"]
+    assert posted_payload["post_lot_guid"]
+    assert posted_payload["post_account_guid"] == receivable_account_guid
+
+    tx = client.get(f"/transactions/{posted_payload['post_tx_guid']}")
+    assert tx.status_code == 200
+    splits = tx.json()["splits"]
+    assert len(splits) == 2
+
+    receivable_split = next(split for split in splits if split["account_guid"] == receivable_account_guid)
+    income_split = next(split for split in splits if split["account_guid"] == income_account_guid)
+    assert receivable_split["lot_guid"] == posted_payload["post_lot_guid"]
+    assert receivable_split["value_num"] == 10000
+    assert receivable_split["value_denom"] == 100
+    assert income_split["value_num"] == -10000
+    assert income_split["value_denom"] == 100
+
+    patch_linked_tx = client.patch(
+        f"/transactions/{posted_payload['post_tx_guid']}",
+        json={"description": "Nao permitido"},
+    )
+    assert patch_linked_tx.status_code == 409
+    assert patch_linked_tx.json()["code"] == "TRANSACTION_LINKED_INVOICE"
+
+    delete_linked_tx = client.delete(f"/transactions/{posted_payload['post_tx_guid']}")
+    assert delete_linked_tx.status_code == 409
+    assert delete_linked_tx.json()["code"] == "TRANSACTION_LINKED_INVOICE"
+
+    patch_entry_while_posted = client.patch(
+        f"/invoices/{invoice_guid}/entries/{entry.json()['guid']}",
+        json={"description": "Nao deve alterar"},
+    )
+    assert patch_entry_while_posted.status_code == 409
+    assert patch_entry_while_posted.json()["code"] == "INVOICE_ALREADY_POSTED"
+
+    delete_invoice_while_posted = client.delete(f"/invoices/{invoice_guid}")
+    assert delete_invoice_while_posted.status_code == 409
+    assert delete_invoice_while_posted.json()["code"] == "INVOICE_ALREADY_POSTED"
+
+    unposted = client.post(f"/invoices/{invoice_guid}/unpost", json={})
+    assert unposted.status_code == 200
+    unposted_payload = unposted.json()
+    assert unposted_payload["status"] == "UNPAID"
+    assert unposted_payload["post_tx_guid"] is None
+    assert unposted_payload["post_lot_guid"] is None
+    assert unposted_payload["post_account_guid"] is None
+    assert unposted_payload["date_posted"] is None
+
+    tx_after_unpost = client.get(f"/transactions/{posted_payload['post_tx_guid']}")
+    assert tx_after_unpost.status_code == 404
+
+
+def test_invoice_unpost_rejected_when_lot_has_payment_split(client):
+    book_id = create_book(client, "Book Payment")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, customer_id="CPAY")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    receivable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+    cash_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Caixa",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    created = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "000300",
+            "date_opened": "2026-02-16T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert created.status_code == 201
+    invoice_guid = created.json()["guid"]
+
+    entry = client.post(
+        f"/invoices/{invoice_guid}/entries",
+        json={
+            "date": "2026-02-16T00:00:00Z",
+            "description": "Servico",
+            "income_account_guid": income_account_guid,
+            "quantity_num": 1,
+            "quantity_denom": 1,
+            "unit_price_num": 20000,
+            "unit_price_denom": 100,
+        },
+    )
+    assert entry.status_code == 201
+
+    posted = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={"post_account_guid": receivable_account_guid},
+    )
+    assert posted.status_code == 200
+    posted_payload = posted.json()
+    lot_guid = posted_payload["post_lot_guid"]
+
+    payment_tx = client.post(
+        "/transactions",
+        json={
+            "currency_guid": currency_guid,
+            "description": "Pagamento parcial",
+            "splits": [
+                {
+                    "account_guid": receivable_account_guid,
+                    "memo": "Baixa parcial",
+                    "action": "",
+                    "reconcile_state": "n",
+                    "value_num": -5000,
+                    "value_denom": 100,
+                    "quantity_num": -5000,
+                    "quantity_denom": 100,
+                    "lot_guid": lot_guid,
+                },
+                {
+                    "account_guid": cash_account_guid,
+                    "memo": "Recebimento",
+                    "action": "",
+                    "reconcile_state": "n",
+                    "value_num": 5000,
+                    "value_denom": 100,
+                    "quantity_num": 5000,
+                    "quantity_denom": 100,
+                },
+            ],
+        },
+    )
+    assert payment_tx.status_code == 201
+
+    unpost = client.post(f"/invoices/{invoice_guid}/unpost", json={})
+    assert unpost.status_code == 409
+    assert unpost.json()["code"] == "INVOICE_HAS_PAYMENTS"
+
+
 def uuid_entry_like() -> str:
     return "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"

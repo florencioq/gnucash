@@ -82,6 +82,7 @@ class Account(Base):
     children: Mapped[List[Account]] = relationship(back_populates="parent")
     splits: Mapped[List[Split]] = relationship(back_populates="account")
     invoice_entries: Mapped[List[InvoiceEntry]] = relationship(back_populates="income_account")
+    lots: Mapped[List[Lot]] = relationship(back_populates="account")
 
     __table_args__ = (
         Index("ix_accounts_book_parent_name", "book_id", "parent_id", "name"),
@@ -257,6 +258,16 @@ class InvoiceEntry(Base):
         CheckConstraint("i_price_denom > 0", name="ck_entries_price_denom_positive"),
         CheckConstraint("i_discount_denom > 0", name="ck_entries_discount_denom_positive"),
     )
+
+
+class Lot(Base):
+    __tablename__ = "lots"
+
+    guid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    account_guid: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    account: Mapped[Account] = relationship(back_populates="lots")
 
 
 class Transaction(Base):

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Split, Transaction
+from app.models import Account, Invoice, Split, Transaction
 from app.schemas import TransactionCreate, TransactionOut, TransactionPatch
 from app.services.transactions import build_validated_splits, ensure_currency_exists
 
@@ -78,6 +78,17 @@ def patch_transaction(tx_guid: UUID, payload: TransactionPatch, db: Session = De
     if not transaction:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
 
+    linked_invoice = db.execute(
+        select(Invoice.guid).where(Invoice.post_txn == transaction.guid).limit(1)
+    ).scalar_one_or_none()
+    if linked_invoice is not None:
+        raise api_error(
+            409,
+            "TRANSACTION_LINKED_INVOICE",
+            "cannot patch a transaction linked to a posted invoice",
+            {"tx_guid": transaction.guid, "invoice_guid": linked_invoice},
+        )
+
     if "currency_guid" in payload.model_fields_set:
         if payload.currency_guid is None:
             raise api_error(400, "INVALID_CURRENCY", "currency_guid cannot be null")
@@ -114,5 +125,15 @@ def delete_transaction(tx_guid: UUID, db: Session = Depends(get_db)) -> None:
     transaction = db.get(Transaction, str(tx_guid))
     if not transaction:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    linked_invoice = db.execute(
+        select(Invoice.guid).where(Invoice.post_txn == transaction.guid).limit(1)
+    ).scalar_one_or_none()
+    if linked_invoice is not None:
+        raise api_error(
+            409,
+            "TRANSACTION_LINKED_INVOICE",
+            "cannot delete a transaction linked to a posted invoice",
+            {"tx_guid": transaction.guid, "invoice_guid": linked_invoice},
+        )
     db.delete(transaction)
     db.commit()

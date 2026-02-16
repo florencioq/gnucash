@@ -111,3 +111,20 @@
 2. Create `Book B` without `is_active` and validate `Book A` remains active.
 3. Send `PATCH /books/{book_b_id}` with `is_active=true`.
 4. Validate `GET /books/active` returns `Book B` and `Book A.is_active=false`.
+
+## Scenario 17: Post and unpost invoice
+
+1. Create book, currency, customer, one income account and one receivable account.
+2. Create invoice with at least one entry.
+3. Send `POST /invoices/{invoice_guid}/post` with receivable posting account.
+4. Validate invoice returns `status=POSTED`, with posting references and `date_posted`.
+5. Validate posting transaction exists and includes at least one split in receivable account linked to posting lot.
+6. Send `POST /invoices/{invoice_guid}/unpost`.
+7. Validate invoice returns `status=UNPAID`, posting references cleared, and posting transaction removed.
+
+## Scenario 18: Reject unpost when payment exists in posting lot
+
+1. Post an invoice and capture its posting lot id.
+2. Create a payment transaction using the same receivable account and same lot id on receivable split.
+3. Send `POST /invoices/{invoice_guid}/unpost`.
+4. Validate `409` conflict for invoice-with-payments-in-lot rule.

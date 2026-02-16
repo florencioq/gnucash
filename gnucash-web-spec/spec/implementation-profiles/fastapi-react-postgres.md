@@ -66,6 +66,8 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - Operational forms (accounts, ledger, customers, vendors, invoicing) SHOULD use the active Book context and SHOULD NOT require manual Book selection per form.
 - Invoicing entry forms SHOULD use a tree picker for `income_account_guid` (revenue account selection) instead of a flat dropdown.
 - Invoicing screen SHOULD allow a wider content container than default pages to improve dense line-item editing usability.
+- Invoicing UI SHOULD expose explicit actions to post and unpost invoices using dedicated posting endpoints.
+- While an invoice is posted, invoicing UI SHOULD block line edits/deletions until posting is undone.
 
 ## Compliance note
 

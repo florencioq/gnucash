@@ -53,6 +53,28 @@
   - each node MUST expose `code` (nullable) and current account balance as exact rational fields (`balance_num`, `balance_denom`).
   - payload MAY include the synthetic `ROOT` node; UI selectors SHOULD hide `ROOT` when choosing parent/posting accounts.
 
+## Invoices and Entries
+
+- `POST /invoices`: create invoice header.
+- `GET /invoices?book_id=`: list invoices for a book.
+- `GET /invoices/{invoice_guid}`: fetch invoice with entries and totals.
+- `PATCH /invoices/{invoice_guid}`: partial update invoice header.
+  - `date_posted` MUST be read-only; posting lifecycle MUST be handled by dedicated posting endpoints.
+  - while posted, structural fields (for example customer, currency, invoice id/type and terms) MUST be blocked until unposted.
+- `DELETE /invoices/{invoice_guid}`: delete invoice.
+  - MUST return `409` while the invoice is posted.
+- `POST /invoices/{invoice_guid}/entries`: add invoice entry.
+- `PATCH /invoices/{invoice_guid}/entries/{entry_guid}`: patch invoice entry.
+- `DELETE /invoices/{invoice_guid}/entries/{entry_guid}`: remove invoice entry.
+  - entry create/update/delete MUST return `409` while invoice is posted.
+- `POST /invoices/{invoice_guid}/post`: post invoice into accounting transactions.
+  - MUST create posting transaction and posting lot.
+  - MUST fill invoice posting references (`post_txn`, `post_lot`, `post_acc`) and `date_posted`.
+  - MUST reject posting when invoice has no entries.
+- `POST /invoices/{invoice_guid}/unpost`: undo invoice posting.
+  - MUST remove posting transaction and clear posting references.
+  - MUST reject unpost while payment splits exist in the same posting lot.
+
 ## Transactions and Splits (Accounting Postings)
 
 - `POST /transactions`: create a transaction with its splits.
@@ -67,3 +89,4 @@
   - this endpoint MUST support editing an existing posting flow (for example, ledger UI editing).
 - `DELETE /transactions/{tx_guid}`: delete transaction.
   - deleting a transaction MUST remove associated splits (or fail atomically).
+  - implementation MUST reject delete/patch for transactions linked to posted invoices.
