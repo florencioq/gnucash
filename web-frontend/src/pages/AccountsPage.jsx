@@ -2,12 +2,32 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import AccountTree from "../components/AccountTree.jsx";
 
+function filterTree(nodes, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+
+  const visit = (node) => {
+    const selfMatch =
+      (node.name || "").toLowerCase().includes(q) ||
+      (node.type || "").toLowerCase().includes(q);
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (selfMatch || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
 export default function AccountsPage({ onOpenLedger = () => {} }) {
   const [books, setBooks] = useState([]);
   const [commodities, setCommodities] = useState([]);
   const [selectedBook, setSelectedBook] = useState("");
   const [accounts, setAccounts] = useState([]);
   const [tree, setTree] = useState([]);
+  const [parentPickerOpen, setParentPickerOpen] = useState(false);
+  const [parentSearch, setParentSearch] = useState("");
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
@@ -24,6 +44,47 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   const commodityMnemonicById = useMemo(
     () => new Map(commodities.map((commodity) => [commodity.id, commodity.mnemonic])),
     [commodities]
+  );
+  const accountsById = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account])),
+    [accounts]
+  );
+  const accountFullNameById = useMemo(() => {
+    const cache = new Map();
+
+    const build = (accountId, visited = new Set()) => {
+      if (cache.has(accountId)) return cache.get(accountId);
+      if (visited.has(accountId)) return accountsById.get(accountId)?.name || accountId;
+      visited.add(accountId);
+
+      const account = accountsById.get(accountId);
+      if (!account) return accountId;
+      if (!account.parent_id) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parentName = build(account.parent_id, visited);
+      const fullName = `${parentName} / ${account.name}`;
+      cache.set(accountId, fullName);
+      return fullName;
+    };
+
+    for (const account of accounts) {
+      build(account.id);
+    }
+
+    return cache;
+  }, [accounts, accountsById]);
+  const selectedParentAccount = accountsById.get(form.parent_id) || null;
+  const parentAccountLabel = isRootType
+    ? "ROOT must not have a parent"
+    : selectedParentAccount
+      ? `${accountFullNameById.get(selectedParentAccount.id) || selectedParentAccount.name} (${selectedParentAccount.type})`
+      : "Select parent account";
+  const visibleParentTree = useMemo(
+    () => filterTree(tree, parentSearch),
+    [tree, parentSearch]
   );
 
   const loadBooks = async () => {
@@ -84,6 +145,22 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       loadAll(selectedBook);
     }
   }, [selectedBook]);
+
+  useEffect(() => {
+    setParentPickerOpen(false);
+    setParentSearch("");
+    setForm((current) => {
+      if (!current.parent_id) return current;
+      if (accounts.some((account) => account.id === current.parent_id)) return current;
+      return { ...current, parent_id: "" };
+    });
+  }, [accounts]);
+
+  useEffect(() => {
+    if (!isRootType) return;
+    setParentPickerOpen(false);
+    setParentSearch("");
+  }, [isRootType]);
 
   const create = async (event) => {
     event.preventDefault();
@@ -155,6 +232,44 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   const openLedgerFromTree = (node) => {
     if (!selectedBook || !node?.id || node.type === "ROOT") return;
     onOpenLedger({ bookId: selectedBook, accountId: node.id });
+  };
+
+  const selectParentAccount = (accountId) => {
+    setForm((current) => ({ ...current, parent_id: accountId }));
+    setParentSearch("");
+    setParentPickerOpen(false);
+  };
+
+  const toggleParentPicker = () => {
+    if (isRootType) return;
+    setParentPickerOpen((current) => {
+      const next = !current;
+      if (next) setParentSearch("");
+      return next;
+    });
+  };
+
+  const renderParentTreeNodes = (nodes, depth = 0) => {
+    return nodes.map((node) => {
+      const selected = form.parent_id === node.id;
+
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            className={`counter-tree-node ${selected ? "is-selected" : ""}`}
+            style={{ marginLeft: `${depth * 14}px` }}
+            onClick={() => selectParentAccount(node.id)}
+          >
+            <span className="counter-tree-name">{node.name}</span>
+            <span className="badge badge-soft text-uppercase">{node.type}</span>
+          </button>
+          {node.children && node.children.length > 0
+            ? renderParentTreeNodes(node.children, depth + 1)
+            : null}
+        </div>
+      );
+    });
   };
 
   return (
@@ -236,20 +351,36 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
             ))}
           </select>
         </div>
-        <div className="col-md-2">
+        <div className="col-md-3">
           <label className="form-label">Parent</label>
-          <select
-            className="form-select"
-            value={form.parent_id}
-            onChange={(event) => setForm({ ...form, parent_id: event.target.value })}
-            disabled={isRootType}
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
+          <div className="tree-select">
+            <button
+              type="button"
+              className="form-select tree-select-toggle"
+              onClick={toggleParentPicker}
+              disabled={isRootType}
+            >
+              <span className="tree-select-label">{parentAccountLabel}</span>
+              <span className="tree-select-caret">{parentPickerOpen ? "▲" : "▼"}</span>
+            </button>
+            {parentPickerOpen ? (
+              <div className="tree-select-menu">
+                <input
+                  className="form-control mb-2"
+                  value={parentSearch}
+                  onChange={(event) => setParentSearch(event.target.value)}
+                  placeholder="Filter parent account"
+                />
+                <div className="counter-tree-panel">
+                  {visibleParentTree.length > 0 ? (
+                    renderParentTreeNodes(visibleParentTree)
+                  ) : (
+                    <div className="small-muted">No account found for this filter.</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
           {isRootType ? (
             <div className="small-muted mt-1">ROOT must not have a parent.</div>
           ) : null}
