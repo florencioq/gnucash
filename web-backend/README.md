@@ -4,6 +4,8 @@ FastAPI backend implementation for the `gnucash-web-spec` scope, including:
 - Book CRUD
 - Commodity CRUD
 - Account CRUD and account tree
+- Customer CRUD
+- Vendor CRUD
 - Transaction posting with split validation (balanced entries)
 
 ## Dependencies

@@ -30,6 +30,8 @@ class Book(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     accounts: Mapped[List[Account]] = relationship(back_populates="book")
+    customers: Mapped[List[Customer]] = relationship(back_populates="book")
+    vendors: Mapped[List[Vendor]] = relationship(back_populates="book")
 
 
 class Commodity(Base):
@@ -47,6 +49,8 @@ class Commodity(Base):
     )
 
     accounts: Mapped[List[Account]] = relationship(back_populates="commodity")
+    customers: Mapped[List[Customer]] = relationship(back_populates="currency")
+    vendors: Mapped[List[Vendor]] = relationship(back_populates="currency")
     transactions: Mapped[List[Transaction]] = relationship(back_populates="currency")
 
 
@@ -78,6 +82,94 @@ class Account(Base):
     __table_args__ = (
         Index("ix_accounts_book_parent_name", "book_id", "parent_id", "name"),
     )
+
+
+class Customer(Base):
+    __tablename__ = "customers"
+
+    guid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    book_id: Mapped[str] = mapped_column(ForeignKey("books.id"), index=True)
+    name: Mapped[str] = mapped_column(String(2048), nullable=False)
+    id: Mapped[str] = mapped_column(String(2048), nullable=False)
+    notes: Mapped[str] = mapped_column(String(2048), default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    discount_num: Mapped[int] = mapped_column(BigInteger, default=0)
+    discount_denom: Mapped[int] = mapped_column(BigInteger, default=1)
+    credit_num: Mapped[int] = mapped_column(BigInteger, default=0)
+    credit_denom: Mapped[int] = mapped_column(BigInteger, default=1)
+
+    currency_guid: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
+    tax_override: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    addr_name: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr1: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr2: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr3: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr4: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_phone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    addr_fax: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    addr_email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
+    shipaddr_name: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    shipaddr_addr1: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    shipaddr_addr2: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    shipaddr_addr3: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    shipaddr_addr4: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    shipaddr_phone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    shipaddr_fax: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    shipaddr_email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
+    terms_guid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    tax_included: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    taxtable_guid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+    book: Mapped[Book] = relationship(back_populates="customers")
+    currency: Mapped[Commodity] = relationship(back_populates="customers")
+
+    __table_args__ = (
+        CheckConstraint("discount_denom > 0", name="ck_customers_discount_denom_positive"),
+        CheckConstraint("credit_denom > 0", name="ck_customers_credit_denom_positive"),
+    )
+
+
+class Vendor(Base):
+    __tablename__ = "vendors"
+
+    guid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    book_id: Mapped[str] = mapped_column(ForeignKey("books.id"), index=True)
+    name: Mapped[str] = mapped_column(String(2048), nullable=False)
+    id: Mapped[str] = mapped_column(String(2048), nullable=False)
+    notes: Mapped[str] = mapped_column(String(2048), default="")
+    currency_guid: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    tax_override: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    addr_name: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr1: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr2: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr3: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_addr4: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    addr_phone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    addr_fax: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    addr_email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
+    terms_guid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    tax_inc: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    tax_table_guid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+    book: Mapped[Book] = relationship(back_populates="vendors")
+    currency: Mapped[Commodity] = relationship(back_populates="vendors")
 
 
 class Transaction(Base):

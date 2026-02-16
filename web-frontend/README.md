@@ -32,3 +32,11 @@ The app includes a dedicated `Ledger` tab:
 - list postings with running balance by account;
 - create a new posting directly from the ledger by selecting counter-account, date, history, and amount.
 - open ledger directly from the account tree using the ledger button on each non-root account.
+- edit and delete existing postings directly in ledger rows.
+
+## Customers and vendors
+
+The app includes dedicated `Customers` and `Vendors` tabs:
+- register entities with core GnuCash-style fields (`name`, `id`, `currency`, `notes`, `active`);
+- manage billing/contact fields;
+- edit and delete existing records by book.

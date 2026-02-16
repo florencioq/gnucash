@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import BooksPage from "./pages/BooksPage.jsx";
 import CommoditiesPage from "./pages/CommoditiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
+import CustomersPage from "./pages/CustomersPage.jsx";
+import VendorsPage from "./pages/VendorsPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
 import { apiBase } from "./api/client.js";
 
@@ -9,6 +11,8 @@ const tabs = [
   { id: "books", label: "Books", component: BooksPage },
   { id: "commodities", label: "Commodities", component: CommoditiesPage },
   { id: "accounts", label: "Accounts", component: AccountsPage },
+  { id: "customers", label: "Customers", component: CustomersPage },
+  { id: "vendors", label: "Vendors", component: VendorsPage },
   { id: "ledger", label: "Ledger", component: LedgerPage }
 ];
 

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Book
+from app.models import Account, Book, Customer, Vendor
 from app.schemas import BookCreate, BookOut, BookPatch
 
 router = APIRouter(prefix="/books", tags=["Books"])
@@ -60,6 +60,14 @@ def delete_book(book_id: UUID, db: Session = Depends(get_db)) -> None:
     has_accounts = db.execute(select(Account.id).where(Account.book_id == book.id).limit(1)).scalar_one_or_none()
     if has_accounts:
         raise api_error(409, "BOOK_HAS_ACCOUNTS", "book cannot be deleted while accounts exist", {"book_id": book.id})
+
+    has_customers = db.execute(select(Customer.guid).where(Customer.book_id == book.id).limit(1)).scalar_one_or_none()
+    if has_customers:
+        raise api_error(409, "BOOK_HAS_CUSTOMERS", "book cannot be deleted while customers exist", {"book_id": book.id})
+
+    has_vendors = db.execute(select(Vendor.guid).where(Vendor.book_id == book.id).limit(1)).scalar_one_or_none()
+    if has_vendors:
+        raise api_error(409, "BOOK_HAS_VENDORS", "book cannot be deleted while vendors exist", {"book_id": book.id})
 
     db.delete(book)
     db.commit()

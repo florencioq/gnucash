@@ -128,6 +128,174 @@ class AccountTreeNode(BaseModel):
 AccountTreeNode.model_rebuild()
 
 
+class CustomerCreate(BaseModel):
+    guid: UUID | None = None
+    book_id: UUID
+    name: str = Field(max_length=2048)
+    id: str = Field(max_length=2048)
+    notes: str = Field(default="", max_length=2048)
+    active: bool = True
+    discount_num: int = 0
+    discount_denom: int = Field(default=1, gt=0)
+    credit_num: int = 0
+    credit_denom: int = Field(default=1, gt=0)
+    currency_guid: UUID
+    tax_override: bool = False
+    addr_name: str | None = Field(default=None, max_length=1024)
+    addr_addr1: str | None = Field(default=None, max_length=1024)
+    addr_addr2: str | None = Field(default=None, max_length=1024)
+    addr_addr3: str | None = Field(default=None, max_length=1024)
+    addr_addr4: str | None = Field(default=None, max_length=1024)
+    addr_phone: str | None = Field(default=None, max_length=128)
+    addr_fax: str | None = Field(default=None, max_length=128)
+    addr_email: str | None = Field(default=None, max_length=256)
+    shipaddr_name: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr1: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr2: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr3: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr4: str | None = Field(default=None, max_length=1024)
+    shipaddr_phone: str | None = Field(default=None, max_length=128)
+    shipaddr_fax: str | None = Field(default=None, max_length=128)
+    shipaddr_email: str | None = Field(default=None, max_length=256)
+    terms_guid: UUID | None = None
+    tax_included: int | None = None
+    taxtable_guid: UUID | None = None
+
+
+class CustomerPatch(BaseModel):
+    name: str | None = Field(default=None, max_length=2048)
+    id: str | None = Field(default=None, max_length=2048)
+    notes: str | None = Field(default=None, max_length=2048)
+    active: bool | None = None
+    discount_num: int | None = None
+    discount_denom: int | None = Field(default=None, gt=0)
+    credit_num: int | None = None
+    credit_denom: int | None = Field(default=None, gt=0)
+    currency_guid: UUID | None = None
+    tax_override: bool | None = None
+    addr_name: str | None = Field(default=None, max_length=1024)
+    addr_addr1: str | None = Field(default=None, max_length=1024)
+    addr_addr2: str | None = Field(default=None, max_length=1024)
+    addr_addr3: str | None = Field(default=None, max_length=1024)
+    addr_addr4: str | None = Field(default=None, max_length=1024)
+    addr_phone: str | None = Field(default=None, max_length=128)
+    addr_fax: str | None = Field(default=None, max_length=128)
+    addr_email: str | None = Field(default=None, max_length=256)
+    shipaddr_name: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr1: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr2: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr3: str | None = Field(default=None, max_length=1024)
+    shipaddr_addr4: str | None = Field(default=None, max_length=1024)
+    shipaddr_phone: str | None = Field(default=None, max_length=128)
+    shipaddr_fax: str | None = Field(default=None, max_length=128)
+    shipaddr_email: str | None = Field(default=None, max_length=256)
+    terms_guid: UUID | None = None
+    tax_included: int | None = None
+    taxtable_guid: UUID | None = None
+
+
+class CustomerOut(BaseOut):
+    guid: str
+    book_id: str
+    name: str
+    id: str
+    notes: str
+    active: bool
+    discount_num: int
+    discount_denom: int
+    credit_num: int
+    credit_denom: int
+    currency_guid: str
+    tax_override: bool
+    addr_name: str | None
+    addr_addr1: str | None
+    addr_addr2: str | None
+    addr_addr3: str | None
+    addr_addr4: str | None
+    addr_phone: str | None
+    addr_fax: str | None
+    addr_email: str | None
+    shipaddr_name: str | None
+    shipaddr_addr1: str | None
+    shipaddr_addr2: str | None
+    shipaddr_addr3: str | None
+    shipaddr_addr4: str | None
+    shipaddr_phone: str | None
+    shipaddr_fax: str | None
+    shipaddr_email: str | None
+    terms_guid: str | None
+    tax_included: int | None
+    taxtable_guid: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class VendorCreate(BaseModel):
+    guid: UUID | None = None
+    book_id: UUID
+    name: str = Field(max_length=2048)
+    id: str = Field(max_length=2048)
+    notes: str = Field(default="", max_length=2048)
+    currency_guid: UUID
+    active: bool = True
+    tax_override: bool = False
+    addr_name: str | None = Field(default=None, max_length=1024)
+    addr_addr1: str | None = Field(default=None, max_length=1024)
+    addr_addr2: str | None = Field(default=None, max_length=1024)
+    addr_addr3: str | None = Field(default=None, max_length=1024)
+    addr_addr4: str | None = Field(default=None, max_length=1024)
+    addr_phone: str | None = Field(default=None, max_length=128)
+    addr_fax: str | None = Field(default=None, max_length=128)
+    addr_email: str | None = Field(default=None, max_length=256)
+    terms_guid: UUID | None = None
+    tax_inc: str | None = Field(default=None, max_length=2048)
+    tax_table_guid: UUID | None = None
+
+
+class VendorPatch(BaseModel):
+    name: str | None = Field(default=None, max_length=2048)
+    id: str | None = Field(default=None, max_length=2048)
+    notes: str | None = Field(default=None, max_length=2048)
+    currency_guid: UUID | None = None
+    active: bool | None = None
+    tax_override: bool | None = None
+    addr_name: str | None = Field(default=None, max_length=1024)
+    addr_addr1: str | None = Field(default=None, max_length=1024)
+    addr_addr2: str | None = Field(default=None, max_length=1024)
+    addr_addr3: str | None = Field(default=None, max_length=1024)
+    addr_addr4: str | None = Field(default=None, max_length=1024)
+    addr_phone: str | None = Field(default=None, max_length=128)
+    addr_fax: str | None = Field(default=None, max_length=128)
+    addr_email: str | None = Field(default=None, max_length=256)
+    terms_guid: UUID | None = None
+    tax_inc: str | None = Field(default=None, max_length=2048)
+    tax_table_guid: UUID | None = None
+
+
+class VendorOut(BaseOut):
+    guid: str
+    book_id: str
+    name: str
+    id: str
+    notes: str
+    currency_guid: str
+    active: bool
+    tax_override: bool
+    addr_name: str | None
+    addr_addr1: str | None
+    addr_addr2: str | None
+    addr_addr3: str | None
+    addr_addr4: str | None
+    addr_phone: str | None
+    addr_fax: str | None
+    addr_email: str | None
+    terms_guid: str | None
+    tax_inc: str | None
+    tax_table_guid: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class SplitIn(BaseModel):
     guid: UUID | None = None
     account_guid: UUID

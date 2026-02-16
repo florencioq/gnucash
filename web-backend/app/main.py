@@ -14,6 +14,8 @@ from app.routes.accounts import router as accounts_router
 from app.routes.books import router as books_router
 from app.routes.commodities import router as commodities_router
 from app.routes.transactions import router as transactions_router
+from app.routes.customers import router as customers_router
+from app.routes.vendors import router as vendors_router
 from app.services.seeds import seed_minimum_data
 
 @asynccontextmanager
@@ -66,3 +68,5 @@ app.include_router(books_router)
 app.include_router(commodities_router)
 app.include_router(accounts_router)
 app.include_router(transactions_router)
+app.include_router(customers_router)
+app.include_router(vendors_router)
