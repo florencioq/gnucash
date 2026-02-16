@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GnuCash Web Spec API
-  version: 0.3.6
+  version: 0.3.7
   description: >-
     API contract for Book, Commodity, Account, Invoice, and Transaction/Split posting endpoints.
 servers:
@@ -13,6 +13,7 @@ tags:
   - name: Commodities
   - name: Accounts
   - name: Invoices
+  - name: Bills
   - name: Transactions
 
 paths:
@@ -570,6 +571,255 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /bills:
+    post:
+      tags: [Bills]
+      summary: Create bill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillCreate'
+      responses:
+        '201':
+          description: Bill created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Bills]
+      summary: List bills by book
+      parameters:
+        - in: query
+          name: book_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: vendor_guid
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Bill list for the provided book
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /bills/{bill_guid}:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+    get:
+      tags: [Bills]
+      summary: Get bill by guid
+      responses:
+        '200':
+          description: Bill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Bills]
+      summary: Update bill header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillPatch'
+      responses:
+        '200':
+          description: Updated bill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Bills]
+      summary: Delete bill
+      responses:
+        '204':
+          description: Bill deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /bills/{bill_guid}/post:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+    post:
+      tags: [Bills]
+      summary: Post bill into accounting transactions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillPostRequest'
+      responses:
+        '200':
+          description: Posted bill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /bills/{bill_guid}/unpost:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+    post:
+      tags: [Bills]
+      summary: Undo bill posting
+      responses:
+        '200':
+          description: Unposted bill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /bills/{bill_guid}/payments:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+    post:
+      tags: [Bills]
+      summary: Register bill payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePaymentCreate'
+      responses:
+        '200':
+          description: Updated bill after payment registration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /bills/{bill_guid}/payments/{payment_tx_guid}/undo:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+      - $ref: '#/components/parameters/PaymentTransactionGuid'
+    post:
+      tags: [Bills]
+      summary: Undo bill payment
+      responses:
+        '200':
+          description: Updated bill after payment undo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /bills/{bill_guid}/entries:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+    post:
+      tags: [Bills]
+      summary: Create bill entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryCreate'
+      responses:
+        '201':
+          description: Bill entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /bills/{bill_guid}/entries/{entry_guid}:
+    parameters:
+      - $ref: '#/components/parameters/BillGuid'
+      - $ref: '#/components/parameters/EntryGuid'
+    patch:
+      tags: [Bills]
+      summary: Update bill entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryPatch'
+      responses:
+        '200':
+          description: Updated bill entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Bills]
+      summary: Delete bill entry
+      responses:
+        '204':
+          description: Bill entry deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /transactions:
     post:
       tags: [Transactions]
@@ -694,6 +944,13 @@ components:
     InvoiceGuid:
       in: path
       name: invoice_guid
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BillGuid:
+      in: path
+      name: bill_guid
       required: true
       schema:
         type: string
@@ -1434,6 +1691,106 @@ components:
           maxLength: 2048
           nullable: true
 
+    BillCreate:
+      type: object
+      additionalProperties: false
+      required: [book_id, id, currency_guid, vendor_guid]
+      properties:
+        guid:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        book_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/InvoiceType'
+        id:
+          type: string
+          maxLength: 2048
+        date_opened:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          default: ""
+        active:
+          type: boolean
+          default: true
+        currency_guid:
+          type: string
+          format: uuid
+        vendor_guid:
+          type: string
+          format: uuid
+        terms:
+          type: string
+          maxLength: 36
+          nullable: true
+        billing_id:
+          type: string
+          maxLength: 2048
+          nullable: true
+
+    BillPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/InvoiceType'
+          nullable: true
+        id:
+          type: string
+          maxLength: 2048
+          nullable: true
+        date_opened:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          nullable: true
+        active:
+          type: boolean
+          nullable: true
+        currency_guid:
+          type: string
+          format: uuid
+          nullable: true
+        vendor_guid:
+          type: string
+          format: uuid
+          nullable: true
+        terms:
+          type: string
+          maxLength: 36
+          nullable: true
+        billing_id:
+          type: string
+          maxLength: 2048
+          nullable: true
+
+    BillPostRequest:
+      type: object
+      additionalProperties: false
+      required: [post_account_guid]
+      properties:
+        post_account_guid:
+          type: string
+          format: uuid
+        post_date:
+          type: string
+          format: date-time
+          nullable: true
+        memo:
+          type: string
+          maxLength: 2048
+          nullable: true
+
     InvoicePaymentCreate:
       type: object
       additionalProperties: false
@@ -1559,6 +1916,146 @@ components:
           type: string
           format: uuid
         customer_guid:
+          type: string
+          format: uuid
+        terms:
+          type: string
+          maxLength: 36
+          nullable: true
+        billing_id:
+          type: string
+          maxLength: 2048
+          nullable: true
+        post_tx_guid:
+          type: string
+          format: uuid
+          nullable: true
+        post_lot_guid:
+          type: string
+          format: uuid
+          nullable: true
+        post_account_guid:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [INACTIVE, UNPAID, POSTED, PARTIAL, PAID]
+        subtotal_num:
+          type: integer
+          format: int64
+        subtotal_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        tax_num:
+          type: integer
+          format: int64
+        tax_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        total_num:
+          type: integer
+          format: int64
+        total_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        paid_amount_num:
+          type: integer
+          format: int64
+        paid_amount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        open_amount_num:
+          type: integer
+          format: int64
+        open_amount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoicePayment'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceEntry'
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+        updated_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+
+    Bill:
+      type: object
+      additionalProperties: false
+      required:
+        - guid
+        - book_id
+        - type
+        - id
+        - date_opened
+        - date_posted
+        - notes
+        - active
+        - currency_guid
+        - vendor_guid
+        - terms
+        - billing_id
+        - post_tx_guid
+        - post_lot_guid
+        - post_account_guid
+        - status
+        - subtotal_num
+        - subtotal_denom
+        - tax_num
+        - tax_denom
+        - total_num
+        - total_denom
+        - paid_amount_num
+        - paid_amount_denom
+        - open_amount_num
+        - open_amount_denom
+        - payments
+        - entries
+        - created_at
+        - updated_at
+      properties:
+        guid:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/InvoiceType'
+        id:
+          type: string
+          maxLength: 2048
+        date_opened:
+          type: string
+          format: date-time
+          nullable: true
+        date_posted:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+        active:
+          type: boolean
+        currency_guid:
+          type: string
+          format: uuid
+        vendor_guid:
           type: string
           format: uuid
         terms:

@@ -70,6 +70,8 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - While an invoice is posted, invoicing UI SHOULD block line edits/deletions until posting is undone.
 - Invoicing UI SHOULD provide payment registration with partial amounts and payment undo actions, reflecting `POSTED`/`PARTIAL`/`PAID` states from invoice payload.
 - Payment account selection in invoicing SHOULD use hierarchical account tree pickers, hiding synthetic `ROOT` nodes.
+- Purchasing/bills UI SHOULD mirror invoicing UX (header editor, entry grid, posting actions, payments list) with vendor context.
+- Purchasing bill entry selectors SHOULD use expense-account trees and payable posting-account trees.
 
 ## Compliance note
 

@@ -11,31 +11,31 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, AccountType, Book, Commodity, Customer, Invoice, InvoiceEntry, Lot, Split, Transaction
+from app.models import Account, AccountType, Book, Commodity, Vendor, Invoice, InvoiceEntry, Lot, Split, Transaction
 from app.schemas import (
-    InvoiceCreate,
+    BillCreate,
     InvoiceEntryCreate,
     InvoiceEntryDiscountHowSchema,
     InvoiceEntryDiscountTypeSchema,
     InvoiceEntryOut,
     InvoicePaymentCreate,
     InvoicePaymentOut,
-    InvoicePostRequest,
+    BillPostRequest,
     InvoiceEntryPatch,
-    InvoiceOut,
-    InvoicePatch,
+    BillOut,
+    BillPatch,
 )
 
-router = APIRouter(prefix="/invoices", tags=["Invoices"])
+router = APIRouter(prefix="/bills", tags=["Bills"])
 
 
-def _ensure_book_currency_customer(
+def _ensure_book_currency_vendor(
     db: Session,
     *,
     book_id: str,
     currency_guid: str,
-    customer_guid: str,
-) -> Customer:
+    vendor_guid: str,
+) -> Vendor:
     if db.get(Book, book_id) is None:
         raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id})
     if db.get(Commodity, currency_guid) is None:
@@ -46,48 +46,55 @@ def _ensure_book_currency_customer(
             {"currency_guid": currency_guid},
         )
 
-    customer = db.get(Customer, customer_guid)
-    if customer is None:
+    vendor = db.get(Vendor, vendor_guid)
+    if vendor is None:
         raise api_error(
             400,
-            "INVALID_CUSTOMER",
-            "customer_guid must reference an existing customer",
-            {"customer_guid": customer_guid},
+            "INVALID_VENDOR",
+            "vendor_guid must reference an existing vendor",
+            {"vendor_guid": vendor_guid},
         )
-    if customer.book_id != book_id:
+    if vendor.book_id != book_id:
         raise api_error(
             409,
-            "INVALID_CUSTOMER_BOOK",
-            "customer must belong to the same book as the invoice",
-            {"customer_guid": customer_guid, "book_id": book_id, "customer_book_id": customer.book_id},
+            "INVALID_VENDOR_BOOK",
+            "vendor must belong to the same book as the bill",
+            {"vendor_guid": vendor_guid, "book_id": book_id, "vendor_book_id": vendor.book_id},
         )
-    return customer
+    return vendor
 
 
-def _ensure_income_account(
+def _ensure_expense_account(
     db: Session,
     *,
-    income_account_guid: str,
+    expense_account_guid: str,
     book_id: str,
 ) -> None:
-    account = db.get(Account, income_account_guid)
+    account = db.get(Account, expense_account_guid)
     if account is None:
         raise api_error(
             400,
             "INVALID_ACCOUNT",
-            "income account must reference an existing account",
-            {"income_account_guid": income_account_guid},
+            "expense account must reference an existing account",
+            {"expense_account_guid": expense_account_guid},
         )
     if account.book_id != book_id:
         raise api_error(
             409,
             "INVALID_ACCOUNT_BOOK",
-            "income account must belong to the same book as the invoice",
+            "expense account must belong to the same book as the bill",
             {
-                "income_account_guid": income_account_guid,
+                "expense_account_guid": expense_account_guid,
                 "book_id": book_id,
                 "account_book_id": account.book_id,
             },
+        )
+    if account.type != AccountType.EXPENSE:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_TYPE",
+            "vendor bill entry account must use type EXPENSE",
+            {"expense_account_guid": expense_account_guid, "account_type": account.type.value},
         )
 
 
@@ -110,14 +117,14 @@ def _ensure_post_account(
         raise api_error(
             409,
             "INVALID_POST_ACCOUNT_BOOK",
-            "post account must belong to the same book as the invoice",
+            "post account must belong to the same book as the bill",
             {"post_account_guid": post_account_guid, "book_id": book_id, "account_book_id": account.book_id},
         )
-    if account.type != AccountType.ASSET:
+    if account.type != AccountType.LIABILITY:
         raise api_error(
             409,
             "INVALID_POST_ACCOUNT_TYPE",
-            "customer invoice posting account must use type ASSET",
+            "vendor bill posting account must use type LIABILITY",
             {"post_account_guid": post_account_guid, "account_type": account.type.value},
         )
     if account.is_placeholder:
@@ -131,11 +138,11 @@ def _ensure_post_account(
         raise api_error(
             409,
             "INVALID_POST_ACCOUNT_COMMODITY",
-            "post account commodity must match invoice currency",
+            "post account commodity must match bill currency",
             {
                 "post_account_guid": post_account_guid,
                 "post_account_commodity_id": account.commodity_id,
-                "invoice_currency_guid": currency_guid,
+                "bill_currency_guid": currency_guid,
             },
         )
     return account
@@ -161,7 +168,7 @@ def _ensure_payment_transfer_account(
         raise api_error(
             409,
             "INVALID_PAYMENT_ACCOUNT_BOOK",
-            "payment transfer account must belong to the same book as the invoice",
+            "payment transfer account must belong to the same book as the bill",
             {
                 "transfer_account_guid": transfer_account_guid,
                 "book_id": book_id,
@@ -186,48 +193,48 @@ def _ensure_payment_transfer_account(
         raise api_error(
             409,
             "INVALID_PAYMENT_ACCOUNT_COMMODITY",
-            "payment transfer account commodity must match invoice currency",
+            "payment transfer account commodity must match bill currency",
             {
                 "transfer_account_guid": transfer_account_guid,
                 "transfer_account_commodity_id": account.commodity_id,
-                "invoice_currency_guid": currency_guid,
+                "bill_currency_guid": currency_guid,
             },
         )
     if account.id == post_account_guid:
         raise api_error(
             409,
             "INVALID_PAYMENT_ACCOUNT",
-            "payment transfer account must be different from the invoice posting account",
+            "payment transfer account must be different from the bill posting account",
             {"transfer_account_guid": transfer_account_guid, "post_account_guid": post_account_guid},
         )
     return account
 
 
-def _ensure_invoice_unposted(invoice: Invoice) -> None:
+def _ensure_bill_unposted(invoice: Invoice) -> None:
     if invoice.post_txn or invoice.date_posted is not None:
         raise api_error(
             409,
-            "INVOICE_ALREADY_POSTED",
-            "invoice is posted; unpost before changing this resource",
-            {"invoice_guid": invoice.guid},
+            "BILL_ALREADY_POSTED",
+            "bill is posted; unpost before changing this resource",
+            {"bill_guid": invoice.guid},
         )
 
 
-def _ensure_invoice_posted(invoice: Invoice) -> None:
+def _ensure_bill_posted(invoice: Invoice) -> None:
     if not invoice.post_txn or invoice.date_posted is None:
         raise api_error(
             409,
-            "INVOICE_NOT_POSTED",
-            "invoice is not posted",
-            {"invoice_guid": invoice.guid},
+            "BILL_NOT_POSTED",
+            "bill is not posted",
+            {"bill_guid": invoice.guid},
         )
     if not invoice.post_lot or not invoice.post_acc:
         raise api_error(
             409,
-            "INVOICE_POSTING_INCOMPLETE",
-            "invoice posting metadata is incomplete",
+            "BILL_POSTING_INCOMPLETE",
+            "bill posting metadata is incomplete",
             {
-                "invoice_guid": invoice.guid,
+                "bill_guid": invoice.guid,
                 "post_tx_guid": invoice.post_txn,
                 "post_lot_guid": invoice.post_lot,
                 "post_account_guid": invoice.post_acc,
@@ -240,8 +247,8 @@ def _fraction_to_split_parts(*, amount: Fraction, fraction: int) -> tuple[int, i
     if scaled.denominator != 1:
         raise api_error(
             409,
-            "INVOICE_AMOUNT_FRACTION_MISMATCH",
-            "invoice amount cannot be represented with commodity fraction",
+            "BILL_AMOUNT_FRACTION_MISMATCH",
+            "bill amount cannot be represented with commodity fraction",
             {"amount_num": amount.numerator, "amount_denom": amount.denominator, "commodity_fraction": fraction},
         )
     return scaled.numerator, fraction
@@ -315,9 +322,9 @@ def _entry_to_out(entry: InvoiceEntry) -> dict:
     }
 
 
-def _invoice_sign(invoice: Invoice) -> Fraction:
+def _bill_sign(invoice: Invoice) -> Fraction:
     invoice_type = (invoice.invoice_type or "INVOICE").strip().upper()
-    return Fraction(-1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(1, 1)
+    return Fraction(1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(-1, 1)
 
 
 def _lot_balance(db: Session, *, lot_guid: str, account_guid: str) -> Fraction:
@@ -330,7 +337,7 @@ def _lot_balance(db: Session, *, lot_guid: str, account_guid: str) -> Fraction:
     return balance
 
 
-def _invoice_payments(db: Session, *, invoice: Invoice) -> list[dict]:
+def _bill_payments(db: Session, *, invoice: Invoice) -> list[dict]:
     if not invoice.post_lot or not invoice.post_txn or not invoice.post_acc:
         return []
 
@@ -376,7 +383,7 @@ def _invoice_payments(db: Session, *, invoice: Invoice) -> list[dict]:
     return payments
 
 
-def _invoice_status(invoice: Invoice, *, total_amount: Fraction, open_amount: Fraction) -> str:
+def _bill_status(invoice: Invoice, *, total_amount: Fraction, open_amount: Fraction) -> str:
     if not invoice.active:
         return "INACTIVE"
     if invoice.date_posted is None:
@@ -388,7 +395,7 @@ def _invoice_status(invoice: Invoice, *, total_amount: Fraction, open_amount: Fr
     return "POSTED"
 
 
-def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
+def _bill_to_out(db: Session, invoice: Invoice) -> dict:
     sorted_entries = sorted(
         invoice.entries,
         key=lambda item: (item.date or datetime.min.replace(tzinfo=UTC), item.guid),
@@ -409,13 +416,16 @@ def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
     if invoice_type not in {"INVOICE", "CREDIT_NOTE"}:
         invoice_type = "INVOICE"
 
-    signed_total = total_sum * _invoice_sign(invoice)
-    open_amount = signed_total
+    signed_total = total_sum * _bill_sign(invoice)
+    open_signed = signed_total
     payments: list[dict] = []
     if invoice.date_posted is not None and invoice.post_lot and invoice.post_acc:
-        open_amount = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc)
-        payments = _invoice_payments(db, invoice=invoice)
-    paid_amount = signed_total - open_amount
+        open_signed = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc)
+        payments = _bill_payments(db, invoice=invoice)
+
+    total_amount = abs(signed_total)
+    open_amount = abs(open_signed)
+    paid_amount = total_amount - open_amount
 
     return {
         "guid": invoice.guid,
@@ -427,13 +437,13 @@ def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
         "notes": invoice.notes or "",
         "active": bool(invoice.active),
         "currency_guid": invoice.currency_guid,
-        "customer_guid": invoice.owner_guid,
+        "vendor_guid": invoice.owner_guid,
         "terms": invoice.terms,
         "billing_id": invoice.billing_id,
         "post_tx_guid": invoice.post_txn,
         "post_lot_guid": invoice.post_lot,
         "post_account_guid": invoice.post_acc,
-        "status": _invoice_status(invoice, total_amount=signed_total, open_amount=open_amount),
+        "status": _bill_status(invoice, total_amount=total_amount, open_amount=open_amount),
         "subtotal_num": subtotal_sum.numerator,
         "subtotal_denom": subtotal_sum.denominator,
         "tax_num": tax_sum.numerator,
@@ -451,10 +461,10 @@ def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
     }
 
 
-def _load_invoice(db: Session, *, invoice_guid: str) -> Invoice:
+def _load_bill(db: Session, *, bill_guid: str) -> Invoice:
     invoice = db.execute(
         select(Invoice)
-        .where(Invoice.guid == invoice_guid, Invoice.owner_type == "CUSTOMER")
+        .where(Invoice.guid == bill_guid, Invoice.owner_type == "VENDOR")
         .options(selectinload(Invoice.entries))
     ).scalar_one_or_none()
     if invoice is None:
@@ -462,26 +472,26 @@ def _load_invoice(db: Session, *, invoice_guid: str) -> Invoice:
     return invoice
 
 
-def _load_invoice_entry(db: Session, *, invoice_guid: str, entry_guid: str) -> InvoiceEntry:
+def _load_bill_entry(db: Session, *, bill_guid: str, entry_guid: str) -> InvoiceEntry:
     entry = db.execute(
         select(InvoiceEntry)
-        .where(InvoiceEntry.guid == entry_guid, InvoiceEntry.invoice_guid == invoice_guid)
+        .where(InvoiceEntry.guid == entry_guid, InvoiceEntry.invoice_guid == bill_guid)
     ).scalar_one_or_none()
     if entry is None:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
     return entry
 
 
-@router.post("", response_model=InvoiceOut, status_code=201)
-def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> dict:
+@router.post("", response_model=BillOut, status_code=201)
+def create_bill(payload: BillCreate, db: Session = Depends(get_db)) -> dict:
     book_id = str(payload.book_id)
     currency_guid = str(payload.currency_guid)
-    customer_guid = str(payload.customer_guid)
-    _ensure_book_currency_customer(
+    vendor_guid = str(payload.vendor_guid)
+    _ensure_book_currency_vendor(
         db,
         book_id=book_id,
         currency_guid=currency_guid,
-        customer_guid=customer_guid,
+        vendor_guid=vendor_guid,
     )
 
     invoice = Invoice(
@@ -494,63 +504,63 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> dic
         notes=payload.notes,
         active=payload.active,
         currency_guid=currency_guid,
-        owner_type="CUSTOMER",
-        owner_guid=customer_guid,
+        owner_type="VENDOR",
+        owner_guid=vendor_guid,
         terms=payload.terms,
         billing_id=payload.billing_id,
     )
     db.add(invoice)
     db.commit()
 
-    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(db, hydrated)
+    hydrated = _load_bill(db, bill_guid=invoice.guid)
+    return _bill_to_out(db, hydrated)
 
 
-@router.get("", response_model=list[InvoiceOut])
-def list_invoices(
+@router.get("", response_model=list[BillOut])
+def list_bills(
     book_id: UUID = Query(...),
-    customer_guid: UUID | None = Query(default=None),
+    vendor_guid: UUID | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     stmt = (
         select(Invoice)
-        .where(Invoice.book_id == str(book_id), Invoice.owner_type == "CUSTOMER")
+        .where(Invoice.book_id == str(book_id), Invoice.owner_type == "VENDOR")
         .options(selectinload(Invoice.entries))
         .order_by(Invoice.date_opened.asc(), Invoice.id.asc(), Invoice.guid.asc())
     )
-    if customer_guid is not None:
-        stmt = stmt.where(Invoice.owner_guid == str(customer_guid))
+    if vendor_guid is not None:
+        stmt = stmt.where(Invoice.owner_guid == str(vendor_guid))
     invoices = db.execute(stmt).scalars().all()
-    return [_invoice_to_out(db, invoice) for invoice in invoices]
+    return [_bill_to_out(db, invoice) for invoice in invoices]
 
 
-@router.get("/{invoice_guid}", response_model=InvoiceOut)
-def get_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    return _invoice_to_out(db, invoice)
+@router.get("/{bill_guid}", response_model=BillOut)
+def get_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    return _bill_to_out(db, invoice)
 
 
-@router.patch("/{invoice_guid}", response_model=InvoiceOut)
-def patch_invoice(invoice_guid: UUID, payload: InvoicePatch, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+@router.patch("/{bill_guid}", response_model=BillOut)
+def patch_bill(bill_guid: UUID, payload: BillPatch, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
     data = payload.model_dump(exclude_unset=True)
 
     if "date_posted" in data:
         raise api_error(
             400,
-            "DATE_POSTED_READ_ONLY",
-            "date_posted is managed by invoice post/unpost endpoints",
+            "BILL_DATE_POSTED_READ_ONLY",
+            "date_posted is managed by bill post/unpost endpoints",
         )
 
     if invoice.post_txn or invoice.date_posted is not None:
-        blocked_fields = {"type", "id", "date_opened", "currency_guid", "customer_guid", "terms", "billing_id"}
+        blocked_fields = {"type", "id", "date_opened", "currency_guid", "vendor_guid", "terms", "billing_id"}
         attempted = sorted(field for field in blocked_fields if field in data)
         if attempted:
             raise api_error(
                 409,
-                "INVOICE_ALREADY_POSTED",
-                "invoice is posted; unpost before changing posting fields",
-                {"invoice_guid": invoice.guid, "fields": attempted},
+                "BILL_ALREADY_POSTED",
+                "bill is posted; unpost before changing posting fields",
+                {"bill_guid": invoice.guid, "fields": attempted},
             )
 
     if "currency_guid" in data:
@@ -566,26 +576,26 @@ def patch_invoice(invoice_guid: UUID, payload: InvoicePatch, db: Session = Depen
             )
         invoice.currency_guid = currency_guid
 
-    if "customer_guid" in data:
-        if data["customer_guid"] is None:
-            raise api_error(400, "INVALID_CUSTOMER", "customer_guid cannot be null")
-        customer_guid = str(data["customer_guid"])
-        customer = db.get(Customer, customer_guid)
-        if customer is None:
+    if "vendor_guid" in data:
+        if data["vendor_guid"] is None:
+            raise api_error(400, "INVALID_VENDOR", "vendor_guid cannot be null")
+        vendor_guid = str(data["vendor_guid"])
+        vendor = db.get(Vendor, vendor_guid)
+        if vendor is None:
             raise api_error(
                 400,
-                "INVALID_CUSTOMER",
-                "customer_guid must reference an existing customer",
-                {"customer_guid": customer_guid},
+                "INVALID_VENDOR",
+                "vendor_guid must reference an existing vendor",
+                {"vendor_guid": vendor_guid},
             )
-        if customer.book_id != invoice.book_id:
+        if vendor.book_id != invoice.book_id:
             raise api_error(
                 409,
-                "INVALID_CUSTOMER_BOOK",
-                "customer must belong to the same book as the invoice",
-                {"customer_guid": customer_guid, "book_id": invoice.book_id, "customer_book_id": customer.book_id},
+                "INVALID_VENDOR_BOOK",
+                "vendor must belong to the same book as the bill",
+                {"vendor_guid": vendor_guid, "book_id": invoice.book_id, "vendor_book_id": vendor.book_id},
             )
-        invoice.owner_guid = customer_guid
+        invoice.owner_guid = vendor_guid
 
     if "type" in data and data["type"] is not None:
         invoice.invoice_type = data["type"].value
@@ -603,21 +613,21 @@ def patch_invoice(invoice_guid: UUID, payload: InvoicePatch, db: Session = Depen
         invoice.billing_id = data["billing_id"]
 
     db.commit()
-    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(db, hydrated)
+    hydrated = _load_bill(db, bill_guid=invoice.guid)
+    return _bill_to_out(db, hydrated)
 
 
-@router.post("/{invoice_guid}/post", response_model=InvoiceOut)
-def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_unposted(invoice)
+@router.post("/{bill_guid}/post", response_model=BillOut)
+def post_bill(bill_guid: UUID, payload: BillPostRequest, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_unposted(invoice)
 
     if not invoice.entries:
         raise api_error(
             409,
-            "INVOICE_WITHOUT_ENTRIES",
-            "invoice must contain at least one entry before posting",
-            {"invoice_guid": invoice.guid},
+            "BILL_WITHOUT_ENTRIES",
+            "bill must contain at least one entry before posting",
+            {"bill_guid": invoice.guid},
         )
 
     currency = db.get(Commodity, invoice.currency_guid)
@@ -625,7 +635,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
         raise api_error(
             400,
             "INVALID_CURRENCY",
-            "invoice currency must reference an existing commodity",
+            "bill currency must reference an existing commodity",
             {"currency_guid": invoice.currency_guid},
         )
     if currency.fraction <= 0:
@@ -645,22 +655,22 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     )
 
     invoice_type = (invoice.invoice_type or "INVOICE").strip().upper()
-    sign = Fraction(-1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(1, 1)
+    sign = Fraction(1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(-1, 1)
 
-    receivable_total = Fraction(0, 1)
-    income_totals: dict[str, Fraction] = defaultdict(lambda: Fraction(0, 1))
+    payable_total = Fraction(0, 1)
+    expense_totals: dict[str, Fraction] = defaultdict(lambda: Fraction(0, 1))
     for entry in invoice.entries:
         _, _, total = _entry_totals(entry)
         signed_total = total * sign
-        receivable_total += signed_total
-        income_totals[entry.i_acct] += -signed_total
+        payable_total += signed_total
+        expense_totals[entry.i_acct] += -signed_total
 
-    if receivable_total == 0:
+    if payable_total == 0:
         raise api_error(
             409,
-            "INVOICE_TOTAL_ZERO",
-            "invoice total must be non-zero to post",
-            {"invoice_guid": invoice.guid},
+            "BILL_TOTAL_ZERO",
+            "bill total must be non-zero to post",
+            {"bill_guid": invoice.guid},
         )
 
     post_date = payload.post_date or datetime.now(UTC)
@@ -671,7 +681,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     lot_guid = str(uuid4())
     lot = Lot(guid=lot_guid, account_guid=post_account_guid, is_closed=False)
 
-    description = (payload.memo or "").strip() or f"Post invoice {invoice.id}"
+    description = (payload.memo or "").strip() or f"Post bill {invoice.id}"
     transaction = Transaction(
         guid=tx_guid,
         currency_guid=invoice.currency_guid,
@@ -682,7 +692,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     )
 
     split_payloads: list[Split] = []
-    receivable_num, receivable_denom = _fraction_to_split_parts(amount=receivable_total, fraction=currency.fraction)
+    payable_num, payable_denom = _fraction_to_split_parts(amount=payable_total, fraction=currency.fraction)
     split_payloads.append(
         Split(
             guid=str(uuid4()),
@@ -692,16 +702,16 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
             action="",
             reconcile_state="n",
             reconcile_date=None,
-            value_num=receivable_num,
-            value_denom=receivable_denom,
-            quantity_num=receivable_num,
-            quantity_denom=receivable_denom,
+            value_num=payable_num,
+            value_denom=payable_denom,
+            quantity_num=payable_num,
+            quantity_denom=payable_denom,
             lot_guid=lot_guid,
         )
     )
 
-    for income_account_guid in sorted(income_totals):
-        amount = income_totals[income_account_guid]
+    for expense_account_guid in sorted(expense_totals):
+        amount = expense_totals[expense_account_guid]
         if amount == 0:
             continue
         value_num, value_denom = _fraction_to_split_parts(amount=amount, fraction=currency.fraction)
@@ -709,7 +719,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
             Split(
                 guid=str(uuid4()),
                 tx_guid=tx_guid,
-                account_guid=income_account_guid,
+                account_guid=expense_account_guid,
                 memo=invoice.id or "",
                 action="",
                 reconcile_state="n",
@@ -726,8 +736,8 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
         raise api_error(
             409,
             "INVALID_POSTING_SPLITS",
-            "invoice posting requires at least two non-zero splits",
-            {"invoice_guid": invoice.guid},
+            "bill posting requires at least two non-zero splits",
+            {"bill_guid": invoice.guid},
         )
 
     split_balance = Fraction(0, 1)
@@ -751,26 +761,26 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     invoice.post_acc = post_account_guid
 
     db.commit()
-    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(db, hydrated)
+    hydrated = _load_bill(db, bill_guid=invoice.guid)
+    return _bill_to_out(db, hydrated)
 
 
-@router.post("/{invoice_guid}/unpost", response_model=InvoiceOut)
-def unpost_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+@router.post("/{bill_guid}/unpost", response_model=BillOut)
+def unpost_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
     if not invoice.post_txn and invoice.date_posted is None:
         raise api_error(
             409,
-            "INVOICE_NOT_POSTED",
-            "invoice is not posted",
-            {"invoice_guid": invoice.guid},
+            "BILL_NOT_POSTED",
+            "bill is not posted",
+            {"bill_guid": invoice.guid},
         )
     if not invoice.post_txn:
         raise api_error(
             409,
-            "INVOICE_POSTING_MISSING_TX",
-            "invoice posting metadata is inconsistent; post_txn is required to unpost",
-            {"invoice_guid": invoice.guid},
+            "BILL_POSTING_MISSING_TX",
+            "bill posting metadata is inconsistent; post_txn is required to unpost",
+            {"bill_guid": invoice.guid},
         )
 
     if invoice.post_lot:
@@ -783,18 +793,18 @@ def unpost_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
         if payment_split:
             raise api_error(
                 409,
-                "INVOICE_HAS_PAYMENTS",
-                "invoice cannot be unposted while payment splits exist in its lot",
-                {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+                "BILL_HAS_PAYMENTS",
+                "bill cannot be unposted while payment splits exist in its lot",
+                {"bill_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
             )
 
     posting_tx = db.get(Transaction, invoice.post_txn)
     if posting_tx is None:
         raise api_error(
             409,
-            "INVOICE_POSTING_MISSING_TX",
-            "invoice posting transaction was not found",
-            {"invoice_guid": invoice.guid, "post_tx_guid": invoice.post_txn},
+            "BILL_POSTING_MISSING_TX",
+            "bill posting transaction was not found",
+            {"bill_guid": invoice.guid, "post_tx_guid": invoice.post_txn},
         )
 
     db.delete(posting_tx)
@@ -809,29 +819,29 @@ def unpost_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
     invoice.post_acc = None
 
     db.commit()
-    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(db, hydrated)
+    hydrated = _load_bill(db, bill_guid=invoice.guid)
+    return _bill_to_out(db, hydrated)
 
 
-@router.post("/{invoice_guid}/payments", response_model=InvoiceOut)
-def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_posted(invoice)
+@router.post("/{bill_guid}/payments", response_model=BillOut)
+def create_bill_payment(bill_guid: UUID, payload: InvoicePaymentCreate, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_posted(invoice)
 
     lot = db.get(Lot, invoice.post_lot)
     if lot is None:
         raise api_error(
             409,
-            "INVOICE_POSTING_MISSING_LOT",
-            "invoice posting lot was not found",
-            {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+            "BILL_POSTING_MISSING_LOT",
+            "bill posting lot was not found",
+            {"bill_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
         )
     if lot.account_guid != invoice.post_acc:
         raise api_error(
             409,
-            "INVOICE_POSTING_INCONSISTENT",
-            "invoice posting lot does not belong to the invoice posting account",
-            {"invoice_guid": invoice.guid, "post_lot_guid": lot.guid, "lot_account_guid": lot.account_guid},
+            "BILL_POSTING_INCONSISTENT",
+            "bill posting lot does not belong to the bill posting account",
+            {"bill_guid": invoice.guid, "post_lot_guid": lot.guid, "lot_account_guid": lot.account_guid},
         )
 
     currency = db.get(Commodity, invoice.currency_guid)
@@ -839,7 +849,7 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
         raise api_error(
             400,
             "INVALID_CURRENCY",
-            "invoice currency must reference an existing commodity",
+            "bill currency must reference an existing commodity",
             {"currency_guid": invoice.currency_guid},
         )
     if currency.fraction <= 0:
@@ -872,17 +882,17 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
     if open_balance == 0:
         raise api_error(
             409,
-            "INVOICE_ALREADY_PAID",
-            "invoice lot is already fully settled",
-            {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+            "BILL_ALREADY_PAID",
+            "bill lot is already fully settled",
+            {"bill_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
         )
     if payment_amount > abs(open_balance):
         raise api_error(
             409,
             "PAYMENT_EXCEEDS_OPEN_BALANCE",
-            "payment amount exceeds invoice open balance",
+            "payment amount exceeds bill open balance",
             {
-                "invoice_guid": invoice.guid,
+                "bill_guid": invoice.guid,
                 "amount_num": payment_amount.numerator,
                 "amount_denom": payment_amount.denominator,
                 "open_amount_num": open_balance.numerator,
@@ -890,13 +900,13 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
             },
         )
 
-    receivable_signed_amount = -payment_amount if open_balance > 0 else payment_amount
-    receivable_num, receivable_denom = _fraction_to_split_parts(
-        amount=receivable_signed_amount,
+    payable_signed_amount = -payment_amount if open_balance > 0 else payment_amount
+    payable_num, payable_denom = _fraction_to_split_parts(
+        amount=payable_signed_amount,
         fraction=currency.fraction,
     )
     transfer_num, transfer_denom = _fraction_to_split_parts(
-        amount=-receivable_signed_amount,
+        amount=-payable_signed_amount,
         fraction=currency.fraction,
     )
 
@@ -905,7 +915,7 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
         payment_date = payment_date.replace(tzinfo=UTC)
 
     tx_guid = str(uuid4())
-    description = (payload.memo or "").strip() or f"Payment invoice {invoice.id}"
+    description = (payload.memo or "").strip() or f"Payment bill {invoice.id}"
     payment_tx = Transaction(
         guid=tx_guid,
         currency_guid=invoice.currency_guid,
@@ -923,10 +933,10 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
             action="",
             reconcile_state="n",
             reconcile_date=None,
-            value_num=receivable_num,
-            value_denom=receivable_denom,
-            quantity_num=receivable_num,
-            quantity_denom=receivable_denom,
+            value_num=payable_num,
+            value_denom=payable_denom,
+            quantity_num=payable_num,
+            quantity_denom=payable_denom,
             lot_guid=invoice.post_lot,
         ),
         Split(
@@ -946,24 +956,24 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
     ]
 
     db.add(payment_tx)
-    lot.is_closed = open_balance + receivable_signed_amount == 0
+    lot.is_closed = open_balance + payable_signed_amount == 0
     db.commit()
-    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(db, hydrated)
+    hydrated = _load_bill(db, bill_guid=invoice.guid)
+    return _bill_to_out(db, hydrated)
 
 
-@router.post("/{invoice_guid}/payments/{payment_tx_guid}/undo", response_model=InvoiceOut)
-def undo_invoice_payment(invoice_guid: UUID, payment_tx_guid: UUID, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_posted(invoice)
+@router.post("/{bill_guid}/payments/{payment_tx_guid}/undo", response_model=BillOut)
+def undo_bill_payment(bill_guid: UUID, payment_tx_guid: UUID, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_posted(invoice)
 
     payment_tx_guid_str = str(payment_tx_guid)
     if payment_tx_guid_str == invoice.post_txn:
         raise api_error(
             409,
-            "INVALID_PAYMENT_TX",
-            "invoice posting transaction cannot be undone as a payment",
-            {"invoice_guid": invoice.guid, "payment_tx_guid": payment_tx_guid_str},
+            "INVALID_BILL_PAYMENT_TX",
+            "bill posting transaction cannot be undone as a payment",
+            {"bill_guid": invoice.guid, "payment_tx_guid": payment_tx_guid_str},
         )
 
     payment_tx = db.execute(
@@ -990,32 +1000,32 @@ def undo_invoice_payment(invoice_guid: UUID, payment_tx_guid: UUID, db: Session 
     if lot is None:
         raise api_error(
             409,
-            "INVOICE_POSTING_MISSING_LOT",
-            "invoice posting lot was not found",
-            {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+            "BILL_POSTING_MISSING_LOT",
+            "bill posting lot was not found",
+            {"bill_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
         )
     lot.is_closed = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc) == 0
 
     db.commit()
-    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(db, hydrated)
+    hydrated = _load_bill(db, bill_guid=invoice.guid)
+    return _bill_to_out(db, hydrated)
 
 
-@router.delete("/{invoice_guid}", status_code=204)
-def delete_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> None:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_unposted(invoice)
+@router.delete("/{bill_guid}", status_code=204)
+def delete_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> None:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_unposted(invoice)
     db.delete(invoice)
     db.commit()
 
 
-@router.post("/{invoice_guid}/entries", response_model=InvoiceEntryOut, status_code=201)
-def create_invoice_entry(invoice_guid: UUID, payload: InvoiceEntryCreate, db: Session = Depends(get_db)) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_unposted(invoice)
+@router.post("/{bill_guid}/entries", response_model=InvoiceEntryOut, status_code=201)
+def create_bill_entry(bill_guid: UUID, payload: InvoiceEntryCreate, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_unposted(invoice)
 
     income_account_guid = str(payload.income_account_guid)
-    _ensure_income_account(db, income_account_guid=income_account_guid, book_id=invoice.book_id)
+    _ensure_expense_account(db, expense_account_guid=income_account_guid, book_id=invoice.book_id)
 
     entry = InvoiceEntry(
         guid=str(payload.guid or uuid4()),
@@ -1044,24 +1054,24 @@ def create_invoice_entry(invoice_guid: UUID, payload: InvoiceEntryCreate, db: Se
     return _entry_to_out(entry)
 
 
-@router.patch("/{invoice_guid}/entries/{entry_guid}", response_model=InvoiceEntryOut)
-def patch_invoice_entry(
-    invoice_guid: UUID,
+@router.patch("/{bill_guid}/entries/{entry_guid}", response_model=InvoiceEntryOut)
+def patch_bill_entry(
+    bill_guid: UUID,
     entry_guid: UUID,
     payload: InvoiceEntryPatch,
     db: Session = Depends(get_db),
 ) -> dict:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_unposted(invoice)
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_unposted(invoice)
 
-    entry = _load_invoice_entry(db, invoice_guid=invoice.guid, entry_guid=str(entry_guid))
+    entry = _load_bill_entry(db, bill_guid=invoice.guid, entry_guid=str(entry_guid))
     data = payload.model_dump(exclude_unset=True)
 
     if "income_account_guid" in data:
         if data["income_account_guid"] is None:
             raise api_error(400, "INVALID_ACCOUNT", "income_account_guid cannot be null")
         income_account_guid = str(data["income_account_guid"])
-        _ensure_income_account(db, income_account_guid=income_account_guid, book_id=invoice.book_id)
+        _ensure_expense_account(db, expense_account_guid=income_account_guid, book_id=invoice.book_id)
         entry.i_acct = income_account_guid
 
     if "date" in data:
@@ -1114,11 +1124,11 @@ def patch_invoice_entry(
     return _entry_to_out(entry)
 
 
-@router.delete("/{invoice_guid}/entries/{entry_guid}", status_code=204)
-def delete_invoice_entry(invoice_guid: UUID, entry_guid: UUID, db: Session = Depends(get_db)) -> None:
-    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    _ensure_invoice_unposted(invoice)
+@router.delete("/{bill_guid}/entries/{entry_guid}", status_code=204)
+def delete_bill_entry(bill_guid: UUID, entry_guid: UUID, db: Session = Depends(get_db)) -> None:
+    invoice = _load_bill(db, bill_guid=str(bill_guid))
+    _ensure_bill_unposted(invoice)
 
-    entry = _load_invoice_entry(db, invoice_guid=invoice.guid, entry_guid=str(entry_guid))
+    entry = _load_bill_entry(db, bill_guid=invoice.guid, entry_guid=str(entry_guid))
     db.delete(entry)
     db.commit()

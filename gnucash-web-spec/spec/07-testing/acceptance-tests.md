@@ -144,3 +144,28 @@
 2. Send `POST /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo`.
 3. Validate invoice open amount increases back and payment list no longer contains that transaction.
 4. Validate `status` transitions from `PAID` to `PARTIAL` or from `PARTIAL` to `POSTED` depending on remaining payments.
+
+## Scenario 21: Bill posting flow for purchases
+
+1. Create book, currency, vendor, one expense account and one payable account.
+2. Create bill with at least one entry.
+3. Send `POST /bills/{bill_guid}/post` with payable posting account.
+4. Validate bill returns `status=POSTED`, posting references, and `date_posted`.
+5. Validate posting transaction includes split in payable account linked to posting lot and opposite expense split.
+
+## Scenario 22: Bill partial payment and full settlement
+
+1. Start from posted bill with open amount greater than zero.
+2. Send `POST /bills/{bill_guid}/payments` with a partial amount and valid transfer account.
+3. Validate `status=PARTIAL`, reduced `open_amount`, and one payment transaction in `payments[]`.
+4. Send another payment for remaining open amount.
+5. Validate `status=PAID`, `open_amount=0`, and accumulated payment history.
+6. Validate payment-linked transactions cannot be patched/deleted through `/transactions/{tx_guid}`.
+
+## Scenario 23: Undo bill payment and unpost
+
+1. Start from bill with one or more registered payments.
+2. Send `POST /bills/{bill_guid}/payments/{payment_tx_guid}/undo`.
+3. Validate payment is removed from bill payload and open amount is restored.
+4. Repeat undo until no bill payments remain.
+5. Send `POST /bills/{bill_guid}/unpost` and validate posting references are cleared.

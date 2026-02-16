@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.7 - 2026-02-16
+
+Purchasing bill workflow update:
+- documented bill endpoints mirroring invoice behavior (`/bills`, entries, post/unpost, payments, payment undo)
+- added acceptance scenarios for bill posting, partial/full payments, and payment undo/unpost flow
+- updated implementation profile with bill UI parity requirements versus invoicing
+- prepared OpenAPI extension points for bill contracts aligned with vendor purchase lifecycle
+
 ## v0.3.6 - 2026-02-16
 
 Invoice payment workflow update:

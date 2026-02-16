@@ -480,6 +480,72 @@ class InvoiceOut(BaseOut):
     updated_at: datetime
 
 
+class BillCreate(BaseModel):
+    guid: UUID | None = None
+    book_id: UUID
+    type: InvoiceTypeSchema = InvoiceTypeSchema.INVOICE
+    id: str = Field(max_length=2048)
+    date_opened: datetime | None = None
+    notes: str = Field(default="", max_length=2048)
+    active: bool = True
+    currency_guid: UUID
+    vendor_guid: UUID
+    terms: str | None = Field(default=None, max_length=36)
+    billing_id: str | None = Field(default=None, max_length=2048)
+
+
+class BillPatch(BaseModel):
+    type: InvoiceTypeSchema | None = None
+    id: str | None = Field(default=None, max_length=2048)
+    date_opened: datetime | None = None
+    date_posted: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2048)
+    active: bool | None = None
+    currency_guid: UUID | None = None
+    vendor_guid: UUID | None = None
+    terms: str | None = Field(default=None, max_length=36)
+    billing_id: str | None = Field(default=None, max_length=2048)
+
+
+class BillPostRequest(BaseModel):
+    post_account_guid: UUID
+    post_date: datetime | None = None
+    memo: str | None = Field(default=None, max_length=2048)
+
+
+class BillOut(BaseOut):
+    guid: str
+    book_id: str
+    type: InvoiceTypeSchema
+    id: str
+    date_opened: datetime | None
+    date_posted: datetime | None
+    notes: str
+    active: bool
+    currency_guid: str
+    vendor_guid: str
+    terms: str | None
+    billing_id: str | None
+    post_tx_guid: str | None
+    post_lot_guid: str | None
+    post_account_guid: str | None
+    status: str
+    subtotal_num: int
+    subtotal_denom: int
+    tax_num: int
+    tax_denom: int
+    total_num: int
+    total_denom: int
+    paid_amount_num: int
+    paid_amount_denom: int
+    open_amount_num: int
+    open_amount_denom: int
+    payments: list[InvoicePaymentOut]
+    entries: list[InvoiceEntryOut]
+    created_at: datetime
+    updated_at: datetime
+
+
 class SplitIn(BaseModel):
     guid: UUID | None = None
     account_guid: UUID

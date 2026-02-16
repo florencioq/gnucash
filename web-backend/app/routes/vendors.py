@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Book, Commodity, Vendor
+from app.models import Book, Commodity, Invoice, Vendor
 from app.schemas import VendorCreate, VendorOut, VendorPatch
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
@@ -112,5 +112,17 @@ def delete_vendor(vendor_guid: UUID, db: Session = Depends(get_db)) -> None:
     vendor = db.get(Vendor, str(vendor_guid))
     if not vendor:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    has_bills = db.execute(
+        select(Invoice.guid)
+        .where(Invoice.owner_type == "VENDOR", Invoice.owner_guid == vendor.guid)
+        .limit(1)
+    ).scalar_one_or_none()
+    if has_bills:
+        raise api_error(
+            409,
+            "VENDOR_HAS_BILLS",
+            "vendor cannot be deleted while bills exist",
+            {"vendor_guid": vendor.guid},
+        )
     db.delete(vendor)
     db.commit()

@@ -84,6 +84,39 @@
   - MUST reject undo attempts for the original posting transaction.
   - MUST restore lot open balance and invoice status accordingly.
 
+## Bills and Entries (Vendor Purchases)
+
+- `POST /bills`: create vendor bill header.
+- `GET /bills?book_id=`: list bills for a book.
+- `GET /bills/{bill_guid}`: fetch bill with entries and totals.
+  - response MUST include `paid_amount_*`, `open_amount_*`, and `payments[]` derived from the posting lot.
+  - `status` SHOULD follow lifecycle values: `UNPAID` (not posted), `POSTED`, `PARTIAL`, `PAID`, and `INACTIVE`.
+- `PATCH /bills/{bill_guid}`: partial update bill header.
+  - `date_posted` MUST be read-only; posting lifecycle MUST be handled by dedicated posting endpoints.
+  - while posted, structural fields (for example vendor, currency, bill id/type and terms) MUST be blocked until unposted.
+- `DELETE /bills/{bill_guid}`: delete bill.
+  - MUST return `409` while the bill is posted.
+- `POST /bills/{bill_guid}/entries`: add bill entry.
+  - entry account MUST be an `EXPENSE` account from the same book.
+- `PATCH /bills/{bill_guid}/entries/{entry_guid}`: patch bill entry.
+- `DELETE /bills/{bill_guid}/entries/{entry_guid}`: remove bill entry.
+  - entry create/update/delete MUST return `409` while bill is posted.
+- `POST /bills/{bill_guid}/post`: post bill into accounting transactions.
+  - MUST create posting transaction and posting lot.
+  - MUST fill bill posting references (`post_txn`, `post_lot`, `post_acc`) and `date_posted`.
+  - posting account MUST be a `LIABILITY` account from same book/currency.
+  - MUST reject posting when bill has no entries.
+- `POST /bills/{bill_guid}/unpost`: undo bill posting.
+  - MUST remove posting transaction and clear posting references.
+  - MUST reject unpost while payment splits exist in the same posting lot.
+- `POST /bills/{bill_guid}/payments`: register a bill payment in the posting lot.
+  - MUST accept partial amounts.
+  - payment amount MUST be positive and MUST NOT exceed the lot open balance.
+  - MUST create one split in payable posting account (`post_acc`) linked to bill lot (`post_lot`) and one counter split in transfer account.
+- `POST /bills/{bill_guid}/payments/{payment_tx_guid}/undo`: undo one previously registered bill payment transaction.
+  - MUST reject undo attempts for the original posting transaction.
+  - MUST restore lot open balance and bill status accordingly.
+
 ## Transactions and Splits (Accounting Postings)
 
 - `POST /transactions`: create a transaction with its splits.

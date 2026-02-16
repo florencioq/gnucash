@@ -6,6 +6,7 @@ import CustomersPage from "./pages/CustomersPage.jsx";
 import VendorsPage from "./pages/VendorsPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
 import InvoicingPage from "./pages/InvoicingPage.jsx";
+import BillingPage from "./pages/BillingPage.jsx";
 import { apiBase } from "./api/client.js";
 
 const tabs = [
@@ -15,14 +16,15 @@ const tabs = [
   { id: "customers", label: "Customers", component: CustomersPage },
   { id: "vendors", label: "Vendors", component: VendorsPage },
   { id: "ledger", label: "Ledger", component: LedgerPage },
-  { id: "invoicing", label: "Faturamento", component: InvoicingPage }
+  { id: "invoicing", label: "Faturamento", component: InvoicingPage },
+  { id: "billing", label: "Compras", component: BillingPage }
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("books");
   const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState("");
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab).component;
-  const isInvoicingTab = activeTab === "invoicing";
+  const isInvoicingTab = activeTab === "invoicing" || activeTab === "billing";
 
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");

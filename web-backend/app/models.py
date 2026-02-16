@@ -136,8 +136,6 @@ class Customer(Base):
 
     book: Mapped[Book] = relationship(back_populates="customers")
     currency: Mapped[Commodity] = relationship(back_populates="customers")
-    invoices: Mapped[List[Invoice]] = relationship(back_populates="customer")
-
     __table_args__ = (
         CheckConstraint("discount_denom > 0", name="ck_customers_discount_denom_positive"),
         CheckConstraint("credit_denom > 0", name="ck_customers_credit_denom_positive"),
@@ -191,7 +189,7 @@ class Invoice(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     currency_guid: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
     owner_type: Mapped[str] = mapped_column(String(32), default="CUSTOMER")
-    owner_guid: Mapped[str] = mapped_column(ForeignKey("customers.guid"), index=True)
+    owner_guid: Mapped[str] = mapped_column(String(36), index=True)
     terms: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     billing_id: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     post_txn: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
@@ -208,7 +206,6 @@ class Invoice(Base):
 
     book: Mapped[Book] = relationship(back_populates="invoices")
     currency: Mapped[Commodity] = relationship(back_populates="invoices")
-    customer: Mapped[Customer] = relationship(back_populates="invoices")
     entries: Mapped[List[InvoiceEntry]] = relationship(
         back_populates="invoice",
         cascade="all, delete-orphan",

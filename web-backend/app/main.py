@@ -17,6 +17,7 @@ from app.routes.transactions import router as transactions_router
 from app.routes.customers import router as customers_router
 from app.routes.vendors import router as vendors_router
 from app.routes.invoices import router as invoices_router
+from app.routes.bills import router as bills_router
 from app.services.seeds import seed_minimum_data
 
 @asynccontextmanager
@@ -72,3 +73,4 @@ app.include_router(transactions_router)
 app.include_router(customers_router)
 app.include_router(vendors_router)
 app.include_router(invoices_router)
+app.include_router(bills_router)

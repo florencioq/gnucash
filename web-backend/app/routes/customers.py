@@ -129,7 +129,11 @@ def delete_customer(customer_guid: UUID, db: Session = Depends(get_db)) -> None:
     if not customer:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
 
-    has_invoices = db.execute(select(Invoice.guid).where(Invoice.owner_guid == customer.guid).limit(1)).scalar_one_or_none()
+    has_invoices = db.execute(
+        select(Invoice.guid)
+        .where(Invoice.owner_type == "CUSTOMER", Invoice.owner_guid == customer.guid)
+        .limit(1)
+    ).scalar_one_or_none()
     if has_invoices:
         raise api_error(
             409,
