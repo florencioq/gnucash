@@ -6,6 +6,7 @@ Invoice posting workflow update:
 - documented invoice posting/unposting endpoints and lifecycle behavior in the endpoint guide
 - added acceptance scenarios for invoice post/unpost and unpost rejection when lot already has payment splits
 - updated React implementation profile with posted-invoice UX requirements (explicit post/unpost actions and line-edit lock while posted)
+- synchronized OpenAPI contract with invoice/entry/post/unpost endpoints and posting metadata fields
 
 ## v0.3.4 - 2026-02-16
 

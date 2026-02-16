@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: GnuCash Web Spec API
-  version: 0.3.2
+  version: 0.3.5
   description: >-
-    API contract for Book, Commodity, Account, and Transaction/Split posting endpoints.
+    API contract for Book, Commodity, Account, Invoice, and Transaction/Split posting endpoints.
 servers:
   - url: https://api.example.com
     description: Example server
@@ -12,6 +12,7 @@ tags:
   - name: Books
   - name: Commodities
   - name: Accounts
+  - name: Invoices
   - name: Transactions
 
 paths:
@@ -320,6 +321,210 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /invoices:
+    post:
+      tags: [Invoices]
+      summary: Create invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Invoices]
+      summary: List invoices by book
+      parameters:
+        - in: query
+          name: book_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: customer_guid
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice list for the provided book
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /invoices/{invoice_guid}:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+    get:
+      tags: [Invoices]
+      summary: Get invoice by guid
+      responses:
+        '200':
+          description: Invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Invoices]
+      summary: Update invoice header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePatch'
+      responses:
+        '200':
+          description: Updated invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Invoices]
+      summary: Delete invoice
+      responses:
+        '204':
+          description: Invoice deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /invoices/{invoice_guid}/post:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+    post:
+      tags: [Invoices]
+      summary: Post invoice into accounting transactions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePostRequest'
+      responses:
+        '200':
+          description: Posted invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /invoices/{invoice_guid}/unpost:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+    post:
+      tags: [Invoices]
+      summary: Undo invoice posting
+      responses:
+        '200':
+          description: Unposted invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /invoices/{invoice_guid}/entries:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+    post:
+      tags: [Invoices]
+      summary: Create invoice entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryCreate'
+      responses:
+        '201':
+          description: Invoice entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /invoices/{invoice_guid}/entries/{entry_guid}:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+      - $ref: '#/components/parameters/EntryGuid'
+    patch:
+      tags: [Invoices]
+      summary: Update invoice entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryPatch'
+      responses:
+        '200':
+          description: Updated invoice entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Invoices]
+      summary: Delete invoice entry
+      responses:
+        '204':
+          description: Invoice entry deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /transactions:
     post:
       tags: [Transactions]
@@ -408,6 +613,8 @@ paths:
           description: Transaction deleted
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
 components:
   parameters:
@@ -435,6 +642,20 @@ components:
     TransactionGuid:
       in: path
       name: tx_guid
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvoiceGuid:
+      in: path
+      name: invoice_guid
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EntryGuid:
+      in: path
+      name: entry_guid
       required: true
       schema:
         type: string
@@ -784,6 +1005,498 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AccountTreeNode'
+
+    InvoiceType:
+      type: string
+      enum: [INVOICE, CREDIT_NOTE]
+
+    InvoiceEntryDiscountType:
+      type: string
+      enum: [PERCENT, VALUE]
+
+    InvoiceEntryDiscountHow:
+      type: string
+      enum: [PRETAX, SAMETIME, POSTTAX]
+
+    InvoiceEntryCreate:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - income_account_guid
+        - quantity_num
+        - quantity_denom
+        - unit_price_num
+        - unit_price_denom
+      properties:
+        guid:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        date:
+          type: string
+          format: date-time
+        description:
+          type: string
+          maxLength: 2048
+          nullable: true
+        action:
+          type: string
+          maxLength: 2048
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          nullable: true
+        income_account_guid:
+          type: string
+          format: uuid
+        quantity_num:
+          type: integer
+          format: int64
+        quantity_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        unit_price_num:
+          type: integer
+          format: int64
+        unit_price_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        discount_num:
+          type: integer
+          format: int64
+          default: 0
+        discount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+          default: 1
+        discount_type:
+          $ref: '#/components/schemas/InvoiceEntryDiscountType'
+        discount_how:
+          $ref: '#/components/schemas/InvoiceEntryDiscountHow'
+        taxable:
+          type: boolean
+          default: false
+        tax_included:
+          type: boolean
+          default: false
+        tax_table_guid:
+          type: string
+          format: uuid
+          nullable: true
+
+    InvoiceEntryPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        date:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 2048
+          nullable: true
+        action:
+          type: string
+          maxLength: 2048
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          nullable: true
+        income_account_guid:
+          type: string
+          format: uuid
+          nullable: true
+        quantity_num:
+          type: integer
+          format: int64
+          nullable: true
+        quantity_denom:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        unit_price_num:
+          type: integer
+          format: int64
+          nullable: true
+        unit_price_denom:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        discount_num:
+          type: integer
+          format: int64
+          nullable: true
+        discount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        discount_type:
+          allOf:
+            - $ref: '#/components/schemas/InvoiceEntryDiscountType'
+          nullable: true
+        discount_how:
+          allOf:
+            - $ref: '#/components/schemas/InvoiceEntryDiscountHow'
+          nullable: true
+        taxable:
+          type: boolean
+          nullable: true
+        tax_included:
+          type: boolean
+          nullable: true
+        tax_table_guid:
+          type: string
+          format: uuid
+          nullable: true
+
+    InvoiceEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - guid
+        - invoice_guid
+        - date
+        - date_entered
+        - description
+        - action
+        - notes
+        - income_account_guid
+        - quantity_num
+        - quantity_denom
+        - unit_price_num
+        - unit_price_denom
+        - discount_num
+        - discount_denom
+        - discount_type
+        - discount_how
+        - taxable
+        - tax_included
+        - tax_table_guid
+        - subtotal_num
+        - subtotal_denom
+        - tax_num
+        - tax_denom
+        - total_num
+        - total_denom
+        - created_at
+        - updated_at
+      properties:
+        guid:
+          type: string
+          format: uuid
+        invoice_guid:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date-time
+        date_entered:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          maxLength: 2048
+          nullable: true
+        action:
+          type: string
+          maxLength: 2048
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          nullable: true
+        income_account_guid:
+          type: string
+          format: uuid
+        quantity_num:
+          type: integer
+          format: int64
+        quantity_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        unit_price_num:
+          type: integer
+          format: int64
+        unit_price_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        discount_num:
+          type: integer
+          format: int64
+        discount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        discount_type:
+          $ref: '#/components/schemas/InvoiceEntryDiscountType'
+        discount_how:
+          $ref: '#/components/schemas/InvoiceEntryDiscountHow'
+        taxable:
+          type: boolean
+        tax_included:
+          type: boolean
+        tax_table_guid:
+          type: string
+          format: uuid
+          nullable: true
+        subtotal_num:
+          type: integer
+          format: int64
+        subtotal_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        tax_num:
+          type: integer
+          format: int64
+        tax_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        total_num:
+          type: integer
+          format: int64
+        total_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+        updated_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+
+    InvoiceCreate:
+      type: object
+      additionalProperties: false
+      required: [book_id, id, currency_guid, customer_guid]
+      properties:
+        guid:
+          type: string
+          format: uuid
+          description: Optional client-provided UUID string.
+        book_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/InvoiceType'
+        id:
+          type: string
+          maxLength: 2048
+        date_opened:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          default: ""
+        active:
+          type: boolean
+          default: true
+        currency_guid:
+          type: string
+          format: uuid
+        customer_guid:
+          type: string
+          format: uuid
+        terms:
+          type: string
+          maxLength: 36
+          nullable: true
+        billing_id:
+          type: string
+          maxLength: 2048
+          nullable: true
+
+    InvoicePatch:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/InvoiceType'
+          nullable: true
+        id:
+          type: string
+          maxLength: 2048
+          nullable: true
+        date_opened:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+          nullable: true
+        active:
+          type: boolean
+          nullable: true
+        currency_guid:
+          type: string
+          format: uuid
+          nullable: true
+        customer_guid:
+          type: string
+          format: uuid
+          nullable: true
+        terms:
+          type: string
+          maxLength: 36
+          nullable: true
+        billing_id:
+          type: string
+          maxLength: 2048
+          nullable: true
+
+    InvoicePostRequest:
+      type: object
+      additionalProperties: false
+      required: [post_account_guid]
+      properties:
+        post_account_guid:
+          type: string
+          format: uuid
+        post_date:
+          type: string
+          format: date-time
+          nullable: true
+        memo:
+          type: string
+          maxLength: 2048
+          nullable: true
+
+    Invoice:
+      type: object
+      additionalProperties: false
+      required:
+        - guid
+        - book_id
+        - type
+        - id
+        - date_opened
+        - date_posted
+        - notes
+        - active
+        - currency_guid
+        - customer_guid
+        - terms
+        - billing_id
+        - post_tx_guid
+        - post_lot_guid
+        - post_account_guid
+        - status
+        - subtotal_num
+        - subtotal_denom
+        - tax_num
+        - tax_denom
+        - total_num
+        - total_denom
+        - entries
+        - created_at
+        - updated_at
+      properties:
+        guid:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/InvoiceType'
+        id:
+          type: string
+          maxLength: 2048
+        date_opened:
+          type: string
+          format: date-time
+          nullable: true
+        date_posted:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 2048
+        active:
+          type: boolean
+        currency_guid:
+          type: string
+          format: uuid
+        customer_guid:
+          type: string
+          format: uuid
+        terms:
+          type: string
+          maxLength: 36
+          nullable: true
+        billing_id:
+          type: string
+          maxLength: 2048
+          nullable: true
+        post_tx_guid:
+          type: string
+          format: uuid
+          nullable: true
+        post_lot_guid:
+          type: string
+          format: uuid
+          nullable: true
+        post_account_guid:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+        subtotal_num:
+          type: integer
+          format: int64
+        subtotal_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        tax_num:
+          type: integer
+          format: int64
+        tax_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        total_num:
+          type: integer
+          format: int64
+        total_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceEntry'
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
+        updated_at:
+          type: string
+          format: date-time
+          description: RFC3339 UTC timestamp (MUST use suffix Z).
 
     SplitIn:
       type: object
