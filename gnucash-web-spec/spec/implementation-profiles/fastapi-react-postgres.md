@@ -65,6 +65,7 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - Books UI SHOULD provide a way to mark one Book as active.
 - Operational forms (accounts, ledger, customers, vendors, invoicing) SHOULD use the active Book context and SHOULD NOT require manual Book selection per form.
 - Invoicing entry forms SHOULD use a tree picker for `income_account_guid` (revenue account selection) instead of a flat dropdown.
+- Invoicing screen SHOULD allow a wider content container than default pages to improve dense line-item editing usability.
 
 ## Compliance note
 

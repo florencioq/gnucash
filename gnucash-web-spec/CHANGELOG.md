@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.4 - 2026-02-16
+
+Invoicing layout profile update:
+- documented that invoicing UI SHOULD use a wider content container than other pages for improved data-entry space
+
 ## v0.3.3 - 2026-02-16
 
 Invoicing UX profile update:
