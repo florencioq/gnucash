@@ -89,6 +89,11 @@ export default function IncomeStatementPage() {
     });
   }, [matrix, search, typeFilter]);
 
+  const reversedPeriodIndexes = useMemo(() => {
+    if (!matrix?.periods) return [];
+    return matrix.periods.map((_period, index) => index).reverse();
+  }, [matrix]);
+
   if (activeBookError) {
     return (
       <div className="alert alert-danger mb-0" role="alert">
@@ -182,8 +187,8 @@ export default function IncomeStatementPage() {
               <thead>
                 <tr>
                   <th className="dre-matrix-sticky-col">Conta</th>
-                  {matrix.periods.map((period) => (
-                    <th key={period} className="text-end">{period}</th>
+                  {reversedPeriodIndexes.map((index) => (
+                    <th key={matrix.periods[index]} className="text-end">{matrix.periods[index]}</th>
                   ))}
                   <th className="text-end">Total</th>
                 </tr>
@@ -191,9 +196,9 @@ export default function IncomeStatementPage() {
               <tbody>
                 <tr className="dre-matrix-summary-row">
                   <td className="dre-matrix-sticky-col fw-semibold">Receita Total</td>
-                  {matrix.revenue_totals.map((amount, index) => (
+                  {reversedPeriodIndexes.map((index) => (
                     <td key={`rev:${matrix.periods[index]}`} className="text-end text-success">
-                      {formatMoney(amount, matrix.currency_mnemonic || "BRL")}
+                      {formatMoney(matrix.revenue_totals[index], matrix.currency_mnemonic || "BRL")}
                     </td>
                   ))}
                   <td className="text-end fw-semibold text-success">
@@ -205,9 +210,9 @@ export default function IncomeStatementPage() {
                 </tr>
                 <tr className="dre-matrix-summary-row">
                   <td className="dre-matrix-sticky-col fw-semibold">Despesa Total</td>
-                  {matrix.expense_totals.map((amount, index) => (
+                  {reversedPeriodIndexes.map((index) => (
                     <td key={`exp:${matrix.periods[index]}`} className="text-end text-danger">
-                      {formatMoney(amount, matrix.currency_mnemonic || "BRL")}
+                      {formatMoney(matrix.expense_totals[index], matrix.currency_mnemonic || "BRL")}
                     </td>
                   ))}
                   <td className="text-end fw-semibold text-danger">
@@ -219,12 +224,12 @@ export default function IncomeStatementPage() {
                 </tr>
                 <tr className="dre-matrix-summary-row">
                   <td className="dre-matrix-sticky-col fw-semibold">Lucro Líquido</td>
-                  {matrix.net_income_totals.map((amount, index) => (
+                  {reversedPeriodIndexes.map((index) => (
                     <td
                       key={`net:${matrix.periods[index]}`}
-                      className={`text-end ${Number(amount || 0) >= 0 ? "text-success" : "text-danger"}`}
+                      className={`text-end ${Number(matrix.net_income_totals[index] || 0) >= 0 ? "text-success" : "text-danger"}`}
                     >
-                      {formatMoney(amount, matrix.currency_mnemonic || "BRL")}
+                      {formatMoney(matrix.net_income_totals[index], matrix.currency_mnemonic || "BRL")}
                     </td>
                   ))}
                   <td className="text-end fw-semibold">
@@ -242,9 +247,9 @@ export default function IncomeStatementPage() {
                         {row.account_type} {row.account_code ? `- ${row.account_code}` : ""}
                       </div>
                     </td>
-                    {row.amounts.map((amount, index) => (
+                    {reversedPeriodIndexes.map((index) => (
                       <td key={`${row.account_id}:${matrix.periods[index]}`} className="text-end">
-                        {formatMoney(amount, matrix.currency_mnemonic || "BRL")}
+                        {formatMoney(row.amounts[index], matrix.currency_mnemonic || "BRL")}
                       </td>
                     ))}
                     <td className="text-end fw-semibold">
