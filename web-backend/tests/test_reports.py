@@ -281,3 +281,115 @@ def test_income_statement_entries_drilldown(client):
     )
     assert invalid.status_code == 409
     assert invalid.json()["code"] == "INVALID_ACCOUNT_TYPE"
+
+
+def test_income_statement_matrix_by_month_and_account(client):
+    book_id = create_book(client)
+    commodity_id = create_commodity(client)
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        name="Root",
+        account_type="ROOT",
+    )
+    bank_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=root_id,
+        name="Bank",
+        account_type="ASSET",
+    )
+    sales_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=root_id,
+        name="Sales",
+        account_type="INCOME",
+    )
+    support_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=root_id,
+        name="Support",
+        account_type="INCOME",
+    )
+    rent_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=root_id,
+        name="Rent",
+        account_type="EXPENSE",
+    )
+
+    post_transaction(
+        client,
+        commodity_id=commodity_id,
+        account_id=sales_id,
+        counter_account_id=bank_id,
+        value_num=-90000,
+        post_date="2026-01-10T10:00:00Z",
+        description="Sales Jan",
+    )
+    post_transaction(
+        client,
+        commodity_id=commodity_id,
+        account_id=rent_id,
+        counter_account_id=bank_id,
+        value_num=30000,
+        post_date="2026-01-12T10:00:00Z",
+        description="Rent Jan",
+    )
+    post_transaction(
+        client,
+        commodity_id=commodity_id,
+        account_id=sales_id,
+        counter_account_id=bank_id,
+        value_num=-100000,
+        post_date="2026-02-11T10:00:00Z",
+        description="Sales Feb",
+    )
+    post_transaction(
+        client,
+        commodity_id=commodity_id,
+        account_id=support_id,
+        counter_account_id=bank_id,
+        value_num=-20000,
+        post_date="2026-02-14T10:00:00Z",
+        description="Support Feb",
+    )
+    post_transaction(
+        client,
+        commodity_id=commodity_id,
+        account_id=rent_id,
+        counter_account_id=bank_id,
+        value_num=40000,
+        post_date="2026-02-16T10:00:00Z",
+        description="Rent Feb",
+    )
+
+    response = client.get(
+        f"/reports/income-statement/matrix?book_id={book_id}&start_month=2026-01&end_month=2026-02"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["periods"] == ["2026-01", "2026-02"]
+    assert payload["revenue_totals"] == pytest.approx([900.0, 1200.0])
+    assert payload["expense_totals"] == pytest.approx([300.0, 400.0])
+    assert payload["net_income_totals"] == pytest.approx([600.0, 800.0])
+
+    rows_by_id = {row["account_id"]: row for row in payload["rows"]}
+    assert rows_by_id[sales_id]["amounts"] == pytest.approx([900.0, 1000.0])
+    assert rows_by_id[support_id]["amounts"] == pytest.approx([0.0, 200.0])
+    assert rows_by_id[rent_id]["amounts"] == pytest.approx([300.0, 400.0])
+
+    invalid_range = client.get(
+        f"/reports/income-statement/matrix?book_id={book_id}&start_month=2026-02&end_month=2026-01"
+    )
+    assert invalid_range.status_code == 400
+    assert invalid_range.json()["code"] == "INVALID_MONTH_RANGE"

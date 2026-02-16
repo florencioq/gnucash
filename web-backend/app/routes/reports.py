@@ -8,8 +8,12 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.errors import api_error
 from app.models import Account, AccountType, Book
-from app.schemas import IncomeStatementAccountEntriesOut, IncomeStatementOut
-from app.services.reports import build_income_statement, list_income_statement_account_entries
+from app.schemas import IncomeStatementAccountEntriesOut, IncomeStatementMatrixOut, IncomeStatementOut
+from app.services.reports import (
+    build_income_statement,
+    build_income_statement_matrix,
+    list_income_statement_account_entries,
+)
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -30,6 +34,10 @@ def _parse_month(month: str) -> tuple[int, int]:
     return year, month_number
 
 
+def _month_marker(year: int, month: int) -> int:
+    return year * 12 + (month - 1)
+
+
 @router.get("/income-statement", response_model=IncomeStatementOut)
 def get_income_statement(
     book_id: UUID = Query(...),
@@ -42,6 +50,46 @@ def get_income_statement(
 
     year, month_number = _parse_month(month)
     return build_income_statement(db, book_id=book_id_str, year=year, month=month_number)
+
+
+@router.get("/income-statement/matrix", response_model=IncomeStatementMatrixOut)
+def get_income_statement_matrix(
+    book_id: UUID = Query(...),
+    start_month: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    end_month: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    db: Session = Depends(get_db),
+) -> dict:
+    book_id_str = str(book_id)
+    if db.get(Book, book_id_str) is None:
+        raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id_str})
+
+    start_year, start_month_number = _parse_month(start_month)
+    end_year, end_month_number = _parse_month(end_month)
+    start_marker = _month_marker(start_year, start_month_number)
+    end_marker = _month_marker(end_year, end_month_number)
+    if start_marker > end_marker:
+        raise api_error(
+            400,
+            "INVALID_MONTH_RANGE",
+            "start_month must be less than or equal to end_month",
+            {"start_month": start_month, "end_month": end_month},
+        )
+    if (end_marker - start_marker + 1) > 36:
+        raise api_error(
+            400,
+            "INVALID_MONTH_RANGE",
+            "month range is limited to 36 months",
+            {"max_months": 36},
+        )
+
+    return build_income_statement_matrix(
+        db,
+        book_id=book_id_str,
+        start_year=start_year,
+        start_month=start_month_number,
+        end_year=end_year,
+        end_month=end_month_number,
+    )
 
 
 @router.get(

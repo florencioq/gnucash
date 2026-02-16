@@ -674,3 +674,24 @@ class IncomeStatementAccountEntriesOut(BaseModel):
     month: str
     total_amount: float
     entries: list[IncomeStatementEntryOut]
+
+
+class IncomeStatementMatrixRowOut(BaseModel):
+    account_id: str
+    account_name: str
+    account_code: str | None
+    account_type: AccountTypeSchema
+    amounts: list[float]
+    total_amount: float
+
+
+class IncomeStatementMatrixOut(BaseModel):
+    book_id: str
+    start_month: str
+    end_month: str
+    periods: list[str]
+    currency_mnemonic: str | None
+    rows: list[IncomeStatementMatrixRowOut]
+    revenue_totals: list[float]
+    expense_totals: list[float]
+    net_income_totals: list[float]

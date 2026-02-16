@@ -37,10 +37,9 @@ The app includes a dedicated `Ledger` tab:
 ## Monthly income statement (DRE)
 
 The app includes a dedicated `DRE Mensal` tab:
-- month filter with dynamic reload;
-- summary KPIs (revenue, expenses, net income and margin);
-- 12-month trend and comparisons (previous month and same month last year);
-- account-level drill-down with detailed postings for the selected month.
+- matrix view with columns by `year-month` and rows by revenue/expense accounts;
+- start and end period filters (`YYYY-MM`);
+- search and account-type filters for matrix rows.
 
 ## Customers and vendors
 

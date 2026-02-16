@@ -21,6 +21,22 @@ def _month_key(year: int, month: int) -> str:
     return f"{year:04d}-{month:02d}"
 
 
+def _month_sequence(
+    *,
+    start_year: int,
+    start_month: int,
+    end_year: int,
+    end_month: int,
+) -> list[str]:
+    periods: list[str] = []
+    cursor_year, cursor_month = start_year, start_month
+    end_marker = end_year * 12 + (end_month - 1)
+    while (cursor_year * 12 + (cursor_month - 1)) <= end_marker:
+        periods.append(_month_key(cursor_year, cursor_month))
+        cursor_year, cursor_month = _shift_month(cursor_year, cursor_month, 1)
+    return periods
+
+
 def _month_start(year: int, month: int) -> datetime:
     return datetime(year, month, 1, tzinfo=UTC)
 
@@ -263,4 +279,111 @@ def list_income_statement_account_entries(
         "month": _month_key(year, month),
         "total_amount": _as_float(total_amount),
         "entries": entries,
+    }
+
+
+def build_income_statement_matrix(
+    db: Session,
+    *,
+    book_id: str,
+    start_year: int,
+    start_month: int,
+    end_year: int,
+    end_month: int,
+) -> dict:
+    accounts = db.execute(
+        select(Account).where(
+            Account.book_id == book_id,
+            Account.type.in_([AccountType.INCOME, AccountType.EXPENSE]),
+        )
+    ).scalars().all()
+    periods = _month_sequence(
+        start_year=start_year,
+        start_month=start_month,
+        end_year=end_year,
+        end_month=end_month,
+    )
+    period_index = {period: index for index, period in enumerate(periods)}
+    account_ids = [account.id for account in accounts]
+
+    monthly_by_account: dict[str, list[Fraction]] = {
+        account.id: [Fraction(0, 1) for _ in periods] for account in accounts
+    }
+    revenue_totals = [Fraction(0, 1) for _ in periods]
+    expense_totals = [Fraction(0, 1) for _ in periods]
+
+    query_start = _month_start(start_year, start_month)
+    _, query_end = _month_window(end_year, end_month)
+
+    if account_ids and periods:
+        movement_date = func.coalesce(Transaction.post_date, Transaction.enter_date)
+        rows = db.execute(
+            select(
+                Split.account_guid,
+                Split.value_num,
+                Split.value_denom,
+                movement_date.label("movement_date"),
+            )
+            .join(Transaction, Transaction.guid == Split.tx_guid)
+            .where(Split.account_guid.in_(account_ids))
+            .where(movement_date >= query_start)
+            .where(movement_date < query_end)
+            .order_by(movement_date.asc(), Split.tx_guid.asc(), Split.guid.asc())
+        ).all()
+
+        accounts_by_id = {account.id: account for account in accounts}
+        for row in rows:
+            account = accounts_by_id.get(row.account_guid)
+            if account is None or row.movement_date is None:
+                continue
+            movement_date_value: datetime = row.movement_date
+            if movement_date_value.tzinfo is None:
+                movement_date_value = movement_date_value.replace(tzinfo=UTC)
+            period = _month_key(movement_date_value.year, movement_date_value.month)
+            index = period_index.get(period)
+            if index is None:
+                continue
+
+            normalized = _normalized_amount(account.type, _as_fraction(row.value_num, row.value_denom))
+            monthly_by_account[account.id][index] += normalized
+            account_type_value = account.type.value if isinstance(account.type, AccountType) else str(account.type)
+            if account_type_value == "INCOME":
+                revenue_totals[index] += normalized
+            elif account_type_value == "EXPENSE":
+                expense_totals[index] += normalized
+
+    rows_out = []
+    for account in sorted(accounts, key=lambda item: (item.type.value, item.name.lower())):
+        values = monthly_by_account.get(account.id, [Fraction(0, 1) for _ in periods])
+        if all(value == 0 for value in values):
+            continue
+        rows_out.append(
+            {
+                "account_id": account.id,
+                "account_name": account.name,
+                "account_code": account.code,
+                "account_type": account.type.value,
+                "amounts": [_as_float(value) for value in values],
+                "total_amount": _as_float(sum(values, Fraction(0, 1))),
+            }
+        )
+
+    net_income_totals = [revenue_totals[idx] - expense_totals[idx] for idx in range(len(periods))]
+
+    currency_mnemonic = None
+    if accounts:
+        currency_mnemonic = db.execute(
+            select(Commodity.mnemonic).where(Commodity.id == accounts[0].commodity_id)
+        ).scalar_one_or_none()
+
+    return {
+        "book_id": book_id,
+        "start_month": _month_key(start_year, start_month),
+        "end_month": _month_key(end_year, end_month),
+        "periods": periods,
+        "currency_mnemonic": currency_mnemonic,
+        "rows": rows_out,
+        "revenue_totals": [_as_float(value) for value in revenue_totals],
+        "expense_totals": [_as_float(value) for value in expense_totals],
+        "net_income_totals": [_as_float(value) for value in net_income_totals],
     }
