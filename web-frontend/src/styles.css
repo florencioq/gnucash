@@ -20,6 +20,10 @@ body {
   max-width: 1520px;
 }
 
+.app-main-container.is-invoicing {
+  max-width: 1660px;
+}
+
 .brand-bar {
   background: linear-gradient(135deg, #1b2b24, #2f6b55);
   color: #f4efe6;

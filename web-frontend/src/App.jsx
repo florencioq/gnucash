@@ -22,6 +22,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("books");
   const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState("");
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab).component;
+  const isInvoicingTab = activeTab === "invoicing";
 
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");
@@ -44,7 +45,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="container-fluid app-main-container py-4">
+      <main className={`container-fluid app-main-container py-4 ${isInvoicingTab ? "is-invoicing" : ""}`}>
         <ul className="nav nav-pills mb-4">
           {tabs.map((tab) => (
             <li key={tab.id} className="nav-item">
