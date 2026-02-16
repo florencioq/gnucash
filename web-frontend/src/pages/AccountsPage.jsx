@@ -235,7 +235,18 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   };
 
   const selectParentAccount = (accountId) => {
-    setForm((current) => ({ ...current, parent_id: accountId }));
+    const parentAccount = accountsById.get(accountId);
+    setForm((current) => {
+      const nextType =
+        parentAccount && parentAccount.type !== "ROOT"
+          ? parentAccount.type
+          : current.type;
+      return {
+        ...current,
+        parent_id: accountId,
+        type: nextType
+      };
+    });
     setParentSearch("");
     setParentPickerOpen(false);
   };
@@ -337,7 +348,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
             ))}
           </select>
         </div>
-        <div className="col-md-3">
+        <div className="col-md-2">
           <label className="form-label">Commodity</label>
           <select
             className="form-select"
@@ -351,7 +362,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
             ))}
           </select>
         </div>
-        <div className="col-md-3">
+        <div className="col-md-4">
           <label className="form-label">Parent</label>
           <div className="tree-select">
             <button
