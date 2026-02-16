@@ -389,19 +389,6 @@ export default function InvoicingPage({ initialInvoiceGuid = "" }) {
       return;
     }
 
-    const preferredTransferAccount =
-      paymentForm.transfer_account_guid &&
-      accounts.some(
-        (account) =>
-          account.id === paymentForm.transfer_account_guid &&
-          !account.is_placeholder &&
-          account.id !== selectedInvoice.post_account_guid
-      )
-        ? paymentForm.transfer_account_guid
-        : accounts.find(
-            (account) => !account.is_placeholder && account.id !== selectedInvoice.post_account_guid
-          )?.id || "";
-
     const suggestedAmount =
       isInvoicePosted && selectedInvoiceOpenAmount > 0
         ? decimalString(selectedInvoiceOpenAmount, 2)
@@ -409,7 +396,7 @@ export default function InvoicingPage({ initialInvoiceGuid = "" }) {
 
     setPaymentForm((current) => ({
       ...current,
-      transfer_account_guid: preferredTransferAccount,
+      transfer_account_guid: "",
       amount: suggestedAmount,
       payment_date: current.payment_date || todayIsoDate()
     }));
