@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Book, Commodity, Split
+from app.models import Account, Book, Commodity, InvoiceEntry, Split
 from app.schemas import AccountCreate, AccountOut, AccountPatch, AccountTreeNode
 from app.services.accounts import build_account_tree, validate_parent_constraints
 
@@ -127,6 +127,17 @@ def delete_account(account_id: UUID, db: Session = Depends(get_db)) -> None:
             409,
             "ACCOUNT_HAS_SPLITS",
             "account cannot be deleted while it is referenced by accounting entries",
+            {"account_id": account.id},
+        )
+
+    referenced_by_invoice_entries = db.execute(
+        select(InvoiceEntry.guid).where(InvoiceEntry.i_acct == account.id).limit(1)
+    ).scalar_one_or_none()
+    if referenced_by_invoice_entries:
+        raise api_error(
+            409,
+            "ACCOUNT_HAS_ENTRIES",
+            "account cannot be deleted while it is referenced by invoice entries",
             {"account_id": account.id},
         )
 

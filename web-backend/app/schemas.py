@@ -25,7 +25,18 @@ class AccountTypeSchema(str, Enum):
 class BaseOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    @field_serializer("created_at", "updated_at", "post_date", "enter_date", "reconcile_date", check_fields=False)
+    @field_serializer(
+        "created_at",
+        "updated_at",
+        "post_date",
+        "enter_date",
+        "reconcile_date",
+        "date",
+        "date_entered",
+        "date_opened",
+        "date_posted",
+        check_fields=False,
+    )
     def serialize_dt(self, value: datetime | None) -> str | None:
         if value is None:
             return None
@@ -292,6 +303,143 @@ class VendorOut(BaseOut):
     terms_guid: str | None
     tax_inc: str | None
     tax_table_guid: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvoiceTypeSchema(str, Enum):
+    INVOICE = "INVOICE"
+    CREDIT_NOTE = "CREDIT_NOTE"
+
+
+class InvoiceEntryDiscountTypeSchema(str, Enum):
+    PERCENT = "PERCENT"
+    VALUE = "VALUE"
+
+
+class InvoiceEntryDiscountHowSchema(str, Enum):
+    PRETAX = "PRETAX"
+    SAMETIME = "SAMETIME"
+    POSTTAX = "POSTTAX"
+
+
+class InvoiceEntryCreate(BaseModel):
+    guid: UUID | None = None
+    date: datetime
+    description: str | None = Field(default=None, max_length=2048)
+    action: str | None = Field(default=None, max_length=2048)
+    notes: str | None = Field(default=None, max_length=2048)
+    income_account_guid: UUID
+    quantity_num: int
+    quantity_denom: int = Field(gt=0)
+    unit_price_num: int
+    unit_price_denom: int = Field(gt=0)
+    discount_num: int = 0
+    discount_denom: int = Field(default=1, gt=0)
+    discount_type: InvoiceEntryDiscountTypeSchema = InvoiceEntryDiscountTypeSchema.PERCENT
+    discount_how: InvoiceEntryDiscountHowSchema = InvoiceEntryDiscountHowSchema.PRETAX
+    taxable: bool = False
+    tax_included: bool = False
+    tax_table_guid: UUID | None = None
+
+
+class InvoiceEntryPatch(BaseModel):
+    date: datetime | None = None
+    description: str | None = Field(default=None, max_length=2048)
+    action: str | None = Field(default=None, max_length=2048)
+    notes: str | None = Field(default=None, max_length=2048)
+    income_account_guid: UUID | None = None
+    quantity_num: int | None = None
+    quantity_denom: int | None = Field(default=None, gt=0)
+    unit_price_num: int | None = None
+    unit_price_denom: int | None = Field(default=None, gt=0)
+    discount_num: int | None = None
+    discount_denom: int | None = Field(default=None, gt=0)
+    discount_type: InvoiceEntryDiscountTypeSchema | None = None
+    discount_how: InvoiceEntryDiscountHowSchema | None = None
+    taxable: bool | None = None
+    tax_included: bool | None = None
+    tax_table_guid: UUID | None = None
+
+
+class InvoiceEntryOut(BaseOut):
+    guid: str
+    invoice_guid: str
+    date: datetime
+    date_entered: datetime | None
+    description: str | None
+    action: str | None
+    notes: str | None
+    income_account_guid: str
+    quantity_num: int
+    quantity_denom: int
+    unit_price_num: int
+    unit_price_denom: int
+    discount_num: int
+    discount_denom: int
+    discount_type: InvoiceEntryDiscountTypeSchema
+    discount_how: InvoiceEntryDiscountHowSchema
+    taxable: bool
+    tax_included: bool
+    tax_table_guid: str | None
+    subtotal_num: int
+    subtotal_denom: int
+    tax_num: int
+    tax_denom: int
+    total_num: int
+    total_denom: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvoiceCreate(BaseModel):
+    guid: UUID | None = None
+    book_id: UUID
+    type: InvoiceTypeSchema = InvoiceTypeSchema.INVOICE
+    id: str = Field(max_length=2048)
+    date_opened: datetime | None = None
+    notes: str = Field(default="", max_length=2048)
+    active: bool = True
+    currency_guid: UUID
+    customer_guid: UUID
+    terms: str | None = Field(default=None, max_length=36)
+    billing_id: str | None = Field(default=None, max_length=2048)
+
+
+class InvoicePatch(BaseModel):
+    type: InvoiceTypeSchema | None = None
+    id: str | None = Field(default=None, max_length=2048)
+    date_opened: datetime | None = None
+    date_posted: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2048)
+    active: bool | None = None
+    currency_guid: UUID | None = None
+    customer_guid: UUID | None = None
+    terms: str | None = Field(default=None, max_length=36)
+    billing_id: str | None = Field(default=None, max_length=2048)
+
+
+class InvoiceOut(BaseOut):
+    guid: str
+    book_id: str
+    type: InvoiceTypeSchema
+    id: str
+    date_opened: datetime | None
+    date_posted: datetime | None
+    notes: str
+    active: bool
+    currency_guid: str
+    customer_guid: str
+    terms: str | None
+    billing_id: str | None
+    status: str
+    subtotal_num: int
+    subtotal_denom: int
+    tax_num: int
+    tax_denom: int
+    total_num: int
+    total_denom: int
+    entries: list[InvoiceEntryOut]
     created_at: datetime
     updated_at: datetime
 

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Book, Commodity, Customer
+from app.models import Book, Commodity, Customer, Invoice
 from app.schemas import CustomerCreate, CustomerOut, CustomerPatch
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
@@ -128,5 +128,15 @@ def delete_customer(customer_guid: UUID, db: Session = Depends(get_db)) -> None:
     customer = db.get(Customer, str(customer_guid))
     if not customer:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+
+    has_invoices = db.execute(select(Invoice.guid).where(Invoice.owner_guid == customer.guid).limit(1)).scalar_one_or_none()
+    if has_invoices:
+        raise api_error(
+            409,
+            "CUSTOMER_HAS_INVOICES",
+            "customer cannot be deleted while invoices exist",
+            {"customer_guid": customer.guid},
+        )
+
     db.delete(customer)
     db.commit()

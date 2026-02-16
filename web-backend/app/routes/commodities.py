@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Commodity, Customer, Transaction, Vendor
+from app.models import Account, Commodity, Customer, Invoice, Transaction, Vendor
 from app.schemas import CommodityCreate, CommodityOut, CommodityPatch
 
 router = APIRouter(prefix="/commodities", tags=["Commodities"])
@@ -104,6 +104,17 @@ def delete_commodity(commodity_id: UUID, db: Session = Depends(get_db)) -> None:
             409,
             "COMMODITY_IN_USE",
             "commodity cannot be deleted while referenced by vendors",
+            {"commodity_id": commodity.id},
+        )
+
+    referenced_by_invoices = db.execute(
+        select(Invoice.guid).where(Invoice.currency_guid == commodity.id).limit(1)
+    ).scalar_one_or_none()
+    if referenced_by_invoices:
+        raise api_error(
+            409,
+            "COMMODITY_IN_USE",
+            "commodity cannot be deleted while referenced by invoices",
             {"commodity_id": commodity.id},
         )
 

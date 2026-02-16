@@ -5,6 +5,7 @@ import AccountsPage from "./pages/AccountsPage.jsx";
 import CustomersPage from "./pages/CustomersPage.jsx";
 import VendorsPage from "./pages/VendorsPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
+import InvoicingPage from "./pages/InvoicingPage.jsx";
 import { apiBase } from "./api/client.js";
 
 const tabs = [
@@ -13,7 +14,8 @@ const tabs = [
   { id: "accounts", label: "Accounts", component: AccountsPage },
   { id: "customers", label: "Customers", component: CustomersPage },
   { id: "vendors", label: "Vendors", component: VendorsPage },
-  { id: "ledger", label: "Ledger", component: LedgerPage }
+  { id: "ledger", label: "Ledger", component: LedgerPage },
+  { id: "invoicing", label: "Faturamento", component: InvoicingPage }
 ];
 
 export default function App() {

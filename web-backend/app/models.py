@@ -32,6 +32,7 @@ class Book(Base):
     accounts: Mapped[List[Account]] = relationship(back_populates="book")
     customers: Mapped[List[Customer]] = relationship(back_populates="book")
     vendors: Mapped[List[Vendor]] = relationship(back_populates="book")
+    invoices: Mapped[List[Invoice]] = relationship(back_populates="book")
 
 
 class Commodity(Base):
@@ -51,6 +52,7 @@ class Commodity(Base):
     accounts: Mapped[List[Account]] = relationship(back_populates="commodity")
     customers: Mapped[List[Customer]] = relationship(back_populates="currency")
     vendors: Mapped[List[Vendor]] = relationship(back_populates="currency")
+    invoices: Mapped[List[Invoice]] = relationship(back_populates="currency")
     transactions: Mapped[List[Transaction]] = relationship(back_populates="currency")
 
 
@@ -78,6 +80,7 @@ class Account(Base):
     parent: Mapped[Optional[Account]] = relationship(remote_side="Account.id", back_populates="children")
     children: Mapped[List[Account]] = relationship(back_populates="parent")
     splits: Mapped[List[Split]] = relationship(back_populates="account")
+    invoice_entries: Mapped[List[InvoiceEntry]] = relationship(back_populates="income_account")
 
     __table_args__ = (
         Index("ix_accounts_book_parent_name", "book_id", "parent_id", "name"),
@@ -131,6 +134,7 @@ class Customer(Base):
 
     book: Mapped[Book] = relationship(back_populates="customers")
     currency: Mapped[Commodity] = relationship(back_populates="customers")
+    invoices: Mapped[List[Invoice]] = relationship(back_populates="customer")
 
     __table_args__ = (
         CheckConstraint("discount_denom > 0", name="ck_customers_discount_denom_positive"),
@@ -170,6 +174,88 @@ class Vendor(Base):
 
     book: Mapped[Book] = relationship(back_populates="vendors")
     currency: Mapped[Commodity] = relationship(back_populates="vendors")
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    guid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    book_id: Mapped[str] = mapped_column(ForeignKey("books.id"), index=True)
+    id: Mapped[str] = mapped_column(String(2048), nullable=False)
+    invoice_type: Mapped[str] = mapped_column(String(32), nullable=False, default="INVOICE")
+    date_opened: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    date_posted: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str] = mapped_column(String(2048), default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    currency_guid: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
+    owner_type: Mapped[str] = mapped_column(String(32), default="CUSTOMER")
+    owner_guid: Mapped[str] = mapped_column(ForeignKey("customers.guid"), index=True)
+    terms: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    billing_id: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    post_txn: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    post_lot: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    post_acc: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    billto_type: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    billto_guid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    charge_amt_num: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    charge_amt_denom: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+    book: Mapped[Book] = relationship(back_populates="invoices")
+    currency: Mapped[Commodity] = relationship(back_populates="invoices")
+    customer: Mapped[Customer] = relationship(back_populates="invoices")
+    entries: Mapped[List[InvoiceEntry]] = relationship(
+        back_populates="invoice",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("ix_invoices_book_date_opened", "book_id", "date_opened"),
+    )
+
+
+class InvoiceEntry(Base):
+    __tablename__ = "entries"
+
+    guid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    date_entered: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    action: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    quantity_num: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    quantity_denom: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    i_acct: Mapped[str] = mapped_column(ForeignKey("accounts.id"), nullable=False, index=True)
+    i_price_num: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    i_price_denom: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    i_discount_num: Mapped[int] = mapped_column(BigInteger, default=0)
+    i_discount_denom: Mapped[int] = mapped_column(BigInteger, default=1)
+    invoice_guid: Mapped[str] = mapped_column("invoice", ForeignKey("invoices.guid", ondelete="CASCADE"), index=True)
+    i_disc_type: Mapped[str] = mapped_column(String(32), default="PERCENT")
+    i_disc_how: Mapped[str] = mapped_column(String(32), default="PRETAX")
+    i_taxable: Mapped[bool] = mapped_column(Boolean, default=False)
+    i_taxincluded: Mapped[bool] = mapped_column(Boolean, default=False)
+    i_taxtable: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    b_paytype: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    billable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    billto_type: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    billto_guid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+    invoice: Mapped[Invoice] = relationship(back_populates="entries")
+    income_account: Mapped[Account] = relationship(back_populates="invoice_entries")
+
+    __table_args__ = (
+        CheckConstraint("quantity_denom > 0", name="ck_entries_quantity_denom_positive"),
+        CheckConstraint("i_price_denom > 0", name="ck_entries_price_denom_positive"),
+        CheckConstraint("i_discount_denom > 0", name="ck_entries_discount_denom_positive"),
+    )
 
 
 class Transaction(Base):
