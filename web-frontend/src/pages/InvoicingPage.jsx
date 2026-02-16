@@ -442,7 +442,7 @@ export default function InvoicingPage() {
       </div>
 
       <div className="row g-3 mb-3">
-        <div className="col-md-4">
+        <div className="col-lg-4 col-md-6">
           <label className="form-label">Book</label>
           <select
             className="form-select"
@@ -454,6 +454,30 @@ export default function InvoicingPage() {
                 {book.name || book.id}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="col-lg-8 col-md-6">
+          <label className="form-label">Faturas</label>
+          <select
+            className="form-select"
+            value={selectedInvoiceGuid}
+            onChange={(event) => setSelectedInvoiceGuid(event.target.value)}
+            disabled={!selectedBook || invoices.length === 0}
+          >
+            {invoices.length === 0 ? (
+              <option value="">Nenhuma fatura neste book.</option>
+            ) : (
+              invoices.map((invoice) => {
+                const customer = customersById.get(invoice.customer_guid);
+                const mnemonic = commoditiesById.get(invoice.currency_guid)?.mnemonic || "";
+                return (
+                  <option key={invoice.guid} value={invoice.guid}>
+                    {`${invoice.id} | ${customer?.name || "-"} | ${formatDateDisplay(invoice.date_opened)} | ${formatMoney(invoice.total_num, invoice.total_denom, mnemonic)}`}
+                  </option>
+                );
+              })
+            )}
           </select>
         </div>
       </div>
@@ -595,47 +619,6 @@ export default function InvoicingPage() {
       ) : null}
 
       <div className="invoice-layout">
-        <div className="invoice-list-panel">
-          <h6 className="mb-2">Faturas</h6>
-          <div className="table-responsive">
-            <table className="table table-sm invoice-list-table">
-              <thead>
-                <tr>
-                  <th>Numero</th>
-                  <th>Cliente</th>
-                  <th>Data</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((invoice) => {
-                  const customer = customersById.get(invoice.customer_guid);
-                  const mnemonic = commoditiesById.get(invoice.currency_guid)?.mnemonic || "";
-                  return (
-                    <tr
-                      key={invoice.guid}
-                      className={invoice.guid === selectedInvoiceGuid ? "is-selected" : ""}
-                      onClick={() => setSelectedInvoiceGuid(invoice.guid)}
-                    >
-                      <td>{invoice.id}</td>
-                      <td>{customer?.name || "-"}</td>
-                      <td>{formatDateDisplay(invoice.date_opened)}</td>
-                      <td>{formatMoney(invoice.total_num, invoice.total_denom, mnemonic)}</td>
-                    </tr>
-                  );
-                })}
-                {invoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="small-muted">
-                      Nenhuma fatura neste book.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         <div className="invoice-editor-panel">
           {selectedInvoice ? (
             <div>

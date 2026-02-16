@@ -44,7 +44,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="container py-4">
+      <main className="container-fluid app-main-container py-4">
         <ul className="nav nav-pills mb-4">
           {tabs.map((tab) => (
             <li key={tab.id} className="nav-item">

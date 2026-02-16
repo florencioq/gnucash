@@ -16,6 +16,10 @@ body {
   min-height: 100vh;
 }
 
+.app-main-container {
+  max-width: 1520px;
+}
+
 .brand-bar {
   background: linear-gradient(135deg, #1b2b24, #2f6b55);
   color: #f4efe6;
@@ -227,16 +231,7 @@ body {
 }
 
 .invoice-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 1rem;
-}
-
-.invoice-list-panel {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.75rem;
-  background: #fff;
+  display: block;
 }
 
 .invoice-editor-panel {
@@ -244,14 +239,6 @@ body {
   border-radius: 12px;
   padding: 0.85rem;
   background: #fff;
-}
-
-.invoice-list-table tbody tr {
-  cursor: pointer;
-}
-
-.invoice-list-table tbody tr.is-selected {
-  background: #f0e8dc;
 }
 
 .invoice-entry-table td,
@@ -288,12 +275,6 @@ body {
   gap: 0.75rem;
   border-top: 1px solid var(--line);
   padding-top: 0.75rem;
-}
-
-@media (max-width: 1200px) {
-  .invoice-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 768px) {
