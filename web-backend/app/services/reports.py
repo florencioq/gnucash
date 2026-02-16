@@ -291,6 +291,47 @@ def build_income_statement_matrix(
     end_year: int,
     end_month: int,
 ) -> dict:
+    all_accounts = db.execute(
+        select(Account).where(Account.book_id == book_id)
+    ).scalars().all()
+    all_accounts_by_id = {account.id: account for account in all_accounts}
+
+    path_cache: dict[str, str] = {}
+
+    def build_account_path(account_id: str, visited: set[str] | None = None) -> str:
+        cached = path_cache.get(account_id)
+        if cached is not None:
+            return cached
+
+        account = all_accounts_by_id.get(account_id)
+        if account is None:
+            return account_id
+
+        if visited is None:
+            visited = set()
+        if account_id in visited:
+            # Safety fallback for inconsistent cyclic hierarchies.
+            return account.name
+        visited.add(account_id)
+
+        if not account.parent_id:
+            path_cache[account_id] = account.name
+            return account.name
+
+        parent = all_accounts_by_id.get(account.parent_id)
+        if parent is None:
+            path_cache[account_id] = account.name
+            return account.name
+
+        if parent.type == AccountType.ROOT:
+            path_cache[account_id] = account.name
+            return account.name
+
+        parent_path = build_account_path(parent.id, visited)
+        full_path = f"{parent_path} / {account.name}"
+        path_cache[account_id] = full_path
+        return full_path
+
     accounts = db.execute(
         select(Account).where(
             Account.book_id == book_id,
@@ -353,14 +394,14 @@ def build_income_statement_matrix(
                 expense_totals[index] += normalized
 
     rows_out = []
-    for account in sorted(accounts, key=lambda item: (item.type.value, item.name.lower())):
+    for account in sorted(accounts, key=lambda item: (item.type.value, build_account_path(item.id).lower())):
         values = monthly_by_account.get(account.id, [Fraction(0, 1) for _ in periods])
         if all(value == 0 for value in values):
             continue
         rows_out.append(
             {
                 "account_id": account.id,
-                "account_name": account.name,
+                "account_name": build_account_path(account.id),
                 "account_code": account.code,
                 "account_type": account.type.value,
                 "amounts": [_as_float(value) for value in values],

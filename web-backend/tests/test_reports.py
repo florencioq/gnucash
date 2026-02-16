@@ -301,11 +301,19 @@ def test_income_statement_matrix_by_month_and_account(client):
         name="Bank",
         account_type="ASSET",
     )
-    sales_id = create_account(
+    income_group_id = create_account(
         client,
         book_id=book_id,
         commodity_id=commodity_id,
         parent_id=root_id,
+        name="Services",
+        account_type="INCOME",
+    )
+    sales_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=income_group_id,
         name="Sales",
         account_type="INCOME",
     )
@@ -313,7 +321,7 @@ def test_income_statement_matrix_by_month_and_account(client):
         client,
         book_id=book_id,
         commodity_id=commodity_id,
-        parent_id=root_id,
+        parent_id=income_group_id,
         name="Support",
         account_type="INCOME",
     )
@@ -384,6 +392,8 @@ def test_income_statement_matrix_by_month_and_account(client):
     assert payload["net_income_totals"] == pytest.approx([600.0, 800.0])
 
     rows_by_id = {row["account_id"]: row for row in payload["rows"]}
+    assert rows_by_id[sales_id]["account_name"] == "Services / Sales"
+    assert rows_by_id[support_id]["account_name"] == "Services / Support"
     assert rows_by_id[sales_id]["amounts"] == pytest.approx([900.0, 1000.0])
     assert rows_by_id[support_id]["amounts"] == pytest.approx([0.0, 200.0])
     assert rows_by_id[rent_id]["amounts"] == pytest.approx([300.0, 400.0])
