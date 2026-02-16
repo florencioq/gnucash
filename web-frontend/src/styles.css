@@ -448,6 +448,19 @@ body {
   background: #faf4e9;
 }
 
+.dre-value-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.dre-value-link:hover {
+  color: #1f5f47;
+}
+
 @media (max-width: 768px) {
   .income-statement-kpis {
     grid-template-columns: 1fr 1fr;

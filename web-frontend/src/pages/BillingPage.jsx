@@ -129,7 +129,7 @@ function keepTypeBranches(nodes, allowedTypes) {
   return nodes.map(visit).filter(Boolean);
 }
 
-export default function BillingPage() {
+export default function BillingPage({ initialBillGuid = "" }) {
   const [commodities, setCommodities] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -361,9 +361,9 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (!activeBookId) return;
-    loadBookData(activeBookId);
+    loadBookData(activeBookId, initialBillGuid || "");
     setEditingEntryGuid("");
-  }, [activeBookId]);
+  }, [activeBookId, initialBillGuid]);
 
   useEffect(() => {
     if (!selectedInvoiceGuid) {

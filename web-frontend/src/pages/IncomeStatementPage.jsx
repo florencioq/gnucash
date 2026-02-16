@@ -38,7 +38,7 @@ function formatMoney(value, currencyMnemonic) {
   }).format(numeric);
 }
 
-export default function IncomeStatementPage() {
+export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
   const defaultMonth = currentMonth();
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [search, setSearch] = useState("");
@@ -93,6 +93,11 @@ export default function IncomeStatementPage() {
     if (!matrix?.periods) return [];
     return matrix.periods.map((_period, index) => index).reverse();
   }, [matrix]);
+
+  const openLedgerForAccount = (accountId) => {
+    if (!accountId) return;
+    onOpenLedger({ accountId });
+  };
 
   if (activeBookError) {
     return (
@@ -249,11 +254,25 @@ export default function IncomeStatementPage() {
                     </td>
                     {reversedPeriodIndexes.map((index) => (
                       <td key={`${row.account_id}:${matrix.periods[index]}`} className="text-end">
-                        {formatMoney(row.amounts[index], matrix.currency_mnemonic || "BRL")}
+                        <button
+                          type="button"
+                          className="dre-value-link"
+                          onClick={() => openLedgerForAccount(row.account_id)}
+                          title="Abrir no Ledger desta conta"
+                        >
+                          {formatMoney(row.amounts[index], matrix.currency_mnemonic || "BRL")}
+                        </button>
                       </td>
                     ))}
                     <td className="text-end fw-semibold">
-                      {formatMoney(row.total_amount, matrix.currency_mnemonic || "BRL")}
+                      <button
+                        type="button"
+                        className="dre-value-link fw-semibold"
+                        onClick={() => openLedgerForAccount(row.account_id)}
+                        title="Abrir no Ledger desta conta"
+                      >
+                        {formatMoney(row.total_amount, matrix.currency_mnemonic || "BRL")}
+                      </button>
                     </td>
                   </tr>
                 ))}

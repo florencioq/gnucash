@@ -71,11 +71,18 @@ function filterTree(nodes, query) {
   return nodes.map(visit).filter(Boolean);
 }
 
-export default function LedgerPage({ initialAccountId = "" }) {
+export default function LedgerPage({
+  initialAccountId = "",
+  returnTab = "",
+  onReturnToTab = () => {},
+  onOpenInvoicing = () => {},
+  onOpenBilling = () => {}
+}) {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [accountTree, setAccountTree] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [sourceByTxGuid, setSourceByTxGuid] = useState({});
   const [ledgerAccountId, setLedgerAccountId] = useState(initialAccountId || "");
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [ledgerPickerOpen, setLedgerPickerOpen] = useState(false);
@@ -184,6 +191,59 @@ export default function LedgerPage({ initialAccountId = "" }) {
     setTransactions(res.data);
   };
 
+  const loadSourceLinks = async (bookId) => {
+    if (!bookId) return;
+    const [invoicesRes, billsRes] = await Promise.all([
+      api.get(`/invoices?book_id=${bookId}`),
+      api.get(`/bills?book_id=${bookId}`)
+    ]);
+
+    const mapping = {};
+    if (invoicesRes.ok) {
+      for (const invoice of invoicesRes.data) {
+        if (invoice.post_tx_guid) {
+          mapping[invoice.post_tx_guid] = {
+            sourceType: "invoicing",
+            documentGuid: invoice.guid,
+            documentId: invoice.id,
+            relation: "post"
+          };
+        }
+        for (const payment of invoice.payments || []) {
+          mapping[payment.tx_guid] = {
+            sourceType: "invoicing",
+            documentGuid: invoice.guid,
+            documentId: invoice.id,
+            relation: "payment"
+          };
+        }
+      }
+    }
+
+    if (billsRes.ok) {
+      for (const bill of billsRes.data) {
+        if (bill.post_tx_guid) {
+          mapping[bill.post_tx_guid] = {
+            sourceType: "billing",
+            documentGuid: bill.guid,
+            documentId: bill.id,
+            relation: "post"
+          };
+        }
+        for (const payment of bill.payments || []) {
+          mapping[payment.tx_guid] = {
+            sourceType: "billing",
+            documentGuid: bill.guid,
+            documentId: bill.id,
+            relation: "payment"
+          };
+        }
+      }
+    }
+
+    setSourceByTxGuid(mapping);
+  };
+
   useEffect(() => {
     loadCommodities();
   }, []);
@@ -193,7 +253,8 @@ export default function LedgerPage({ initialAccountId = "" }) {
       Promise.all([
         loadAccounts(activeBookId),
         loadAccountTree(activeBookId),
-        loadTransactions(activeBookId)
+        loadTransactions(activeBookId),
+        loadSourceLinks(activeBookId)
       ]);
     }
   }, [activeBookId]);
@@ -577,6 +638,17 @@ export default function LedgerPage({ initialAccountId = "" }) {
     await loadTransactions(activeBookId);
   };
 
+  const openSourceDocument = (source) => {
+    if (!source?.documentGuid) return;
+    if (source.sourceType === "invoicing") {
+      onOpenInvoicing({ invoiceGuid: source.documentGuid });
+      return;
+    }
+    if (source.sourceType === "billing") {
+      onOpenBilling({ billGuid: source.documentGuid });
+    }
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -584,6 +656,17 @@ export default function LedgerPage({ initialAccountId = "" }) {
           <h2 className="mb-1">Ledger</h2>
           <div className="small-muted">Razao da conta com lancamento direto.</div>
         </div>
+        {returnTab === "invoicing" || returnTab === "billing" ? (
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => onReturnToTab(returnTab)}
+          >
+            {returnTab === "invoicing"
+              ? "Voltar para Faturamento"
+              : "Voltar para Compras/Cobranca"}
+          </button>
+        ) : null}
       </div>
 
       {activeBook ? (
@@ -648,13 +731,14 @@ export default function LedgerPage({ initialAccountId = "" }) {
               <th className="text-end">Debito</th>
               <th className="text-end">Credito</th>
               <th className="text-end">Saldo</th>
+              <th>Origem</th>
               <th className="text-end">Acoes</th>
             </tr>
           </thead>
           <tbody>
             {ledgerRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="small-muted">
+                <td colSpan={8} className="small-muted">
                   Nenhum lancamento para a conta selecionada.
                 </td>
               </tr>
@@ -663,6 +747,12 @@ export default function LedgerPage({ initialAccountId = "" }) {
                 const isRowEditing = editingTxGuid === row.txGuid;
                 const isRowSaving = savingTxGuid === row.txGuid;
                 const canEdit = Boolean(getEditableTransactionContext(row.txGuid));
+                const source = sourceByTxGuid[row.txGuid] || null;
+                const sourceLabel = source
+                  ? source.sourceType === "invoicing"
+                    ? `Faturamento #${source.documentId}${source.relation === "payment" ? " (pagamento)" : ""}`
+                    : `Cobranca #${source.documentId}${source.relation === "payment" ? " (pagamento)" : ""}`
+                  : "-";
                 return (
                   <tr key={row.key}>
                     <td>{formatDate(row.date)}</td>
@@ -671,6 +761,19 @@ export default function LedgerPage({ initialAccountId = "" }) {
                     <td className="text-end">{row.debit ? formatAmount(row.debit, ledgerCommodity?.mnemonic) : "-"}</td>
                     <td className="text-end">{row.credit ? formatAmount(row.credit, ledgerCommodity?.mnemonic) : "-"}</td>
                     <td className="text-end fw-semibold">{formatAmount(row.balance, ledgerCommodity?.mnemonic)}</td>
+                    <td>
+                      {source ? (
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 align-baseline"
+                          onClick={() => openSourceDocument(source)}
+                        >
+                          {sourceLabel}
+                        </button>
+                      ) : (
+                        <span className="small-muted">-</span>
+                      )}
+                    </td>
                     <td className="text-end">
                       <div className="d-inline-flex gap-1">
                         <button

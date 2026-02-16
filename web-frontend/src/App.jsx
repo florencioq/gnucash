@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import BooksPage from "./pages/BooksPage.jsx";
 import CommoditiesPage from "./pages/CommoditiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
@@ -24,20 +24,56 @@ const tabs = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("books");
+  const [lastNonLedgerTab, setLastNonLedgerTab] = useState("books");
   const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState("");
+  const [invoicingTargetInvoiceGuid, setInvoicingTargetInvoiceGuid] = useState("");
+  const [billingTargetBillGuid, setBillingTargetBillGuid] = useState("");
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab).component;
   const isInvoicingTab = activeTab === "invoicing" || activeTab === "billing";
+
+  useEffect(() => {
+    if (activeTab !== "ledger") {
+      setLastNonLedgerTab(activeTab);
+    }
+  }, [activeTab]);
 
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");
     setActiveTab("ledger");
   };
 
+  const handleOpenInvoicing = ({ invoiceGuid }) => {
+    setInvoicingTargetInvoiceGuid(invoiceGuid || "");
+    setActiveTab("invoicing");
+  };
+
+  const handleOpenBilling = ({ billGuid }) => {
+    setBillingTargetBillGuid(billGuid || "");
+    setActiveTab("billing");
+  };
+
+  const ledgerReturnTab =
+    lastNonLedgerTab === "invoicing" || lastNonLedgerTab === "billing"
+      ? lastNonLedgerTab
+      : "";
+
   const activeProps =
     activeTab === "accounts"
       ? { onOpenLedger: handleOpenLedger }
+      : activeTab === "income-statement"
+        ? { onOpenLedger: handleOpenLedger }
       : activeTab === "ledger"
-        ? { initialAccountId: ledgerTargetAccountId }
+        ? {
+            initialAccountId: ledgerTargetAccountId,
+            returnTab: ledgerReturnTab,
+            onReturnToTab: (tabId) => setActiveTab(tabId),
+            onOpenInvoicing: handleOpenInvoicing,
+            onOpenBilling: handleOpenBilling
+          }
+      : activeTab === "invoicing"
+        ? { initialInvoiceGuid: invoicingTargetInvoiceGuid }
+      : activeTab === "billing"
+        ? { initialBillGuid: billingTargetBillGuid }
         : {};
 
   return (
