@@ -115,13 +115,17 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
 
       const account = accountsById.get(accountId);
       if (!account) return accountId;
-      if (!account.parent_id) {
+      if (account.type === "ROOT" || !account.parent_id) {
         cache.set(accountId, account.name);
         return account.name;
       }
 
       const parentName = build(account.parent_id, visited);
-      const fullName = `${parentName} / ${account.name}`;
+      const parent = accountsById.get(account.parent_id);
+      const fullName =
+        parent?.type === "ROOT"
+          ? account.name
+          : `${parentName} / ${account.name}`;
       cache.set(accountId, fullName);
       return fullName;
     };
@@ -348,7 +352,16 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
 
   const renderLedgerTreeNodes = (nodes, depth = 0) => {
     return nodes.map((node) => {
-      const isRoot = node.type === "ROOT";
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderLedgerTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
       const selected = ledgerAccountId === node.id;
 
       return (
@@ -357,7 +370,6 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
             type="button"
             className={`counter-tree-node ${selected ? "is-selected" : ""}`}
             style={{ marginLeft: `${depth * 14}px` }}
-            disabled={isRoot}
             onClick={() => selectLedgerAccount(node.id)}
           >
             <span className="counter-tree-name">{node.name}</span>
@@ -373,9 +385,18 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
 
   const renderCounterTreeNodes = (nodes, depth = 0) => {
     return nodes.map((node) => {
-      const isRoot = node.type === "ROOT";
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderCounterTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
       const isSameAsLedger = node.id === ledgerAccountId;
-      const disabled = isRoot || isSameAsLedger;
+      const disabled = isSameAsLedger;
       const selected = ledgerForm.counterAccountId === node.id;
 
       return (

@@ -59,13 +59,17 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
 
       const account = accountsById.get(accountId);
       if (!account) return accountId;
-      if (!account.parent_id) {
+      if (account.type === "ROOT" || !account.parent_id) {
         cache.set(accountId, account.name);
         return account.name;
       }
 
       const parentName = build(account.parent_id, visited);
-      const fullName = `${parentName} / ${account.name}`;
+      const parent = accountsById.get(account.parent_id);
+      const fullName =
+        parent?.type === "ROOT"
+          ? account.name
+          : `${parentName} / ${account.name}`;
       cache.set(accountId, fullName);
       return fullName;
     };
@@ -262,6 +266,16 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
 
   const renderParentTreeNodes = (nodes, depth = 0) => {
     return nodes.map((node) => {
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderParentTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
       const selected = form.parent_id === node.id;
 
       return (
