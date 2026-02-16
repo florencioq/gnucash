@@ -128,3 +128,19 @@
 2. Create a payment transaction using the same receivable account and same lot id on receivable split.
 3. Send `POST /invoices/{invoice_guid}/unpost`.
 4. Validate `409` conflict for invoice-with-payments-in-lot rule.
+
+## Scenario 19: Register partial and full invoice payments
+
+1. Post an invoice with total amount greater than zero.
+2. Send `POST /invoices/{invoice_guid}/payments` with a partial amount and a valid transfer account.
+3. Validate invoice returns `status=PARTIAL`, payment list with one transaction, and reduced `open_amount`.
+4. Send a second payment for the remaining open amount.
+5. Validate invoice returns `status=PAID`, `open_amount=0`, and two payment transactions in `payments[]`.
+6. Validate payment transactions cannot be patched/deleted via `/transactions/{tx_guid}`.
+
+## Scenario 20: Undo invoice payment
+
+1. Start from an invoice with at least one registered payment.
+2. Send `POST /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo`.
+3. Validate invoice open amount increases back and payment list no longer contains that transaction.
+4. Validate `status` transitions from `PAID` to `PARTIAL` or from `PARTIAL` to `POSTED` depending on remaining payments.

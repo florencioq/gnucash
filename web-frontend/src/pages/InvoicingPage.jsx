@@ -87,6 +87,15 @@ function defaultEntryForm(incomeAccountGuid = "") {
   };
 }
 
+function defaultPaymentForm(transferAccountGuid = "", amount = "") {
+  return {
+    transfer_account_guid: transferAccountGuid,
+    amount,
+    payment_date: todayIsoDate(),
+    memo: ""
+  };
+}
+
 function filterTree(nodes, query) {
   const q = query.trim().toLowerCase();
   if (!q) return nodes;
@@ -134,6 +143,9 @@ export default function InvoicingPage() {
   const [postingAccountGuid, setPostingAccountGuid] = useState("");
   const [postingPickerOpen, setPostingPickerOpen] = useState(false);
   const [postingSearch, setPostingSearch] = useState("");
+  const [paymentForm, setPaymentForm] = useState(defaultPaymentForm());
+  const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
+  const [paymentSearch, setPaymentSearch] = useState("");
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
@@ -210,18 +222,25 @@ export default function InvoicingPage() {
   const selectedInvoiceCustomer = selectedInvoice
     ? customersById.get(selectedInvoice.customer_guid) || null
     : null;
-  const isInvoicePosted = selectedInvoice?.status === "POSTED";
+  const isInvoicePosted = Boolean(selectedInvoice?.date_posted);
   const selectedInvoiceMnemonic = selectedInvoice
     ? commoditiesById.get(selectedInvoice.currency_guid)?.mnemonic || ""
     : "";
+  const selectedInvoiceOpenAmount = selectedInvoice
+    ? Math.abs(rationalToNumber(selectedInvoice.open_amount_num, selectedInvoice.open_amount_denom))
+    : 0;
   const selectedIncomeAccount = accountsById.get(entryForm.income_account_guid) || null;
   const selectedPostingAccount = accountsById.get(postingAccountGuid) || null;
+  const selectedPaymentAccount = accountsById.get(paymentForm.transfer_account_guid) || null;
   const incomeAccountLabel = selectedIncomeAccount
     ? `${accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name} (${selectedIncomeAccount.type})`
     : "Selecione a conta de receita";
   const postingAccountLabel = selectedPostingAccount
     ? `${accountFullNameById.get(selectedPostingAccount.id) || selectedPostingAccount.name} (${selectedPostingAccount.type})`
     : "Selecione a conta de postagem";
+  const paymentAccountLabel = selectedPaymentAccount
+    ? `${accountFullNameById.get(selectedPaymentAccount.id) || selectedPaymentAccount.name} (${selectedPaymentAccount.type})`
+    : "Selecione a conta de pagamento";
   const incomeTree = useMemo(
     () => keepTypeBranches(accountTree, new Set(["INCOME"])),
     [accountTree]
@@ -237,6 +256,11 @@ export default function InvoicingPage() {
   const visiblePostingTree = useMemo(
     () => filterTree(postingTree, postingSearch),
     [postingTree, postingSearch]
+  );
+  const paymentTree = useMemo(() => accountTree, [accountTree]);
+  const visiblePaymentTree = useMemo(
+    () => filterTree(paymentTree, paymentSearch),
+    [paymentTree, paymentSearch]
   );
 
   const loadCommodities = async () => {
@@ -360,10 +384,53 @@ export default function InvoicingPage() {
   }, [selectedInvoice, postingAccounts]);
 
   useEffect(() => {
+    if (!selectedInvoice) {
+      setPaymentForm(defaultPaymentForm());
+      return;
+    }
+
+    const preferredTransferAccount =
+      paymentForm.transfer_account_guid &&
+      accounts.some(
+        (account) =>
+          account.id === paymentForm.transfer_account_guid &&
+          !account.is_placeholder &&
+          account.id !== selectedInvoice.post_account_guid
+      )
+        ? paymentForm.transfer_account_guid
+        : accounts.find(
+            (account) => !account.is_placeholder && account.id !== selectedInvoice.post_account_guid
+          )?.id || "";
+
+    const suggestedAmount =
+      isInvoicePosted && selectedInvoiceOpenAmount > 0
+        ? decimalString(selectedInvoiceOpenAmount, 2)
+        : "";
+
+    setPaymentForm((current) => ({
+      ...current,
+      transfer_account_guid: preferredTransferAccount,
+      amount: suggestedAmount,
+      payment_date: current.payment_date || todayIsoDate()
+    }));
+  }, [
+    selectedInvoiceGuid,
+    selectedInvoice?.post_account_guid,
+    selectedInvoice?.date_posted,
+    selectedInvoice?.open_amount_num,
+    selectedInvoice?.open_amount_denom,
+    accounts,
+    isInvoicePosted,
+    selectedInvoiceOpenAmount
+  ]);
+
+  useEffect(() => {
     setIncomePickerOpen(false);
     setIncomeSearch("");
     setPostingPickerOpen(false);
     setPostingSearch("");
+    setPaymentPickerOpen(false);
+    setPaymentSearch("");
   }, [selectedInvoiceGuid, editingEntryGuid, accountTree]);
 
   const selectIncomeAccount = (accountId) => {
@@ -468,6 +535,60 @@ export default function InvoicingPage() {
     });
   };
 
+  const selectPaymentAccount = (accountId) => {
+    setPaymentForm((current) => ({ ...current, transfer_account_guid: accountId }));
+    setPaymentSearch("");
+    setPaymentPickerOpen(false);
+  };
+
+  const togglePaymentPicker = () => {
+    setPaymentPickerOpen((current) => {
+      const next = !current;
+      if (next) setPaymentSearch("");
+      return next;
+    });
+  };
+
+  const renderPaymentTreeNodes = (nodes, depth = 0) => {
+    return nodes.map((node) => {
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderPaymentTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
+      const selected = paymentForm.transfer_account_guid === node.id;
+      const selectable =
+        !node.is_placeholder &&
+        node.id !== selectedInvoice?.post_account_guid;
+
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            className={`counter-tree-node ${selected ? "is-selected" : ""}`}
+            style={{ marginLeft: `${depth * 14}px` }}
+            disabled={!selectable}
+            onClick={() => {
+              if (selectable) selectPaymentAccount(node.id);
+            }}
+          >
+            <span className="counter-tree-name">{node.name}</span>
+            <span className="badge badge-soft text-uppercase">{node.type}</span>
+            {node.is_placeholder ? <span className="small-muted">placeholder</span> : null}
+          </button>
+          {node.children && node.children.length > 0
+            ? renderPaymentTreeNodes(node.children, depth + 1)
+            : null}
+        </div>
+      );
+    });
+  };
+
   const postSelectedInvoice = async () => {
     if (!selectedInvoice) return;
     if (!postingAccountGuid) {
@@ -492,6 +613,50 @@ export default function InvoicingPage() {
     if (!selectedInvoice) return;
 
     const response = await api.post(`/invoices/${selectedInvoice.guid}/unpost`, {});
+    if (!response.ok) {
+      setError(response.error);
+      return;
+    }
+
+    await loadBookData(activeBookId, selectedInvoice.guid);
+  };
+
+  const submitPayment = async (event) => {
+    event.preventDefault();
+    if (!selectedInvoice || !isInvoicePosted) return;
+    if (!paymentForm.transfer_account_guid) {
+      setError({ code: "VALIDATION_ERROR", message: "Selecione a conta de pagamento", details: {} });
+      return;
+    }
+
+    const amount = decimalToRational(paymentForm.amount, 100);
+    if (!amount || amount.num <= 0 || amount.denom <= 0) {
+      setError({ code: "VALIDATION_ERROR", message: "Valor de pagamento invalido", details: {} });
+      return;
+    }
+
+    const payload = {
+      transfer_account_guid: paymentForm.transfer_account_guid,
+      amount_num: amount.num,
+      amount_denom: amount.denom,
+      payment_date: paymentForm.payment_date ? `${paymentForm.payment_date}T00:00:00Z` : null,
+      memo: paymentForm.memo.trim() || null
+    };
+
+    const response = await api.post(`/invoices/${selectedInvoice.guid}/payments`, payload);
+    if (!response.ok) {
+      setError(response.error);
+      return;
+    }
+
+    setPaymentForm((current) => ({ ...current, memo: "" }));
+    await loadBookData(activeBookId, selectedInvoice.guid);
+  };
+
+  const undoPayment = async (paymentTxGuid) => {
+    if (!selectedInvoice) return;
+
+    const response = await api.post(`/invoices/${selectedInvoice.guid}/payments/${paymentTxGuid}/undo`, {});
     if (!response.ok) {
       setError(response.error);
       return;
@@ -1106,6 +1271,145 @@ export default function InvoicingPage() {
                 </div>
               </form>
 
+              {isInvoicePosted ? (
+                <div className="invoice-payment-panel mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <h6 className="mb-0">Pagamentos</h6>
+                    <div className="small-muted">
+                      Em aberto:{" "}
+                      {formatMoney(
+                        selectedInvoice.open_amount_num,
+                        selectedInvoice.open_amount_denom,
+                        selectedInvoiceMnemonic
+                      )}
+                    </div>
+                  </div>
+
+                  <form onSubmit={submitPayment} className="row g-2 mb-3">
+                    <div className="col-md-4">
+                      <label className="form-label">Conta de pagamento</label>
+                      <div className="tree-select">
+                        <button
+                          type="button"
+                          className="form-select tree-select-toggle"
+                          onClick={togglePaymentPicker}
+                        >
+                          <span className="tree-select-label">{paymentAccountLabel}</span>
+                          <span className="tree-select-caret">{paymentPickerOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {paymentPickerOpen ? (
+                          <div className="tree-select-menu">
+                            <input
+                              className="form-control mb-2"
+                              value={paymentSearch}
+                              onChange={(event) => setPaymentSearch(event.target.value)}
+                              placeholder="Filtrar conta de pagamento"
+                            />
+                            <div className="counter-tree-panel">
+                              {visiblePaymentTree.length > 0 ? (
+                                renderPaymentTreeNodes(visiblePaymentTree)
+                              ) : (
+                                <div className="small-muted">Nenhuma conta encontrada para o filtro.</div>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <label className="form-label">Valor</label>
+                      <input
+                        className="form-control"
+                        value={paymentForm.amount}
+                        onChange={(event) =>
+                          setPaymentForm((current) => ({ ...current, amount: event.target.value }))
+                        }
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <label className="form-label">Data</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={paymentForm.payment_date}
+                        onChange={(event) =>
+                          setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Memo</label>
+                      <input
+                        className="form-control"
+                        value={paymentForm.memo}
+                        onChange={(event) =>
+                          setPaymentForm((current) => ({ ...current, memo: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="col-md-1 d-flex align-items-end">
+                      <button
+                        type="submit"
+                        className="btn btn-accent btn-sm w-100"
+                        disabled={!paymentForm.transfer_account_guid || selectedInvoiceOpenAmount <= 0}
+                      >
+                        Pagar
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="table-responsive">
+                    <table className="table table-sm mb-0">
+                      <thead>
+                        <tr>
+                          <th>Data</th>
+                          <th>Conta</th>
+                          <th>Memo</th>
+                          <th className="text-end">Valor</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedInvoice.payments || []).map((payment) => {
+                          const account = accountsById.get(payment.transfer_account_guid);
+                          return (
+                            <tr key={payment.tx_guid}>
+                              <td>{formatDateDisplay(payment.payment_date)}</td>
+                              <td>
+                                {account
+                                  ? accountFullNameById.get(account.id) || account.name
+                                  : payment.transfer_account_guid}
+                              </td>
+                              <td>{payment.memo || "-"}</td>
+                              <td className="text-end">
+                                {formatMoney(payment.amount_num, payment.amount_denom, selectedInvoiceMnemonic)}
+                              </td>
+                              <td className="text-end">
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary btn-sm"
+                                  onClick={() => undoPayment(payment.tx_guid)}
+                                >
+                                  Desfazer
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {(selectedInvoice.payments || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="small-muted">
+                              Nenhum pagamento registrado para esta fatura.
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="table-responsive mb-3">
                 <table className="table table-sm invoice-entry-table">
                   <thead>
@@ -1339,6 +1643,22 @@ export default function InvoicingPage() {
                 <div>
                   <strong>Total:</strong>{" "}
                   {formatMoney(selectedInvoice.total_num, selectedInvoice.total_denom, selectedInvoiceMnemonic)}
+                </div>
+                <div>
+                  <strong>Pago:</strong>{" "}
+                  {formatMoney(
+                    selectedInvoice.paid_amount_num,
+                    selectedInvoice.paid_amount_denom,
+                    selectedInvoiceMnemonic
+                  )}
+                </div>
+                <div>
+                  <strong>Em aberto:</strong>{" "}
+                  {formatMoney(
+                    selectedInvoice.open_amount_num,
+                    selectedInvoice.open_amount_denom,
+                    selectedInvoiceMnemonic
+                  )}
                 </div>
               </div>
             </div>

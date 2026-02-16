@@ -18,6 +18,8 @@ from app.schemas import (
     InvoiceEntryDiscountHowSchema,
     InvoiceEntryDiscountTypeSchema,
     InvoiceEntryOut,
+    InvoicePaymentCreate,
+    InvoicePaymentOut,
     InvoicePostRequest,
     InvoiceEntryPatch,
     InvoiceOut,
@@ -139,6 +141,68 @@ def _ensure_post_account(
     return account
 
 
+def _ensure_payment_transfer_account(
+    db: Session,
+    *,
+    transfer_account_guid: str,
+    book_id: str,
+    currency_guid: str,
+    post_account_guid: str,
+) -> Account:
+    account = db.get(Account, transfer_account_guid)
+    if account is None:
+        raise api_error(
+            400,
+            "INVALID_PAYMENT_ACCOUNT",
+            "payment transfer account must reference an existing account",
+            {"transfer_account_guid": transfer_account_guid},
+        )
+    if account.book_id != book_id:
+        raise api_error(
+            409,
+            "INVALID_PAYMENT_ACCOUNT_BOOK",
+            "payment transfer account must belong to the same book as the invoice",
+            {
+                "transfer_account_guid": transfer_account_guid,
+                "book_id": book_id,
+                "account_book_id": account.book_id,
+            },
+        )
+    if account.type == AccountType.ROOT:
+        raise api_error(
+            409,
+            "INVALID_PAYMENT_ACCOUNT_TYPE",
+            "payment transfer account cannot use type ROOT",
+            {"transfer_account_guid": transfer_account_guid, "account_type": account.type.value},
+        )
+    if account.is_placeholder:
+        raise api_error(
+            409,
+            "INVALID_PAYMENT_ACCOUNT",
+            "payment transfer account cannot be a placeholder account",
+            {"transfer_account_guid": transfer_account_guid},
+        )
+    if account.commodity_id != currency_guid:
+        raise api_error(
+            409,
+            "INVALID_PAYMENT_ACCOUNT_COMMODITY",
+            "payment transfer account commodity must match invoice currency",
+            {
+                "transfer_account_guid": transfer_account_guid,
+                "transfer_account_commodity_id": account.commodity_id,
+                "invoice_currency_guid": currency_guid,
+            },
+        )
+    if account.id == post_account_guid:
+        raise api_error(
+            409,
+            "INVALID_PAYMENT_ACCOUNT",
+            "payment transfer account must be different from the invoice posting account",
+            {"transfer_account_guid": transfer_account_guid, "post_account_guid": post_account_guid},
+        )
+    return account
+
+
 def _ensure_invoice_unposted(invoice: Invoice) -> None:
     if invoice.post_txn or invoice.date_posted is not None:
         raise api_error(
@@ -146,6 +210,28 @@ def _ensure_invoice_unposted(invoice: Invoice) -> None:
             "INVOICE_ALREADY_POSTED",
             "invoice is posted; unpost before changing this resource",
             {"invoice_guid": invoice.guid},
+        )
+
+
+def _ensure_invoice_posted(invoice: Invoice) -> None:
+    if not invoice.post_txn or invoice.date_posted is None:
+        raise api_error(
+            409,
+            "INVOICE_NOT_POSTED",
+            "invoice is not posted",
+            {"invoice_guid": invoice.guid},
+        )
+    if not invoice.post_lot or not invoice.post_acc:
+        raise api_error(
+            409,
+            "INVOICE_POSTING_INCOMPLETE",
+            "invoice posting metadata is incomplete",
+            {
+                "invoice_guid": invoice.guid,
+                "post_tx_guid": invoice.post_txn,
+                "post_lot_guid": invoice.post_lot,
+                "post_account_guid": invoice.post_acc,
+            },
         )
 
 
@@ -229,15 +315,80 @@ def _entry_to_out(entry: InvoiceEntry) -> dict:
     }
 
 
-def _invoice_status(invoice: Invoice) -> str:
+def _invoice_sign(invoice: Invoice) -> Fraction:
+    invoice_type = (invoice.invoice_type or "INVOICE").strip().upper()
+    return Fraction(-1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(1, 1)
+
+
+def _lot_balance(db: Session, *, lot_guid: str, account_guid: str) -> Fraction:
+    rows = db.execute(
+        select(Split.value_num, Split.value_denom).where(Split.lot_guid == lot_guid, Split.account_guid == account_guid)
+    ).all()
+    balance = Fraction(0, 1)
+    for value_num, value_denom in rows:
+        balance += Fraction(value_num, value_denom)
+    return balance
+
+
+def _invoice_payments(db: Session, *, invoice: Invoice) -> list[dict]:
+    if not invoice.post_lot or not invoice.post_txn or not invoice.post_acc:
+        return []
+
+    payment_txs = db.execute(
+        select(Transaction)
+        .join(Split, Split.tx_guid == Transaction.guid)
+        .where(
+            Split.lot_guid == invoice.post_lot,
+            Split.account_guid == invoice.post_acc,
+            Transaction.guid != invoice.post_txn,
+        )
+        .options(selectinload(Transaction.splits))
+        .order_by(Transaction.post_date.asc(), Transaction.guid.asc())
+    ).unique().scalars().all()
+
+    payments: list[dict] = []
+    for tx in payment_txs:
+        lot_value = Fraction(0, 1)
+        fallback_memo = ""
+        for split in tx.splits:
+            if split.lot_guid == invoice.post_lot and split.account_guid == invoice.post_acc:
+                lot_value += Fraction(split.value_num, split.value_denom)
+                if not fallback_memo:
+                    fallback_memo = split.memo or ""
+        if lot_value == 0:
+            continue
+
+        transfer_split = next(
+            (split for split in tx.splits if split.account_guid != invoice.post_acc),
+            None,
+        )
+        amount = abs(lot_value)
+        payment_payload = InvoicePaymentOut(
+            tx_guid=tx.guid,
+            transfer_account_guid=transfer_split.account_guid if transfer_split else invoice.post_acc,
+            lot_guid=invoice.post_lot,
+            payment_date=tx.post_date,
+            memo=tx.description or fallback_memo,
+            amount_num=amount.numerator,
+            amount_denom=amount.denominator,
+        )
+        payments.append(payment_payload.model_dump())
+    return payments
+
+
+def _invoice_status(invoice: Invoice, *, total_amount: Fraction, open_amount: Fraction) -> str:
     if not invoice.active:
         return "INACTIVE"
     if invoice.date_posted is None:
         return "UNPAID"
+    if open_amount == 0:
+        return "PAID"
+    if total_amount != 0 and abs(open_amount) < abs(total_amount):
+        return "PARTIAL"
     return "POSTED"
 
 
-def _invoice_to_out(invoice: Invoice) -> dict:
+def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
     sorted_entries = sorted(
         invoice.entries,
         key=lambda item: (item.date or datetime.min.replace(tzinfo=UTC), item.guid),
@@ -258,6 +409,14 @@ def _invoice_to_out(invoice: Invoice) -> dict:
     if invoice_type not in {"INVOICE", "CREDIT_NOTE"}:
         invoice_type = "INVOICE"
 
+    signed_total = total_sum * _invoice_sign(invoice)
+    open_amount = signed_total
+    payments: list[dict] = []
+    if invoice.date_posted is not None and invoice.post_lot and invoice.post_acc:
+        open_amount = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc)
+        payments = _invoice_payments(db, invoice=invoice)
+    paid_amount = signed_total - open_amount
+
     return {
         "guid": invoice.guid,
         "book_id": invoice.book_id,
@@ -274,13 +433,18 @@ def _invoice_to_out(invoice: Invoice) -> dict:
         "post_tx_guid": invoice.post_txn,
         "post_lot_guid": invoice.post_lot,
         "post_account_guid": invoice.post_acc,
-        "status": _invoice_status(invoice),
+        "status": _invoice_status(invoice, total_amount=signed_total, open_amount=open_amount),
         "subtotal_num": subtotal_sum.numerator,
         "subtotal_denom": subtotal_sum.denominator,
         "tax_num": tax_sum.numerator,
         "tax_denom": tax_sum.denominator,
         "total_num": total_sum.numerator,
         "total_denom": total_sum.denominator,
+        "paid_amount_num": paid_amount.numerator,
+        "paid_amount_denom": paid_amount.denominator,
+        "open_amount_num": open_amount.numerator,
+        "open_amount_denom": open_amount.denominator,
+        "payments": payments,
         "entries": entry_payloads,
         "created_at": invoice.created_at,
         "updated_at": invoice.updated_at,
@@ -339,7 +503,7 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> dic
     db.commit()
 
     hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(hydrated)
+    return _invoice_to_out(db, hydrated)
 
 
 @router.get("", response_model=list[InvoiceOut])
@@ -357,13 +521,13 @@ def list_invoices(
     if customer_guid is not None:
         stmt = stmt.where(Invoice.owner_guid == str(customer_guid))
     invoices = db.execute(stmt).scalars().all()
-    return [_invoice_to_out(invoice) for invoice in invoices]
+    return [_invoice_to_out(db, invoice) for invoice in invoices]
 
 
 @router.get("/{invoice_guid}", response_model=InvoiceOut)
 def get_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
-    return _invoice_to_out(invoice)
+    return _invoice_to_out(db, invoice)
 
 
 @router.patch("/{invoice_guid}", response_model=InvoiceOut)
@@ -440,7 +604,7 @@ def patch_invoice(invoice_guid: UUID, payload: InvoicePatch, db: Session = Depen
 
     db.commit()
     hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(hydrated)
+    return _invoice_to_out(db, hydrated)
 
 
 @router.post("/{invoice_guid}/post", response_model=InvoiceOut)
@@ -588,7 +752,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
 
     db.commit()
     hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(hydrated)
+    return _invoice_to_out(db, hydrated)
 
 
 @router.post("/{invoice_guid}/unpost", response_model=InvoiceOut)
@@ -646,7 +810,195 @@ def unpost_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
 
     db.commit()
     hydrated = _load_invoice(db, invoice_guid=invoice.guid)
-    return _invoice_to_out(hydrated)
+    return _invoice_to_out(db, hydrated)
+
+
+@router.post("/{invoice_guid}/payments", response_model=InvoiceOut)
+def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    _ensure_invoice_posted(invoice)
+
+    lot = db.get(Lot, invoice.post_lot)
+    if lot is None:
+        raise api_error(
+            409,
+            "INVOICE_POSTING_MISSING_LOT",
+            "invoice posting lot was not found",
+            {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+        )
+    if lot.account_guid != invoice.post_acc:
+        raise api_error(
+            409,
+            "INVOICE_POSTING_INCONSISTENT",
+            "invoice posting lot does not belong to the invoice posting account",
+            {"invoice_guid": invoice.guid, "post_lot_guid": lot.guid, "lot_account_guid": lot.account_guid},
+        )
+
+    currency = db.get(Commodity, invoice.currency_guid)
+    if currency is None:
+        raise api_error(
+            400,
+            "INVALID_CURRENCY",
+            "invoice currency must reference an existing commodity",
+            {"currency_guid": invoice.currency_guid},
+        )
+    if currency.fraction <= 0:
+        raise api_error(
+            409,
+            "INVALID_CURRENCY_FRACTION",
+            "commodity fraction must be positive",
+            {"currency_guid": currency.id, "fraction": currency.fraction},
+        )
+
+    transfer_account_guid = str(payload.transfer_account_guid)
+    _ensure_payment_transfer_account(
+        db,
+        transfer_account_guid=transfer_account_guid,
+        book_id=invoice.book_id,
+        currency_guid=invoice.currency_guid,
+        post_account_guid=invoice.post_acc,
+    )
+
+    payment_amount = Fraction(payload.amount_num, payload.amount_denom)
+    if payment_amount <= 0:
+        raise api_error(
+            400,
+            "INVALID_PAYMENT_AMOUNT",
+            "payment amount must be greater than zero",
+            {"amount_num": payload.amount_num, "amount_denom": payload.amount_denom},
+        )
+
+    open_balance = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc)
+    if open_balance == 0:
+        raise api_error(
+            409,
+            "INVOICE_ALREADY_PAID",
+            "invoice lot is already fully settled",
+            {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+        )
+    if payment_amount > abs(open_balance):
+        raise api_error(
+            409,
+            "PAYMENT_EXCEEDS_OPEN_BALANCE",
+            "payment amount exceeds invoice open balance",
+            {
+                "invoice_guid": invoice.guid,
+                "amount_num": payment_amount.numerator,
+                "amount_denom": payment_amount.denominator,
+                "open_amount_num": open_balance.numerator,
+                "open_amount_denom": open_balance.denominator,
+            },
+        )
+
+    receivable_signed_amount = -payment_amount if open_balance > 0 else payment_amount
+    receivable_num, receivable_denom = _fraction_to_split_parts(
+        amount=receivable_signed_amount,
+        fraction=currency.fraction,
+    )
+    transfer_num, transfer_denom = _fraction_to_split_parts(
+        amount=-receivable_signed_amount,
+        fraction=currency.fraction,
+    )
+
+    payment_date = payload.payment_date or datetime.now(UTC)
+    if payment_date.tzinfo is None:
+        payment_date = payment_date.replace(tzinfo=UTC)
+
+    tx_guid = str(uuid4())
+    description = (payload.memo or "").strip() or f"Payment invoice {invoice.id}"
+    payment_tx = Transaction(
+        guid=tx_guid,
+        currency_guid=invoice.currency_guid,
+        num=invoice.id or "",
+        post_date=payment_date,
+        enter_date=datetime.now(UTC),
+        description=description,
+    )
+    payment_tx.splits = [
+        Split(
+            guid=str(uuid4()),
+            tx_guid=tx_guid,
+            account_guid=invoice.post_acc,
+            memo=invoice.id or "",
+            action="",
+            reconcile_state="n",
+            reconcile_date=None,
+            value_num=receivable_num,
+            value_denom=receivable_denom,
+            quantity_num=receivable_num,
+            quantity_denom=receivable_denom,
+            lot_guid=invoice.post_lot,
+        ),
+        Split(
+            guid=str(uuid4()),
+            tx_guid=tx_guid,
+            account_guid=transfer_account_guid,
+            memo=invoice.id or "",
+            action="",
+            reconcile_state="n",
+            reconcile_date=None,
+            value_num=transfer_num,
+            value_denom=transfer_denom,
+            quantity_num=transfer_num,
+            quantity_denom=transfer_denom,
+            lot_guid=None,
+        ),
+    ]
+
+    db.add(payment_tx)
+    lot.is_closed = open_balance + receivable_signed_amount == 0
+    db.commit()
+    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
+    return _invoice_to_out(db, hydrated)
+
+
+@router.post("/{invoice_guid}/payments/{payment_tx_guid}/undo", response_model=InvoiceOut)
+def undo_invoice_payment(invoice_guid: UUID, payment_tx_guid: UUID, db: Session = Depends(get_db)) -> dict:
+    invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    _ensure_invoice_posted(invoice)
+
+    payment_tx_guid_str = str(payment_tx_guid)
+    if payment_tx_guid_str == invoice.post_txn:
+        raise api_error(
+            409,
+            "INVALID_PAYMENT_TX",
+            "invoice posting transaction cannot be undone as a payment",
+            {"invoice_guid": invoice.guid, "payment_tx_guid": payment_tx_guid_str},
+        )
+
+    payment_tx = db.execute(
+        select(Transaction).where(Transaction.guid == payment_tx_guid_str).options(selectinload(Transaction.splits))
+    ).scalar_one_or_none()
+    if payment_tx is None:
+        raise api_error(404, "NOT_FOUND", "requested resource was not found")
+
+    has_invoice_lot_split = any(
+        split.lot_guid == invoice.post_lot and split.account_guid == invoice.post_acc
+        for split in payment_tx.splits
+    )
+    if not has_invoice_lot_split:
+        raise api_error(
+            404,
+            "NOT_FOUND",
+            "requested resource was not found",
+        )
+
+    db.delete(payment_tx)
+    db.flush()
+
+    lot = db.get(Lot, invoice.post_lot)
+    if lot is None:
+        raise api_error(
+            409,
+            "INVOICE_POSTING_MISSING_LOT",
+            "invoice posting lot was not found",
+            {"invoice_guid": invoice.guid, "post_lot_guid": invoice.post_lot},
+        )
+    lot.is_closed = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc) == 0
+
+    db.commit()
+    hydrated = _load_invoice(db, invoice_guid=invoice.guid)
+    return _invoice_to_out(db, hydrated)
 
 
 @router.delete("/{invoice_guid}", status_code=204)

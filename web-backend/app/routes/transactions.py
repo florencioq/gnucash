@@ -16,6 +16,22 @@ from app.services.transactions import build_validated_splits, ensure_currency_ex
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
+def _linked_invoice_for_transaction(db: Session, tx_guid: str) -> str | None:
+    linked_posting = db.execute(
+        select(Invoice.guid).where(Invoice.post_txn == tx_guid).limit(1)
+    ).scalar_one_or_none()
+    if linked_posting is not None:
+        return linked_posting
+
+    linked_payment = db.execute(
+        select(Invoice.guid)
+        .join(Split, Split.lot_guid == Invoice.post_lot)
+        .where(Split.tx_guid == tx_guid)
+        .limit(1)
+    ).scalar_one_or_none()
+    return linked_payment
+
+
 @router.post("", response_model=TransactionOut, status_code=201)
 def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db)) -> Transaction:
     tx_guid = str(payload.guid or uuid4())
@@ -78,14 +94,12 @@ def patch_transaction(tx_guid: UUID, payload: TransactionPatch, db: Session = De
     if not transaction:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
 
-    linked_invoice = db.execute(
-        select(Invoice.guid).where(Invoice.post_txn == transaction.guid).limit(1)
-    ).scalar_one_or_none()
+    linked_invoice = _linked_invoice_for_transaction(db, transaction.guid)
     if linked_invoice is not None:
         raise api_error(
             409,
             "TRANSACTION_LINKED_INVOICE",
-            "cannot patch a transaction linked to a posted invoice",
+            "cannot patch a transaction linked to an invoice posting/payment flow",
             {"tx_guid": transaction.guid, "invoice_guid": linked_invoice},
         )
 
@@ -125,14 +139,12 @@ def delete_transaction(tx_guid: UUID, db: Session = Depends(get_db)) -> None:
     transaction = db.get(Transaction, str(tx_guid))
     if not transaction:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
-    linked_invoice = db.execute(
-        select(Invoice.guid).where(Invoice.post_txn == transaction.guid).limit(1)
-    ).scalar_one_or_none()
+    linked_invoice = _linked_invoice_for_transaction(db, transaction.guid)
     if linked_invoice is not None:
         raise api_error(
             409,
             "TRANSACTION_LINKED_INVOICE",
-            "cannot delete a transaction linked to a posted invoice",
+            "cannot delete a transaction linked to an invoice posting/payment flow",
             {"tx_guid": transaction.guid, "invoice_guid": linked_invoice},
         )
     db.delete(transaction)

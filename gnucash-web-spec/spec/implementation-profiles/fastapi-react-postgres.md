@@ -68,6 +68,8 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - Invoicing screen SHOULD allow a wider content container than default pages to improve dense line-item editing usability.
 - Invoicing UI SHOULD expose explicit actions to post and unpost invoices using dedicated posting endpoints.
 - While an invoice is posted, invoicing UI SHOULD block line edits/deletions until posting is undone.
+- Invoicing UI SHOULD provide payment registration with partial amounts and payment undo actions, reflecting `POSTED`/`PARTIAL`/`PAID` states from invoice payload.
+- Payment account selection in invoicing SHOULD use hierarchical account tree pickers, hiding synthetic `ROOT` nodes.
 
 ## Compliance note
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.6 - 2026-02-16
+
+Invoice payment workflow update:
+- documented invoice payment and payment-undo endpoints in the endpoint guide
+- added acceptance scenarios for partial/full payment and undo behavior
+- updated React implementation profile with invoicing payment UX guidance
+- synchronized OpenAPI contract with invoice payment request/response schemas and extended invoice totals/status fields
+
 ## v0.3.5 - 2026-02-16
 
 Invoice posting workflow update:

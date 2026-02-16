@@ -35,6 +35,7 @@ class BaseOut(BaseModel):
         "date_entered",
         "date_opened",
         "date_posted",
+        "payment_date",
         check_fields=False,
     )
     def serialize_dt(self, value: datetime | None) -> str | None:
@@ -428,6 +429,24 @@ class InvoicePostRequest(BaseModel):
     memo: str | None = Field(default=None, max_length=2048)
 
 
+class InvoicePaymentCreate(BaseModel):
+    transfer_account_guid: UUID
+    amount_num: int = Field(gt=0)
+    amount_denom: int = Field(gt=0)
+    payment_date: datetime | None = None
+    memo: str | None = Field(default=None, max_length=2048)
+
+
+class InvoicePaymentOut(BaseOut):
+    tx_guid: str
+    transfer_account_guid: str
+    lot_guid: str
+    payment_date: datetime | None
+    memo: str | None
+    amount_num: int
+    amount_denom: int
+
+
 class InvoiceOut(BaseOut):
     guid: str
     book_id: str
@@ -451,6 +470,11 @@ class InvoiceOut(BaseOut):
     tax_denom: int
     total_num: int
     total_denom: int
+    paid_amount_num: int
+    paid_amount_denom: int
+    open_amount_num: int
+    open_amount_denom: int
+    payments: list[InvoicePaymentOut]
     entries: list[InvoiceEntryOut]
     created_at: datetime
     updated_at: datetime

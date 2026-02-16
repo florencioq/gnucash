@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GnuCash Web Spec API
-  version: 0.3.5
+  version: 0.3.6
   description: >-
     API contract for Book, Commodity, Account, Invoice, and Transaction/Split posting endpoints.
 servers:
@@ -462,6 +462,51 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /invoices/{invoice_guid}/payments:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+    post:
+      tags: [Invoices]
+      summary: Register invoice payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePaymentCreate'
+      responses:
+        '200':
+          description: Updated invoice after payment registration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceGuid'
+      - $ref: '#/components/parameters/PaymentTransactionGuid'
+    post:
+      tags: [Invoices]
+      summary: Undo invoice payment
+      responses:
+        '200':
+          description: Updated invoice after payment undo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /invoices/{invoice_guid}/entries:
     parameters:
       - $ref: '#/components/parameters/InvoiceGuid'
@@ -656,6 +701,13 @@ components:
     EntryGuid:
       in: path
       name: entry_guid
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PaymentTransactionGuid:
+      in: path
+      name: payment_tx_guid
       required: true
       schema:
         type: string
@@ -1382,6 +1434,68 @@ components:
           maxLength: 2048
           nullable: true
 
+    InvoicePaymentCreate:
+      type: object
+      additionalProperties: false
+      required: [transfer_account_guid, amount_num, amount_denom]
+      properties:
+        transfer_account_guid:
+          type: string
+          format: uuid
+        amount_num:
+          type: integer
+          format: int64
+          minimum: 1
+        amount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        payment_date:
+          type: string
+          format: date-time
+          nullable: true
+        memo:
+          type: string
+          maxLength: 2048
+          nullable: true
+
+    InvoicePayment:
+      type: object
+      additionalProperties: false
+      required:
+        - tx_guid
+        - transfer_account_guid
+        - lot_guid
+        - payment_date
+        - memo
+        - amount_num
+        - amount_denom
+      properties:
+        tx_guid:
+          type: string
+          format: uuid
+        transfer_account_guid:
+          type: string
+          format: uuid
+        lot_guid:
+          type: string
+          format: uuid
+        payment_date:
+          type: string
+          format: date-time
+          nullable: true
+        memo:
+          type: string
+          maxLength: 2048
+          nullable: true
+        amount_num:
+          type: integer
+          format: int64
+        amount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+
     Invoice:
       type: object
       additionalProperties: false
@@ -1408,6 +1522,11 @@ components:
         - tax_denom
         - total_num
         - total_denom
+        - paid_amount_num
+        - paid_amount_denom
+        - open_amount_num
+        - open_amount_denom
+        - payments
         - entries
         - created_at
         - updated_at
@@ -1464,6 +1583,7 @@ components:
           nullable: true
         status:
           type: string
+          enum: [INACTIVE, UNPAID, POSTED, PARTIAL, PAID]
         subtotal_num:
           type: integer
           format: int64
@@ -1485,6 +1605,24 @@ components:
           type: integer
           format: int64
           minimum: 1
+        paid_amount_num:
+          type: integer
+          format: int64
+        paid_amount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        open_amount_num:
+          type: integer
+          format: int64
+        open_amount_denom:
+          type: integer
+          format: int64
+          minimum: 1
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoicePayment'
         entries:
           type: array
           items:

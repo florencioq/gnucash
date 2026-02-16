@@ -526,6 +526,177 @@ def test_invoice_post_and_unpost_flow(client):
     assert tx_after_unpost.status_code == 404
 
 
+def test_invoice_payment_partial_and_undo_flow(client):
+    book_id = create_book(client, "Book Payments API")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, customer_id="CPARTIAL")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    receivable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+    bank_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Banco",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    created = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "id": "000400",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert created.status_code == 201
+    invoice_guid = created.json()["guid"]
+
+    entry = client.post(
+        f"/invoices/{invoice_guid}/entries",
+        json={
+            "date": "2026-02-16T00:00:00Z",
+            "description": "Servico",
+            "income_account_guid": income_account_guid,
+            "quantity_num": 2,
+            "quantity_denom": 1,
+            "unit_price_num": 10000,
+            "unit_price_denom": 100,
+        },
+    )
+    assert entry.status_code == 201
+
+    posted = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={"post_account_guid": receivable_account_guid},
+    )
+    assert posted.status_code == 200
+    assert posted.json()["status"] == "POSTED"
+    assert posted.json()["open_amount_num"] == 200
+    assert posted.json()["open_amount_denom"] == 1
+    assert posted.json()["payments"] == []
+
+    partial_payment = client.post(
+        f"/invoices/{invoice_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": 5000,
+            "amount_denom": 100,
+            "payment_date": "2026-02-17T00:00:00Z",
+            "memo": "Pagamento parcial",
+        },
+    )
+    assert partial_payment.status_code == 200
+    partial_payload = partial_payment.json()
+    assert partial_payload["status"] == "PARTIAL"
+    assert partial_payload["paid_amount_num"] == 50
+    assert partial_payload["paid_amount_denom"] == 1
+    assert partial_payload["open_amount_num"] == 150
+    assert partial_payload["open_amount_denom"] == 1
+    assert len(partial_payload["payments"]) == 1
+    first_payment_tx_guid = partial_payload["payments"][0]["tx_guid"]
+
+    first_payment_tx = client.get(f"/transactions/{first_payment_tx_guid}")
+    assert first_payment_tx.status_code == 200
+    first_payment_splits = first_payment_tx.json()["splits"]
+    assert len(first_payment_splits) == 2
+    receivable_split = next(split for split in first_payment_splits if split["account_guid"] == receivable_account_guid)
+    counter_split = next(split for split in first_payment_splits if split["account_guid"] == bank_account_guid)
+    assert receivable_split["lot_guid"] == partial_payload["post_lot_guid"]
+    assert receivable_split["value_num"] == -5000
+    assert receivable_split["value_denom"] == 100
+    assert counter_split["value_num"] == 5000
+    assert counter_split["value_denom"] == 100
+
+    patch_payment_tx = client.patch(f"/transactions/{first_payment_tx_guid}", json={"description": "Nao permitido"})
+    assert patch_payment_tx.status_code == 409
+    assert patch_payment_tx.json()["code"] == "TRANSACTION_LINKED_INVOICE"
+
+    delete_payment_tx = client.delete(f"/transactions/{first_payment_tx_guid}")
+    assert delete_payment_tx.status_code == 409
+    assert delete_payment_tx.json()["code"] == "TRANSACTION_LINKED_INVOICE"
+
+    over_payment = client.post(
+        f"/invoices/{invoice_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": 15100,
+            "amount_denom": 100,
+        },
+    )
+    assert over_payment.status_code == 409
+    assert over_payment.json()["code"] == "PAYMENT_EXCEEDS_OPEN_BALANCE"
+
+    final_payment = client.post(
+        f"/invoices/{invoice_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": 15000,
+            "amount_denom": 100,
+            "payment_date": "2026-02-18T00:00:00Z",
+        },
+    )
+    assert final_payment.status_code == 200
+    final_payload = final_payment.json()
+    assert final_payload["status"] == "PAID"
+    assert final_payload["paid_amount_num"] == 200
+    assert final_payload["paid_amount_denom"] == 1
+    assert final_payload["open_amount_num"] == 0
+    assert final_payload["open_amount_denom"] == 1
+    assert len(final_payload["payments"]) == 2
+    second_payment_tx_guid = final_payload["payments"][1]["tx_guid"]
+
+    unpost_paid_invoice = client.post(f"/invoices/{invoice_guid}/unpost", json={})
+    assert unpost_paid_invoice.status_code == 409
+    assert unpost_paid_invoice.json()["code"] == "INVOICE_HAS_PAYMENTS"
+
+    undo_last = client.post(f"/invoices/{invoice_guid}/payments/{second_payment_tx_guid}/undo", json={})
+    assert undo_last.status_code == 200
+    undo_last_payload = undo_last.json()
+    assert undo_last_payload["status"] == "PARTIAL"
+    assert undo_last_payload["paid_amount_num"] == 50
+    assert undo_last_payload["open_amount_num"] == 150
+    assert len(undo_last_payload["payments"]) == 1
+
+    undo_first = client.post(f"/invoices/{invoice_guid}/payments/{first_payment_tx_guid}/undo", json={})
+    assert undo_first.status_code == 200
+    undo_first_payload = undo_first.json()
+    assert undo_first_payload["status"] == "POSTED"
+    assert undo_first_payload["paid_amount_num"] == 0
+    assert undo_first_payload["paid_amount_denom"] == 1
+    assert undo_first_payload["open_amount_num"] == 200
+    assert undo_first_payload["open_amount_denom"] == 1
+    assert undo_first_payload["payments"] == []
+
+    unpost = client.post(f"/invoices/{invoice_guid}/unpost", json={})
+    assert unpost.status_code == 200
+    assert unpost.json()["status"] == "UNPAID"
+
+
 def test_invoice_unpost_rejected_when_lot_has_payment_split(client):
     book_id = create_book(client, "Book Payment")
     currency_guid = create_currency(client, "BRL")

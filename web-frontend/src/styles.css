@@ -262,6 +262,13 @@ body {
   background: #fffefb;
 }
 
+.invoice-payment-panel {
+  border: 1px solid #d7cfbf;
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: #fffefb;
+}
+
 .invoice-status {
   border: 1px solid #c8beae;
   border-radius: 8px;
