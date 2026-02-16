@@ -602,3 +602,75 @@ class TransactionOut(BaseOut):
     enter_date: datetime | None
     description: str | None
     splits: list[SplitOut]
+
+
+class IncomeStatementSummaryOut(BaseModel):
+    revenue: float
+    expenses: float
+    net_income: float
+    margin_percent: float | None
+
+
+class IncomeStatementGroupOut(BaseModel):
+    group_key: str
+    label: str
+    amount: float
+
+
+class IncomeStatementLineOut(BaseModel):
+    account_id: str
+    account_name: str
+    account_code: str | None
+    account_type: AccountTypeSchema
+    amount: float
+    transaction_count: int
+
+
+class IncomeStatementSeriesPointOut(BaseModel):
+    period: str
+    revenue: float
+    expenses: float
+    net_income: float
+
+
+class IncomeStatementComparisonOut(BaseModel):
+    period: str
+    net_income: float
+    delta_net_income: float
+    delta_percent: float | None
+
+
+class IncomeStatementComparisonsOut(BaseModel):
+    previous_month: IncomeStatementComparisonOut
+    same_month_last_year: IncomeStatementComparisonOut
+
+
+class IncomeStatementOut(BaseModel):
+    book_id: str
+    month: str
+    currency_mnemonic: str | None
+    summary: IncomeStatementSummaryOut
+    groups: list[IncomeStatementGroupOut]
+    waterfall: list[IncomeStatementGroupOut]
+    lines: list[IncomeStatementLineOut]
+    series: list[IncomeStatementSeriesPointOut]
+    comparisons: IncomeStatementComparisonsOut
+
+
+class IncomeStatementEntryOut(BaseModel):
+    split_guid: str
+    transaction_guid: str
+    movement_date: datetime | None
+    description: str | None
+    memo: str
+    amount: float
+
+
+class IncomeStatementAccountEntriesOut(BaseModel):
+    account_id: str
+    account_name: str
+    account_code: str | None
+    account_type: AccountTypeSchema
+    month: str
+    total_amount: float
+    entries: list[IncomeStatementEntryOut]

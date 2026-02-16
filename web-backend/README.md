@@ -7,6 +7,7 @@ FastAPI backend implementation for the `gnucash-web-spec` scope, including:
 - Customer CRUD
 - Vendor CRUD
 - Transaction posting with split validation (balanced entries)
+- Monthly income statement report (DRE) with comparisons and account drill-down
 
 ## Dependencies
 

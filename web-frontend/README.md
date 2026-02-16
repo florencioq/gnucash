@@ -34,6 +34,14 @@ The app includes a dedicated `Ledger` tab:
 - open ledger directly from the account tree using the ledger button on each non-root account.
 - edit and delete existing postings directly in ledger rows.
 
+## Monthly income statement (DRE)
+
+The app includes a dedicated `DRE Mensal` tab:
+- month filter with dynamic reload;
+- summary KPIs (revenue, expenses, net income and margin);
+- 12-month trend and comparisons (previous month and same month last year);
+- account-level drill-down with detailed postings for the selected month.
+
 ## Customers and vendors
 
 The app includes dedicated `Customers` and `Vendors` tabs:

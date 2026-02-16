@@ -288,7 +288,160 @@ body {
   padding-top: 0.75rem;
 }
 
+.income-statement-grid {
+  display: block;
+}
+
+.income-statement-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.dre-kpi-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.8rem 0.9rem;
+}
+
+.dre-kpi-label {
+  color: #625a4f;
+  font-size: 0.85rem;
+}
+
+.dre-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.dre-kpi-value.positive {
+  color: #1f5f47;
+}
+
+.dre-kpi-value.negative {
+  color: #8c2f2f;
+}
+
+.dre-compare-card {
+  border: 1px solid #d6cdbe;
+  border-radius: 10px;
+  background: #fffefb;
+  padding: 0.75rem 0.85rem;
+}
+
+.dre-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.9rem;
+}
+
+.dre-waterfall-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 160px;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dre-waterfall-label {
+  font-weight: 600;
+}
+
+.dre-waterfall-bar-wrap {
+  height: 14px;
+  border-radius: 999px;
+  background: #f3ebdd;
+  position: relative;
+  overflow: hidden;
+}
+
+.dre-waterfall-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+
+.dre-waterfall-bar.positive {
+  background: linear-gradient(90deg, #1f5f47, #2f7a5d);
+}
+
+.dre-waterfall-bar.negative {
+  background: linear-gradient(90deg, #9c4545, #7f2f2f);
+}
+
+.dre-waterfall-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.dre-waterfall-value.positive {
+  color: #1f5f47;
+}
+
+.dre-waterfall-value.negative {
+  color: #8c2f2f;
+}
+
+.dre-series-cell {
+  width: 170px;
+}
+
+.dre-series-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #efe4d3;
+  overflow: hidden;
+}
+
+.dre-series-bar {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.dre-series-bar.positive {
+  background: #2a694f;
+}
+
+.dre-series-bar.negative {
+  background: #923d3d;
+}
+
+.dre-detail-cell {
+  background: #fcf9f3;
+}
+
+.dre-detail-table-wrap {
+  border: 1px solid #ddd2c2;
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: #fffefc;
+}
+
 @media (max-width: 768px) {
+  .income-statement-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dre-waterfall-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .dre-waterfall-value {
+    text-align: left;
+  }
+
+  .dre-series-cell {
+    width: 120px;
+  }
+
   .invoice-totals {
     grid-template-columns: 1fr;
   }

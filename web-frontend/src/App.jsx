@@ -7,6 +7,7 @@ import VendorsPage from "./pages/VendorsPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
 import InvoicingPage from "./pages/InvoicingPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
+import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import { apiBase } from "./api/client.js";
 
 const tabs = [
@@ -16,6 +17,7 @@ const tabs = [
   { id: "customers", label: "Customers", component: CustomersPage },
   { id: "vendors", label: "Vendors", component: VendorsPage },
   { id: "ledger", label: "Ledger", component: LedgerPage },
+  { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   { id: "invoicing", label: "Faturamento", component: InvoicingPage },
   { id: "billing", label: "Compras", component: BillingPage }
 ];
