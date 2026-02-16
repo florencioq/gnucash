@@ -12,11 +12,17 @@
 ## Books
 
 - `POST /books`: create a Book.
+  - `is_active` MAY be provided to mark the new Book as active.
+  - if there is no active Book yet, the created Book MUST become active.
 - `GET /books`: list Books.
+- `GET /books/active`: fetch the currently active Book.
 - `GET /books/{book_id}`: fetch a Book by ID.
-- `PATCH /books/{book_id}`: update `name`.
+- `PATCH /books/{book_id}`: update `name` and/or `is_active`.
+  - when `is_active=true`, other books MUST be deactivated.
+  - implementation MUST keep at least one active Book when books exist.
 - `DELETE /books/{book_id}`: delete a Book.
   - MUST return `409` if linked `Account` records exist.
+  - when deleting the active Book and other books exist, another Book MUST become active.
 
 ## Commodities
 

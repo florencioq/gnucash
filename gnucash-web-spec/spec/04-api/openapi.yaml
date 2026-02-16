@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GnuCash Web Spec API
-  version: 0.3.0
+  version: 0.3.2
   description: >-
     API contract for Book, Commodity, Account, and Transaction/Split posting endpoints.
 servers:
@@ -95,6 +95,20 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /books/active:
+    get:
+      tags: [Books]
+      summary: Get active book
+      responses:
+        '200':
+          description: Active book
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /commodities:
     post:
@@ -492,6 +506,9 @@ components:
           type: string
           maxLength: 120
           nullable: true
+        is_active:
+          type: boolean
+          nullable: true
       required: []
 
     BookPatch:
@@ -502,11 +519,14 @@ components:
           type: string
           maxLength: 120
           nullable: true
+        is_active:
+          type: boolean
+          nullable: true
 
     Book:
       type: object
       additionalProperties: false
-      required: [id, name, created_at]
+      required: [id, name, is_active, created_at]
       properties:
         id:
           type: string
@@ -515,6 +535,8 @@ components:
           type: string
           maxLength: 120
           nullable: true
+        is_active:
+          type: boolean
         created_at:
           type: string
           format: date-time

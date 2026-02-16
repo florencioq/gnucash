@@ -62,6 +62,9 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - Parent/picking selectors SHOULD hide synthetic `ROOT` nodes and present only actionable descendants.
 - When a parent account is selected in account creation, UI SHOULD auto-set the new account `type` to the parent `type` (except when parent is `ROOT`).
 - UI account path labels in selectors SHOULD omit the synthetic `ROOT` prefix (for example show `Assets / Bank` instead of `Root / Assets / Bank`).
+- Books UI SHOULD provide a way to mark one Book as active.
+- Operational forms (accounts, ledger, customers, vendors, invoicing) SHOULD use the active Book context and SHOULD NOT require manual Book selection per form.
+- Invoicing entry forms SHOULD use a tree picker for `income_account_guid` (revenue account selection) instead of a flat dropdown.
 
 ## Compliance note
 

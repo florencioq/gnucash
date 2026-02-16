@@ -48,15 +48,18 @@ class BaseOut(BaseModel):
 class BookCreate(BaseModel):
     id: UUID | None = None
     name: str | None = Field(default=None, max_length=120)
+    is_active: bool | None = None
 
 
 class BookPatch(BaseModel):
     name: str | None = Field(default=None, max_length=120)
+    is_active: bool | None = None
 
 
 class BookOut(BaseOut):
     id: str
     name: str | None
+    is_active: bool
     created_at: datetime
 
 

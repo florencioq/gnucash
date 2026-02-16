@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import AccountTree from "../components/AccountTree.jsx";
+import useActiveBook from "../hooks/useActiveBook.js";
 
 function filterTree(nodes, query) {
   const q = query.trim().toLowerCase();
@@ -21,15 +22,14 @@ function filterTree(nodes, query) {
 }
 
 export default function AccountsPage({ onOpenLedger = () => {} }) {
-  const [books, setBooks] = useState([]);
   const [commodities, setCommodities] = useState([]);
-  const [selectedBook, setSelectedBook] = useState("");
   const [accounts, setAccounts] = useState([]);
   const [tree, setTree] = useState([]);
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
   const [parentSearch, setParentSearch] = useState("");
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
+  const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [form, setForm] = useState({
     name: "",
     type: "ASSET",
@@ -39,8 +39,6 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   });
 
   const isRootType = form.type === "ROOT";
-
-  const bookOptions = useMemo(() => books, [books]);
   const commodityMnemonicById = useMemo(
     () => new Map(commodities.map((commodity) => [commodity.id, commodity.mnemonic])),
     [commodities]
@@ -91,18 +89,6 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     [tree, parentSearch]
   );
 
-  const loadBooks = async () => {
-    const res = await api.get("/books");
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setBooks(res.data);
-    if (!selectedBook && res.data.length > 0) {
-      setSelectedBook(res.data[0].id);
-    }
-  };
-
   const loadCommodities = async () => {
     const res = await api.get("/commodities?namespace=CURRENCY");
     if (!res.ok) {
@@ -140,15 +126,14 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   };
 
   useEffect(() => {
-    loadBooks();
     loadCommodities();
   }, []);
 
   useEffect(() => {
-    if (selectedBook) {
-      loadAll(selectedBook);
+    if (activeBookId) {
+      loadAll(activeBookId);
     }
-  }, [selectedBook]);
+  }, [activeBookId]);
 
   useEffect(() => {
     setParentPickerOpen(false);
@@ -168,9 +153,9 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
 
   const create = async (event) => {
     event.preventDefault();
-    if (!selectedBook) return;
+    if (!activeBookId) return;
     const payload = {
-      book_id: selectedBook,
+      book_id: activeBookId,
       name: form.name,
       type: form.type,
       commodity_id: form.commodity_id,
@@ -191,7 +176,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       parent_id: "",
       is_placeholder: false
     });
-    await loadAll(selectedBook);
+    await loadAll(activeBookId);
   };
 
   const remove = async (accountId) => {
@@ -200,7 +185,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       setError(res.error);
       return;
     }
-    await loadAll(selectedBook);
+    await loadAll(activeBookId);
   };
 
   const editAccount = async (account) => {
@@ -230,12 +215,12 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       return;
     }
     setEditing(null);
-    await loadAll(selectedBook);
+    await loadAll(activeBookId);
   };
 
   const openLedgerFromTree = (node) => {
-    if (!selectedBook || !node?.id || node.type === "ROOT") return;
-    onOpenLedger({ bookId: selectedBook, accountId: node.id });
+    if (!activeBookId || !node?.id || node.type === "ROOT") return;
+    onOpenLedger({ accountId: node.id });
   };
 
   const selectParentAccount = (accountId) => {
@@ -306,22 +291,13 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
         </div>
       </div>
 
-      <div className="row g-3 mb-4">
-        <div className="col-md-4">
-          <label className="form-label">Book</label>
-          <select
-            className="form-select"
-            value={selectedBook}
-            onChange={(event) => setSelectedBook(event.target.value)}
-          >
-            {bookOptions.map((book) => (
-              <option key={book.id} value={book.id}>
-                {book.name || book.id}
-              </option>
-            ))}
-          </select>
+      {activeBook ? (
+        <div className="small-muted mb-4">Book ativo: {activeBook.name || activeBook.id}</div>
+      ) : (
+        <div className="alert alert-warning" role="alert">
+          Nenhum book ativo. Defina um em Books para continuar.
         </div>
-      </div>
+      )}
 
       <form className="row g-2 align-items-end mb-4" onSubmit={create}>
         <div className="col-md-3">
@@ -424,7 +400,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           </select>
         </div>
         <div className="col-md-3">
-          <button className="btn btn-accent w-100" type="submit">
+          <button className="btn btn-accent w-100" type="submit" disabled={!activeBookId}>
             Create Account
           </button>
         </div>
@@ -433,6 +409,11 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       {error ? (
         <div className="alert alert-danger" role="alert">
           {error.code}: {error.message}
+        </div>
+      ) : null}
+      {!error && activeBookError ? (
+        <div className="alert alert-danger" role="alert">
+          {activeBookError.code}: {activeBookError.message}
         </div>
       ) : null}
 

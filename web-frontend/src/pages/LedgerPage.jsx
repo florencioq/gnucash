@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
+import useActiveBook from "../hooks/useActiveBook.js";
 
 function todayIsoDate() {
   const now = new Date();
@@ -70,14 +71,13 @@ function filterTree(nodes, query) {
   return nodes.map(visit).filter(Boolean);
 }
 
-export default function LedgerPage({ initialBookId = "", initialAccountId = "" }) {
-  const [books, setBooks] = useState([]);
+export default function LedgerPage({ initialAccountId = "" }) {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [accountTree, setAccountTree] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [selectedBook, setSelectedBook] = useState(initialBookId || "");
   const [ledgerAccountId, setLedgerAccountId] = useState(initialAccountId || "");
+  const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [ledgerPickerOpen, setLedgerPickerOpen] = useState(false);
   const [ledgerSearch, setLedgerSearch] = useState("");
   const [counterPickerOpen, setCounterPickerOpen] = useState(false);
@@ -137,18 +137,6 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
     return cache;
   }, [accounts, accountsById]);
 
-  const loadBooks = async () => {
-    const res = await api.get("/books");
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setBooks(res.data);
-    if (!selectedBook && res.data.length > 0) {
-      setSelectedBook(initialBookId || res.data[0].id);
-    }
-  };
-
   const loadCommodities = async () => {
     const res = await api.get("/commodities?namespace=CURRENCY");
     if (!res.ok) {
@@ -197,25 +185,18 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
   };
 
   useEffect(() => {
-    loadBooks();
     loadCommodities();
   }, []);
 
   useEffect(() => {
-    if (selectedBook) {
+    if (activeBookId) {
       Promise.all([
-        loadAccounts(selectedBook),
-        loadAccountTree(selectedBook),
-        loadTransactions(selectedBook)
+        loadAccounts(activeBookId),
+        loadAccountTree(activeBookId),
+        loadTransactions(activeBookId)
       ]);
     }
-  }, [selectedBook]);
-
-  useEffect(() => {
-    if (initialBookId) {
-      setSelectedBook(initialBookId);
-    }
-  }, [initialBookId]);
+  }, [activeBookId]);
 
   useEffect(() => {
     if (initialAccountId && accounts.some((account) => account.id === initialAccountId)) {
@@ -241,7 +222,7 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
   useEffect(() => {
     setEditingTxGuid("");
     setSavingTxGuid("");
-  }, [ledgerAccountId, selectedBook]);
+  }, [ledgerAccountId, activeBookId]);
 
   useEffect(() => {
     if (editingTxGuid && !transactionsById.has(editingTxGuid)) {
@@ -572,7 +553,7 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
       description: "",
       amount: ""
     }));
-    await loadTransactions(selectedBook);
+    await loadTransactions(activeBookId);
   };
 
   const deleteLedgerEntry = async (txGuid) => {
@@ -593,7 +574,7 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
       setEditingTxGuid("");
       setSavingTxGuid("");
     }
-    await loadTransactions(selectedBook);
+    await loadTransactions(activeBookId);
   };
 
   return (
@@ -605,22 +586,16 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
         </div>
       </div>
 
-      <div className="row g-3 mb-4">
-        <div className="col-md-4">
-          <label className="form-label">Book</label>
-          <select
-            className="form-select"
-            value={selectedBook}
-            onChange={(event) => setSelectedBook(event.target.value)}
-          >
-            {books.map((book) => (
-              <option key={book.id} value={book.id}>
-                {book.name || book.id}
-              </option>
-            ))}
-          </select>
+      {activeBook ? (
+        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+      ) : (
+        <div className="alert alert-warning" role="alert">
+          Nenhum book ativo. Defina um em Books para continuar.
         </div>
-        <div className="col-md-8">
+      )}
+
+      <div className="row g-3 mb-4">
+        <div className="col-md-12">
           <label className="form-label">Conta do razao</label>
           <div className="tree-select">
             <button
@@ -655,6 +630,11 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
       {error ? (
         <div className="alert alert-danger" role="alert">
           {error.code}: {error.message}
+        </div>
+      ) : null}
+      {!error && activeBookError ? (
+        <div className="alert alert-danger" role="alert">
+          {activeBookError.code}: {activeBookError.message}
         </div>
       ) : null}
 
@@ -799,7 +779,7 @@ export default function LedgerPage({ initialBookId = "", initialAccountId = "" }
           <button
             className="btn btn-accent"
             type="submit"
-            disabled={Boolean(editingTxGuid) && savingTxGuid === editingTxGuid}
+            disabled={!activeBookId || (Boolean(editingTxGuid) && savingTxGuid === editingTxGuid)}
           >
             {editingTxGuid ? (savingTxGuid === editingTxGuid ? "Salvando..." : "Salvar alteracoes") : "Lancar no Razao"}
           </button>

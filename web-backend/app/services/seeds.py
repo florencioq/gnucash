@@ -12,10 +12,11 @@ SEED_COMMODITY_BRL_ID = "182c9998-96f1-46c9-bd4d-56bde24800d3"
 def seed_minimum_data(db: Session) -> None:
     book = db.get(Book, SEED_BOOK_ID)
     if book is None:
-        book = Book(id=SEED_BOOK_ID, name="Demo")
+        book = Book(id=SEED_BOOK_ID, name="Demo", is_active=True)
         db.add(book)
     else:
         book.name = "Demo"
+        book.is_active = True
 
     commodity = db.get(Commodity, SEED_COMMODITY_BRL_ID)
     if commodity is None:

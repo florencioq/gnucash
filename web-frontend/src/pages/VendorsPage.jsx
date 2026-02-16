@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
+import useActiveBook from "../hooks/useActiveBook.js";
 
 function emptyToNull(value) {
   const trimmed = String(value ?? "").trim();
@@ -7,12 +8,11 @@ function emptyToNull(value) {
 }
 
 export default function VendorsPage() {
-  const [books, setBooks] = useState([]);
   const [commodities, setCommodities] = useState([]);
-  const [selectedBook, setSelectedBook] = useState("");
   const [vendors, setVendors] = useState([]);
   const [editingGuid, setEditingGuid] = useState("");
   const [error, setError] = useState(null);
+  const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [form, setForm] = useState({
     name: "",
     id: "",
@@ -46,18 +46,6 @@ export default function VendorsPage() {
     });
   };
 
-  const loadBooks = async () => {
-    const res = await api.get("/books");
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setBooks(res.data);
-    if (!selectedBook && res.data.length > 0) {
-      setSelectedBook(res.data[0].id);
-    }
-  };
-
   const loadCommodities = async () => {
     const res = await api.get("/commodities?namespace=CURRENCY");
     if (!res.ok) {
@@ -82,20 +70,19 @@ export default function VendorsPage() {
   };
 
   useEffect(() => {
-    loadBooks();
     loadCommodities();
   }, []);
 
   useEffect(() => {
-    if (selectedBook) {
-      loadVendors(selectedBook);
+    if (activeBookId) {
+      loadVendors(activeBookId);
       setEditingGuid("");
     }
-  }, [selectedBook]);
+  }, [activeBookId]);
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!selectedBook) return;
+    if (!activeBookId) return;
 
     const payload = {
       name: form.name.trim(),
@@ -110,7 +97,7 @@ export default function VendorsPage() {
       tax_inc: emptyToNull(form.tax_inc)
     };
     if (!editingGuid) {
-      payload.book_id = selectedBook;
+      payload.book_id = activeBookId;
     }
 
     const res = editingGuid
@@ -123,7 +110,7 @@ export default function VendorsPage() {
 
     setEditingGuid("");
     resetForm(form.currency_guid);
-    await loadVendors(selectedBook);
+    await loadVendors(activeBookId);
   };
 
   const startEdit = (vendor) => {
@@ -157,7 +144,7 @@ export default function VendorsPage() {
     if (editingGuid === vendorGuid) {
       cancelEdit();
     }
-    await loadVendors(selectedBook);
+    await loadVendors(activeBookId);
   };
 
   return (
@@ -169,22 +156,13 @@ export default function VendorsPage() {
         </div>
       </div>
 
-      <div className="row g-3 mb-3">
-        <div className="col-md-4">
-          <label className="form-label">Book</label>
-          <select
-            className="form-select"
-            value={selectedBook}
-            onChange={(event) => setSelectedBook(event.target.value)}
-          >
-            {books.map((book) => (
-              <option key={book.id} value={book.id}>
-                {book.name || book.id}
-              </option>
-            ))}
-          </select>
+      {activeBook ? (
+        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+      ) : (
+        <div className="alert alert-warning" role="alert">
+          Nenhum book ativo. Defina um em Books para continuar.
         </div>
-      </div>
+      )}
 
       <form className="row g-2 align-items-end mb-4" onSubmit={submit}>
         <div className="col-md-3">
@@ -289,7 +267,7 @@ export default function VendorsPage() {
               Cancel
             </button>
           ) : null}
-          <button className="btn btn-accent" type="submit">
+          <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
             {editingGuid ? "Save Vendor" : "Create Vendor"}
           </button>
         </div>
@@ -298,6 +276,11 @@ export default function VendorsPage() {
       {error ? (
         <div className="alert alert-danger" role="alert">
           {error.code}: {error.message}
+        </div>
+      ) : null}
+      {!error && activeBookError ? (
+        <div className="alert alert-danger" role="alert">
+          {activeBookError.code}: {activeBookError.message}
         </div>
       ) : null}
 

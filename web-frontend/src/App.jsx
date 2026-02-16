@@ -20,11 +20,11 @@ const tabs = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("books");
-  const [ledgerTarget, setLedgerTarget] = useState({ bookId: "", accountId: "" });
+  const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState("");
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab).component;
 
-  const handleOpenLedger = ({ bookId, accountId }) => {
-    setLedgerTarget({ bookId, accountId });
+  const handleOpenLedger = ({ accountId }) => {
+    setLedgerTargetAccountId(accountId || "");
     setActiveTab("ledger");
   };
 
@@ -32,7 +32,7 @@ export default function App() {
     activeTab === "accounts"
       ? { onOpenLedger: handleOpenLedger }
       : activeTab === "ledger"
-        ? { initialBookId: ledgerTarget.bookId, initialAccountId: ledgerTarget.accountId }
+        ? { initialAccountId: ledgerTargetAccountId }
         : {};
 
   return (

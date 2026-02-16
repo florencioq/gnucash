@@ -104,3 +104,10 @@
 2. Send `PATCH /transactions/{tx_guid}` replacing description and splits with another balanced pair in the same book.
 3. Validate `200`.
 4. Validate updated payload reflects the new description and replacement splits.
+
+## Scenario 16: Active book selection flow
+
+1. Create `Book A` and validate it is returned as active.
+2. Create `Book B` without `is_active` and validate `Book A` remains active.
+3. Send `PATCH /books/{book_b_id}` with `is_active=true`.
+4. Validate `GET /books/active` returns `Book B` and `Book A.is_active=false`.

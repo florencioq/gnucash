@@ -4,6 +4,7 @@ import { api } from "../api/client.js";
 export default function BooksPage() {
   const [books, setBooks] = useState([]);
   const [name, setName] = useState("");
+  const [createIsActive, setCreateIsActive] = useState(false);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState({});
 
@@ -23,12 +24,13 @@ export default function BooksPage() {
 
   const create = async (event) => {
     event.preventDefault();
-    const res = await api.post("/books", { name: name || null });
+    const res = await api.post("/books", { name: name || null, is_active: createIsActive });
     if (!res.ok) {
       setError(res.error);
       return;
     }
     setName("");
+    setCreateIsActive(false);
     await load();
   };
 
@@ -60,6 +62,15 @@ export default function BooksPage() {
     await load();
   };
 
+  const activateBook = async (bookId) => {
+    const res = await api.patch(`/books/${bookId}`, { is_active: true });
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    await load();
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -80,6 +91,21 @@ export default function BooksPage() {
           />
         </div>
         <div className="col-md-3">
+          <label className="form-label d-block">Ativo</label>
+          <div className="form-check mt-2">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              checked={createIsActive}
+              onChange={(event) => setCreateIsActive(event.target.checked)}
+              id="create-active-book"
+            />
+            <label className="form-check-label" htmlFor="create-active-book">
+              Marcar como ativo
+            </label>
+          </div>
+        </div>
+        <div className="col-md-3">
           <button className="btn btn-accent w-100" type="submit">
             Create Book
           </button>
@@ -97,6 +123,7 @@ export default function BooksPage() {
           <thead>
             <tr>
               <th>Name</th>
+              <th>Ativo</th>
               <th>Created</th>
               <th>ID</th>
               <th></th>
@@ -116,6 +143,13 @@ export default function BooksPage() {
                     />
                   ) : (
                     <span className="fw-semibold">{book.name || "(unnamed)"}</span>
+                  )}
+                </td>
+                <td>
+                  {book.is_active ? (
+                    <span className="badge text-bg-success">Ativo</span>
+                  ) : (
+                    <span className="small-muted">-</span>
                   )}
                 </td>
                 <td>{new Date(book.created_at).toLocaleString()}</td>
@@ -138,6 +172,15 @@ export default function BooksPage() {
                       Edit
                     </button>
                   )}
+                  {!book.is_active ? (
+                    <button
+                      className="btn btn-sm btn-outline-primary me-2"
+                      onClick={() => activateBook(book.id)}
+                      type="button"
+                    >
+                      Ativar
+                    </button>
+                  ) : null}
                   <button
                     className="btn btn-sm btn-outline-danger"
                     onClick={() => remove(book.id)}

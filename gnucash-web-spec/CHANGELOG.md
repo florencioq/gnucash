@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.3 - 2026-02-16
+
+Invoicing UX profile update:
+- documented that invoice entry revenue-account selection SHOULD use a tree picker (`income_account_guid`) rather than a flat dropdown
+
+## v0.3.2 - 2026-02-16
+
+Active-book workflow alignment:
+- added active-book contract updates to endpoint guide (`GET /books/active`, `is_active` create/patch behavior)
+- updated OpenAPI book schemas with `is_active` and added `GET /books/active`
+- updated React implementation profile to use active-book context across operational forms
+
 ## v0.3.1 - 2026-02-16
 
 Specification clarifications and React profile UX updates:

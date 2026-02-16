@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
+import useActiveBook from "../hooks/useActiveBook.js";
 
 function todayIsoDate() {
   const now = new Date();
@@ -86,17 +87,52 @@ function defaultEntryForm(incomeAccountGuid = "") {
   };
 }
 
+function filterTree(nodes, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+
+  const visit = (node) => {
+    const selfMatch =
+      (node.name || "").toLowerCase().includes(q) ||
+      (node.type || "").toLowerCase().includes(q);
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (selfMatch || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
+function keepIncomeBranches(nodes) {
+  const visit = (node) => {
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (node.type === "ROOT") {
+      return children.length > 0 ? { ...node, children } : null;
+    }
+    if (node.type === "INCOME" || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
 export default function InvoicingPage() {
-  const [books, setBooks] = useState([]);
   const [commodities, setCommodities] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [accountTree, setAccountTree] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [selectedBook, setSelectedBook] = useState("");
   const [selectedInvoiceGuid, setSelectedInvoiceGuid] = useState("");
   const [editingEntryGuid, setEditingEntryGuid] = useState("");
   const [entryForm, setEntryForm] = useState(defaultEntryForm());
+  const [incomePickerOpen, setIncomePickerOpen] = useState(false);
+  const [incomeSearch, setIncomeSearch] = useState("");
   const [error, setError] = useState(null);
+  const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     type: "INVOICE",
@@ -120,6 +156,42 @@ export default function InvoicingPage() {
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts]
   );
+  const accountFullNameById = useMemo(() => {
+    const cache = new Map();
+
+    const build = (accountId, visited = new Set()) => {
+      if (cache.has(accountId)) return cache.get(accountId);
+      if (visited.has(accountId)) return accountsById.get(accountId)?.name || accountId;
+      visited.add(accountId);
+
+      const account = accountsById.get(accountId);
+      if (!account) return accountId;
+      if (account.type === "ROOT" || !account.parent_id) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parent = accountsById.get(account.parent_id);
+      if (!parent) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parentName = build(account.parent_id, visited);
+      const fullName =
+        parent.type === "ROOT"
+          ? account.name
+          : `${parentName} / ${account.name}`;
+      cache.set(accountId, fullName);
+      return fullName;
+    };
+
+    for (const account of accounts) {
+      build(account.id);
+    }
+
+    return cache;
+  }, [accounts, accountsById]);
   const incomeAccounts = useMemo(
     () => accounts.filter((account) => account.type === "INCOME"),
     [accounts]
@@ -134,18 +206,15 @@ export default function InvoicingPage() {
   const selectedInvoiceMnemonic = selectedInvoice
     ? commoditiesById.get(selectedInvoice.currency_guid)?.mnemonic || ""
     : "";
-
-  const loadBooks = async () => {
-    const response = await api.get("/books");
-    if (!response.ok) {
-      setError(response.error);
-      return;
-    }
-    setBooks(response.data);
-    if (!selectedBook && response.data.length > 0) {
-      setSelectedBook(response.data[0].id);
-    }
-  };
+  const selectedIncomeAccount = accountsById.get(entryForm.income_account_guid) || null;
+  const incomeAccountLabel = selectedIncomeAccount
+    ? `${accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name} (${selectedIncomeAccount.type})`
+    : "Selecione a conta de receita";
+  const incomeTree = useMemo(() => keepIncomeBranches(accountTree), [accountTree]);
+  const visibleIncomeTree = useMemo(
+    () => filterTree(incomeTree, incomeSearch),
+    [incomeTree, incomeSearch]
+  );
 
   const loadCommodities = async () => {
     const response = await api.get("/commodities?namespace=CURRENCY");
@@ -177,6 +246,16 @@ export default function InvoicingPage() {
     return nonRoot;
   };
 
+  const loadAccountTree = async (bookId) => {
+    const response = await api.get(`/accounts/tree?book_id=${bookId}`);
+    if (!response.ok) {
+      setError(response.error);
+      return [];
+    }
+    setAccountTree(response.data);
+    return response.data;
+  };
+
   const loadInvoices = async (bookId, preferredGuid = "") => {
     const response = await api.get(`/invoices?book_id=${bookId}`);
     if (!response.ok) {
@@ -201,7 +280,8 @@ export default function InvoicingPage() {
     const [loadedCustomers, loadedAccounts, loadedInvoices] = await Promise.all([
       loadCustomers(bookId),
       loadAccounts(bookId),
-      loadInvoices(bookId, preferredGuid)
+      loadInvoices(bookId, preferredGuid),
+      loadAccountTree(bookId)
     ]);
     const defaultCustomer = loadedCustomers[0]?.guid || "";
     const defaultIncome = loadedAccounts.find((account) => account.type === "INCOME")?.id || "";
@@ -223,15 +303,14 @@ export default function InvoicingPage() {
   };
 
   useEffect(() => {
-    loadBooks();
     loadCommodities();
   }, []);
 
   useEffect(() => {
-    if (!selectedBook) return;
-    loadBookData(selectedBook);
+    if (!activeBookId) return;
+    loadBookData(activeBookId);
     setEditingEntryGuid("");
-  }, [selectedBook]);
+  }, [activeBookId]);
 
   useEffect(() => {
     if (!selectedInvoiceGuid) {
@@ -240,6 +319,62 @@ export default function InvoicingPage() {
       setEntryForm(defaultEntryForm(defaultIncome));
     }
   }, [selectedInvoiceGuid, incomeAccounts]);
+
+  useEffect(() => {
+    setIncomePickerOpen(false);
+    setIncomeSearch("");
+  }, [selectedInvoiceGuid, editingEntryGuid, accountTree]);
+
+  const selectIncomeAccount = (accountId) => {
+    setEntryForm((current) => ({ ...current, income_account_guid: accountId }));
+    setIncomeSearch("");
+    setIncomePickerOpen(false);
+  };
+
+  const toggleIncomePicker = () => {
+    setIncomePickerOpen((current) => {
+      const next = !current;
+      if (next) setIncomeSearch("");
+      return next;
+    });
+  };
+
+  const renderIncomeTreeNodes = (nodes, depth = 0) => {
+    return nodes.map((node) => {
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderIncomeTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
+      const selected = entryForm.income_account_guid === node.id;
+      const selectable = node.type === "INCOME";
+
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            className={`counter-tree-node ${selected ? "is-selected" : ""}`}
+            style={{ marginLeft: `${depth * 14}px` }}
+            disabled={!selectable}
+            onClick={() => {
+              if (selectable) selectIncomeAccount(node.id);
+            }}
+          >
+            <span className="counter-tree-name">{node.name}</span>
+            <span className="badge badge-soft text-uppercase">{node.type}</span>
+          </button>
+          {node.children && node.children.length > 0
+            ? renderIncomeTreeNodes(node.children, depth + 1)
+            : null}
+        </div>
+      );
+    });
+  };
 
   const openCreateDialog = () => {
     setCreateOpen(true);
@@ -261,7 +396,7 @@ export default function InvoicingPage() {
 
   const submitCreate = async (event) => {
     event.preventDefault();
-    if (!selectedBook) return;
+    if (!activeBookId) return;
     if (!createForm.customer_guid) {
       setError({ code: "VALIDATION_ERROR", message: "Selecione um cliente", details: {} });
       return;
@@ -269,7 +404,7 @@ export default function InvoicingPage() {
 
     const customer = customersById.get(createForm.customer_guid);
     const payload = {
-      book_id: selectedBook,
+      book_id: activeBookId,
       type: createForm.type,
       id: createForm.id.trim() || nextInvoiceId(invoices),
       date_opened: createForm.date_opened ? `${createForm.date_opened}T00:00:00Z` : null,
@@ -287,7 +422,7 @@ export default function InvoicingPage() {
     }
 
     setCreateOpen(false);
-    await loadBookData(selectedBook, response.data.guid);
+    await loadBookData(activeBookId, response.data.guid);
   };
 
   const submitInvoicePatch = async (event) => {
@@ -312,7 +447,7 @@ export default function InvoicingPage() {
       return;
     }
 
-    await loadBookData(selectedBook, selectedInvoice.guid);
+    await loadBookData(activeBookId, selectedInvoice.guid);
   };
 
   const removeInvoice = async (invoiceGuid) => {
@@ -323,7 +458,7 @@ export default function InvoicingPage() {
     }
     setEditingEntryGuid("");
     setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
-    await loadBookData(selectedBook);
+    await loadBookData(activeBookId);
   };
 
   const resetEntryEditor = () => {
@@ -363,7 +498,7 @@ export default function InvoicingPage() {
     if (editingEntryGuid === entryGuid) {
       resetEntryEditor();
     }
-    await loadBookData(selectedBook, selectedInvoice.guid);
+    await loadBookData(activeBookId, selectedInvoice.guid);
   };
 
   const submitEntry = async (event) => {
@@ -426,7 +561,7 @@ export default function InvoicingPage() {
     }
 
     resetEntryEditor();
-    await loadBookData(selectedBook, selectedInvoice.guid);
+    await loadBookData(activeBookId, selectedInvoice.guid);
   };
 
   return (
@@ -436,34 +571,27 @@ export default function InvoicingPage() {
           <h2 className="mb-1">Faturamento</h2>
           <div className="small-muted">Fluxo de faturas de cliente em duas etapas (nova fatura e edicao).</div>
         </div>
-        <button type="button" className="btn btn-accent" onClick={openCreateDialog} disabled={!selectedBook}>
+        <button type="button" className="btn btn-accent" onClick={openCreateDialog} disabled={!activeBookId}>
           Nova Fatura
         </button>
       </div>
 
-      <div className="row g-3 mb-3">
-        <div className="col-lg-4 col-md-6">
-          <label className="form-label">Book</label>
-          <select
-            className="form-select"
-            value={selectedBook}
-            onChange={(event) => setSelectedBook(event.target.value)}
-          >
-            {books.map((book) => (
-              <option key={book.id} value={book.id}>
-                {book.name || book.id}
-              </option>
-            ))}
-          </select>
+      {activeBook ? (
+        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+      ) : (
+        <div className="alert alert-warning" role="alert">
+          Nenhum book ativo. Defina um em Books para continuar.
         </div>
+      )}
 
-        <div className="col-lg-8 col-md-6">
+      <div className="row g-3 mb-3">
+        <div className="col-12">
           <label className="form-label">Faturas</label>
           <select
             className="form-select"
             value={selectedInvoiceGuid}
             onChange={(event) => setSelectedInvoiceGuid(event.target.value)}
-            disabled={!selectedBook || invoices.length === 0}
+            disabled={!activeBookId || invoices.length === 0}
           >
             {invoices.length === 0 ? (
               <option value="">Nenhuma fatura neste book.</option>
@@ -485,6 +613,11 @@ export default function InvoicingPage() {
       {error ? (
         <div className="alert alert-danger" role="alert">
           {error.code}: {error.message}
+        </div>
+      ) : null}
+      {!error && activeBookError ? (
+        <div className="alert alert-danger" role="alert">
+          {activeBookError.code}: {activeBookError.message}
         </div>
       ) : null}
 
@@ -826,7 +959,7 @@ export default function InvoicingPage() {
                           <td>{formatDateDisplay(entry.date)}</td>
                           <td>{entry.description || "-"}</td>
                           <td>{entry.action || "-"}</td>
-                          <td>{account?.name || entry.income_account_guid}</td>
+                          <td>{account ? accountFullNameById.get(account.id) || account.name : entry.income_account_guid}</td>
                           <td>{decimalString(rationalToNumber(entry.quantity_num, entry.quantity_denom), 3)}</td>
                           <td>{formatMoney(entry.unit_price_num, entry.unit_price_denom, selectedInvoiceMnemonic)}</td>
                           <td>{discountLabel}</td>
@@ -898,21 +1031,33 @@ export default function InvoicingPage() {
                   </div>
                   <div className="col-md-2">
                     <label className="form-label">Conta de Receita</label>
-                    <select
-                      className="form-select"
-                      value={entryForm.income_account_guid}
-                      onChange={(event) =>
-                        setEntryForm((current) => ({ ...current, income_account_guid: event.target.value }))
-                      }
-                      required
-                    >
-                      <option value="">Selecione...</option>
-                      {incomeAccounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="tree-select">
+                      <button
+                        type="button"
+                        className="form-select tree-select-toggle"
+                        onClick={toggleIncomePicker}
+                      >
+                        <span className="tree-select-label">{incomeAccountLabel}</span>
+                        <span className="tree-select-caret">{incomePickerOpen ? "▲" : "▼"}</span>
+                      </button>
+                      {incomePickerOpen ? (
+                        <div className="tree-select-menu">
+                          <input
+                            className="form-control mb-2"
+                            value={incomeSearch}
+                            onChange={(event) => setIncomeSearch(event.target.value)}
+                            placeholder="Filtrar conta de receita"
+                          />
+                          <div className="counter-tree-panel">
+                            {visibleIncomeTree.length > 0 ? (
+                              renderIncomeTreeNodes(visibleIncomeTree)
+                            ) : (
+                              <div className="small-muted">Nenhuma conta de receita encontrada para o filtro.</div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="col-md-1">
                     <label className="form-label">Quantidade</label>
