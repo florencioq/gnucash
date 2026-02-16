@@ -58,6 +58,10 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - Flat account lists MAY be omitted if the tree view provides editing and deletion affordances.
 - Account editing SHOULD allow toggling `is_placeholder` in addition to updating the name.
 - Ledger UI SHOULD allow editing existing postings by reusing `PATCH /transactions/{tx_guid}`.
+- Account creation SHOULD use a hierarchical parent selector (tree picker) instead of a flat parent dropdown.
+- Parent/picking selectors SHOULD hide synthetic `ROOT` nodes and present only actionable descendants.
+- When a parent account is selected in account creation, UI SHOULD auto-set the new account `type` to the parent `type` (except when parent is `ROOT`).
+- UI account path labels in selectors SHOULD omit the synthetic `ROOT` prefix (for example show `Assets / Bank` instead of `Root / Assets / Bank`).
 
 ## Compliance note
 

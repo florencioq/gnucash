@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.1 - 2026-02-16
+
+Specification clarifications and React profile UX updates:
+- clarified glossary and endpoint guide expectations for handling synthetic `ROOT` nodes in client selectors
+- documented account-creation UX rule to auto-set child account `type` from selected parent `type` (except `ROOT`)
+- documented tree-picker-first account parent selection and omission of `ROOT` prefix in selector path labels
+
 ## v0.3.0 - 2026-02-15
 
 Extended API and profile coverage:

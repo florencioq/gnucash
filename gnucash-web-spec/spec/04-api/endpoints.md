@@ -33,6 +33,7 @@
 - `POST /accounts`: create an Account.
   - `book_id` and `commodity_id` are required.
   - `parent_id` is optional, but MUST reference an account in the same `book_id`.
+  - client UIs SHOULD default account `type` to the selected parent account `type` when `parent_id` is chosen (except when parent is `ROOT`).
 - `GET /accounts?book_id=`: list accounts for a Book.
 - `GET /accounts/{account_id}`: fetch by ID.
 - `PATCH /accounts/{account_id}`: partial update.
@@ -44,6 +45,7 @@
 - `GET /accounts/tree?book_id=`: return hierarchy for `book_id`.
   - sibling nodes MUST be ordered by `name`.
   - each node MUST expose `code` (nullable) and current account balance as exact rational fields (`balance_num`, `balance_denom`).
+  - payload MAY include the synthetic `ROOT` node; UI selectors SHOULD hide `ROOT` when choosing parent/posting accounts.
 
 ## Transactions and Splits (Accounting Postings)
 

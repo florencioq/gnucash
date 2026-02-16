@@ -36,6 +36,8 @@ Account category. MUST be one of:
 
 Type meaning:
 - `ROOT`: synthetic root node for a book's account hierarchy.
+  - API payloads (for example `GET /accounts/tree`) MAY include `ROOT` nodes.
+  - UI pickers used to select posting/parent targets SHOULD hide `ROOT` and expose only actionable descendants.
 - `ASSET`: value owned or controlled by the book (for example, cash, bank balances, receivables, inventory).
 - `LIABILITY`: obligation owed by the book to another party (for example, loans, credit card balances, payables).
 - `INCOME`: inflow that increases economic benefit during a period (for example, salary, sales revenue, interest received).
