@@ -1,74 +1,115 @@
 openapi: 3.1.0
 info:
-  title: GnuCash Web Spec API
-  version: 0.3.7
-  description: >-
-    API contract for Book, Commodity, Account, Invoice, and Transaction/Split posting endpoints.
-servers:
-  - url: https://api.example.com
-    description: Example server
-
-tags:
-  - name: Books
-  - name: Commodities
-  - name: Accounts
-  - name: Invoices
-  - name: Bills
-  - name: Transactions
-
+  title: GnuCash Web Backend
+  version: 0.1.0
 paths:
+  /health:
+    get:
+      summary: Health
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Health Health Get
   /books:
+    get:
+      tags:
+      - Books
+      summary: List Books
+      operationId: list_books_books_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/BookOut'
+                type: array
+                title: Response List Books Books Get
     post:
-      tags: [Books]
-      summary: Create book
+      tags:
+      - Books
+      summary: Create Book
+      operationId: create_book_books_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/BookCreate'
+        required: true
       responses:
         '201':
-          description: Book created
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Book'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/BookOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /books/active:
     get:
-      tags: [Books]
-      summary: List books
+      tags:
+      - Books
+      summary: Get Active Book
+      operationId: get_active_book_books_active_get
       responses:
         '200':
-          description: Book list
+          description: Successful Response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Book'
-
+                $ref: '#/components/schemas/BookOut'
   /books/{book_id}:
-    parameters:
-      - $ref: '#/components/parameters/BookId'
     get:
-      tags: [Books]
-      summary: Get book by id
+      tags:
+      - Books
+      summary: Get Book
+      operationId: get_book_books__book_id__get
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
       responses:
         '200':
-          description: Book
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Book'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/BookOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     patch:
-      tags: [Books]
-      summary: Update book
+      tags:
+      - Books
+      summary: Patch Book
+      operationId: patch_book_books__book_id__patch
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
       requestBody:
         required: true
         content:
@@ -77,45 +118,45 @@ paths:
               $ref: '#/components/schemas/BookPatch'
       responses:
         '200':
-          description: Updated book
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Book'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/BookOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
-      tags: [Books]
-      summary: Delete book
-      description: MUST fail with 409 when book still has accounts.
+      tags:
+      - Books
+      summary: Delete Book
+      operationId: delete_book_books__book_id__delete
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
       responses:
         '204':
-          description: Book deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /books/active:
-    get:
-      tags: [Books]
-      summary: Get active book
-      responses:
-        '200':
-          description: Active book
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Book'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
+                $ref: '#/components/schemas/HTTPValidationError'
   /commodities:
     post:
-      tags: [Commodities]
-      summary: Create commodity
+      tags:
+      - Commodities
+      summary: Create Commodity
+      operationId: create_commodity_commodities_post
       requestBody:
         required: true
         content:
@@ -124,53 +165,87 @@ paths:
               $ref: '#/components/schemas/CommodityCreate'
       responses:
         '201':
-          description: Commodity created
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Commodity'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/CommodityOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     get:
-      tags: [Commodities]
-      summary: List commodities
+      tags:
+      - Commodities
+      summary: List Commodities
+      operationId: list_commodities_commodities_get
       parameters:
-        - in: query
-          name: namespace
-          required: false
-          schema:
-            type: string
-            maxLength: 32
+      - name: namespace
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Namespace
       responses:
         '200':
-          description: Commodity list
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Commodity'
-
-  /commodities/{commodity_id}:
-    parameters:
-      - $ref: '#/components/parameters/CommodityId'
-    get:
-      tags: [Commodities]
-      summary: Get commodity by id
-      responses:
-        '200':
-          description: Commodity
+                  $ref: '#/components/schemas/CommodityOut'
+                title: Response List Commodities Commodities Get
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Commodity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/HTTPValidationError'
+  /commodities/{commodity_id}:
+    get:
+      tags:
+      - Commodities
+      summary: Get Commodity
+      operationId: get_commodity_commodities__commodity_id__get
+      parameters:
+      - name: commodity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Commodity Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommodityOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     patch:
-      tags: [Commodities]
-      summary: Update commodity
+      tags:
+      - Commodities
+      summary: Patch Commodity
+      operationId: patch_commodity_commodities__commodity_id__patch
+      parameters:
+      - name: commodity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Commodity Id
       requestBody:
         required: true
         content:
@@ -179,33 +254,45 @@ paths:
               $ref: '#/components/schemas/CommodityPatch'
       responses:
         '200':
-          description: Updated commodity
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Commodity'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/CommodityOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
-      tags: [Commodities]
-      summary: Delete commodity
-      description: MUST fail with 409 when commodity is referenced by any account.
+      tags:
+      - Commodities
+      summary: Delete Commodity
+      operationId: delete_commodity_commodities__commodity_id__delete
+      parameters:
+      - name: commodity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Commodity Id
       responses:
         '204':
-          description: Commodity deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /accounts:
     post:
-      tags: [Accounts]
-      summary: Create account
+      tags:
+      - Accounts
+      summary: Create Account
+      operationId: create_account_accounts_post
       requestBody:
         required: true
         content:
@@ -214,55 +301,116 @@ paths:
               $ref: '#/components/schemas/AccountCreate'
       responses:
         '201':
-          description: Account created
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/AccountOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     get:
-      tags: [Accounts]
-      summary: List accounts by book
+      tags:
+      - Accounts
+      summary: List Accounts
+      operationId: list_accounts_accounts_get
       parameters:
-        - in: query
-          name: book_id
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
       responses:
         '200':
-          description: Account list for the provided book
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Account'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /accounts/{account_id}:
-    parameters:
-      - $ref: '#/components/parameters/AccountId'
-    get:
-      tags: [Accounts]
-      summary: Get account by id
-      responses:
-        '200':
-          description: Account
+                  $ref: '#/components/schemas/AccountOut'
+                title: Response List Accounts Accounts Get
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/HTTPValidationError'
+  /accounts/tree:
+    get:
+      tags:
+      - Accounts
+      summary: Get Account Tree
+      operationId: get_account_tree_accounts_tree_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountTreeNode'
+                title: Response Get Account Tree Accounts Tree Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /accounts/{account_id}:
+    get:
+      tags:
+      - Accounts
+      summary: Get Account
+      operationId: get_account_accounts__account_id__get
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Account Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     patch:
-      tags: [Accounts]
-      summary: Update account
+      tags:
+      - Accounts
+      summary: Patch Account
+      operationId: patch_account_accounts__account_id__patch
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Account Id
       requestBody:
         required: true
         content:
@@ -271,559 +419,45 @@ paths:
               $ref: '#/components/schemas/AccountPatch'
       responses:
         '200':
-          description: Updated account
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/AccountOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
-      tags: [Accounts]
-      summary: Delete account
-      description: >-
-        MUST fail with 409 when account has children.
-        Future constraint: implementations MAY also block delete when referenced by future posting entities.
-      responses:
-        '204':
-          description: Account deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /accounts/tree:
-    get:
-      tags: [Accounts]
-      summary: Get account tree by book
-      description: >-
-        Returns hierarchical tree sorted by account name at each level.
-        Each node includes account code and exact current balance for that account.
+      tags:
+      - Accounts
+      summary: Delete Account
+      operationId: delete_account_accounts__account_id__delete
       parameters:
-        - in: query
-          name: book_id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Root nodes for the account hierarchy
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AccountTreeNode'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /invoices:
-    post:
-      tags: [Invoices]
-      summary: Create invoice
-      requestBody:
+      - name: account_id
+        in: path
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceCreate'
-      responses:
-        '201':
-          description: Invoice created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
-    get:
-      tags: [Invoices]
-      summary: List invoices by book
-      parameters:
-        - in: query
-          name: book_id
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - in: query
-          name: customer_guid
-          required: false
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice list for the provided book
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Invoice'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /invoices/{invoice_guid}:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-    get:
-      tags: [Invoices]
-      summary: Get invoice by guid
-      responses:
-        '200':
-          description: Invoice
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [Invoices]
-      summary: Update invoice header
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoicePatch'
-      responses:
-        '200':
-          description: Updated invoice
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-    delete:
-      tags: [Invoices]
-      summary: Delete invoice
+        schema:
+          type: string
+          format: uuid
+          title: Account Id
       responses:
         '204':
-          description: Invoice deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /invoices/{invoice_guid}/post:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-    post:
-      tags: [Invoices]
-      summary: Post invoice into accounting transactions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoicePostRequest'
-      responses:
-        '200':
-          description: Posted invoice
+          description: Successful Response
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Invoice'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /invoices/{invoice_guid}/unpost:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-    post:
-      tags: [Invoices]
-      summary: Undo invoice posting
-      responses:
-        '200':
-          description: Unposted invoice
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /invoices/{invoice_guid}/payments:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-    post:
-      tags: [Invoices]
-      summary: Register invoice payment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoicePaymentCreate'
-      responses:
-        '200':
-          description: Updated invoice after payment registration
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-      - $ref: '#/components/parameters/PaymentTransactionGuid'
-    post:
-      tags: [Invoices]
-      summary: Undo invoice payment
-      responses:
-        '200':
-          description: Updated invoice after payment undo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /invoices/{invoice_guid}/entries:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-    post:
-      tags: [Invoices]
-      summary: Create invoice entry
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceEntryCreate'
-      responses:
-        '201':
-          description: Invoice entry created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceEntry'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /invoices/{invoice_guid}/entries/{entry_guid}:
-    parameters:
-      - $ref: '#/components/parameters/InvoiceGuid'
-      - $ref: '#/components/parameters/EntryGuid'
-    patch:
-      tags: [Invoices]
-      summary: Update invoice entry
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceEntryPatch'
-      responses:
-        '200':
-          description: Updated invoice entry
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceEntry'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-    delete:
-      tags: [Invoices]
-      summary: Delete invoice entry
-      responses:
-        '204':
-          description: Invoice entry deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills:
-    post:
-      tags: [Bills]
-      summary: Create bill
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillCreate'
-      responses:
-        '201':
-          description: Bill created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
-    get:
-      tags: [Bills]
-      summary: List bills by book
-      parameters:
-        - in: query
-          name: book_id
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - in: query
-          name: vendor_guid
-          required: false
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Bill list for the provided book
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Bill'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /bills/{bill_guid}:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-    get:
-      tags: [Bills]
-      summary: Get bill by guid
-      responses:
-        '200':
-          description: Bill
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [Bills]
-      summary: Update bill header
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillPatch'
-      responses:
-        '200':
-          description: Updated bill
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-    delete:
-      tags: [Bills]
-      summary: Delete bill
-      responses:
-        '204':
-          description: Bill deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills/{bill_guid}/post:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-    post:
-      tags: [Bills]
-      summary: Post bill into accounting transactions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillPostRequest'
-      responses:
-        '200':
-          description: Posted bill
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills/{bill_guid}/unpost:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-    post:
-      tags: [Bills]
-      summary: Undo bill posting
-      responses:
-        '200':
-          description: Unposted bill
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills/{bill_guid}/payments:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-    post:
-      tags: [Bills]
-      summary: Register bill payment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoicePaymentCreate'
-      responses:
-        '200':
-          description: Updated bill after payment registration
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills/{bill_guid}/payments/{payment_tx_guid}/undo:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-      - $ref: '#/components/parameters/PaymentTransactionGuid'
-    post:
-      tags: [Bills]
-      summary: Undo bill payment
-      responses:
-        '200':
-          description: Updated bill after payment undo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Bill'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills/{bill_guid}/entries:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-    post:
-      tags: [Bills]
-      summary: Create bill entry
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceEntryCreate'
-      responses:
-        '201':
-          description: Bill entry created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceEntry'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /bills/{bill_guid}/entries/{entry_guid}:
-    parameters:
-      - $ref: '#/components/parameters/BillGuid'
-      - $ref: '#/components/parameters/EntryGuid'
-    patch:
-      tags: [Bills]
-      summary: Update bill entry
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceEntryPatch'
-      responses:
-        '200':
-          description: Updated bill entry
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvoiceEntry'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-    delete:
-      tags: [Bills]
-      summary: Delete bill entry
-      responses:
-        '204':
-          description: Bill entry deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
+                $ref: '#/components/schemas/HTTPValidationError'
   /transactions:
     post:
-      tags: [Transactions]
-      summary: Create transaction with splits
+      tags:
+      - Transactions
+      summary: Create Transaction
+      operationId: create_transaction_transactions_post
       requestBody:
         required: true
         content:
@@ -832,55 +466,86 @@ paths:
               $ref: '#/components/schemas/TransactionCreate'
       responses:
         '201':
-          description: Transaction created
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Transaction'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/TransactionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     get:
-      tags: [Transactions]
-      summary: List transactions by book
+      tags:
+      - Transactions
+      summary: List Transactions
+      operationId: list_transactions_transactions_get
       parameters:
-        - in: query
-          name: book_id
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
       responses:
         '200':
-          description: Transaction list for the provided book
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Transaction'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /transactions/{tx_guid}:
-    parameters:
-      - $ref: '#/components/parameters/TransactionGuid'
-    get:
-      tags: [Transactions]
-      summary: Get transaction by guid
-      responses:
-        '200':
-          description: Transaction
+                  $ref: '#/components/schemas/TransactionOut'
+                title: Response List Transactions Transactions Get
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Transaction'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: '#/components/schemas/HTTPValidationError'
+  /transactions/{tx_guid}:
+    get:
+      tags:
+      - Transactions
+      summary: Get Transaction
+      operationId: get_transaction_transactions__tx_guid__get
+      parameters:
+      - name: tx_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Tx Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     patch:
-      tags: [Transactions]
-      summary: Update transaction
+      tags:
+      - Transactions
+      summary: Patch Transaction
+      operationId: patch_transaction_transactions__tx_guid__patch
+      parameters:
+      - name: tx_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Tx Guid
       requestBody:
         required: true
         content:
@@ -889,1458 +554,3980 @@ paths:
               $ref: '#/components/schemas/TransactionPatch'
       responses:
         '200':
-          description: Updated transaction
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Transaction'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/TransactionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     delete:
-      tags: [Transactions]
-      summary: Delete transaction
+      tags:
+      - Transactions
+      summary: Delete Transaction
+      operationId: delete_transaction_transactions__tx_guid__delete
+      parameters:
+      - name: tx_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Tx Guid
       responses:
         '204':
-          description: Transaction deleted
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /customers:
+    post:
+      tags:
+      - Customers
+      summary: Create Customer
+      operationId: create_customer_customers_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Customers
+      summary: List Customers
+      operationId: list_customers_customers_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerOut'
+                title: Response List Customers Customers Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /customers/{customer_guid}:
+    get:
+      tags:
+      - Customers
+      summary: Get Customer
+      operationId: get_customer_customers__customer_guid__get
+      parameters:
+      - name: customer_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Customer Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Customers
+      summary: Patch Customer
+      operationId: patch_customer_customers__customer_guid__patch
+      parameters:
+      - name: customer_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Customer Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Customers
+      summary: Delete Customer
+      operationId: delete_customer_customers__customer_guid__delete
+      parameters:
+      - name: customer_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Customer Guid
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vendors:
+    post:
+      tags:
+      - Vendors
+      summary: Create Vendor
+      operationId: create_vendor_vendors_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VendorCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VendorOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Vendors
+      summary: List Vendors
+      operationId: list_vendors_vendors_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VendorOut'
+                title: Response List Vendors Vendors Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /vendors/{vendor_guid}:
+    get:
+      tags:
+      - Vendors
+      summary: Get Vendor
+      operationId: get_vendor_vendors__vendor_guid__get
+      parameters:
+      - name: vendor_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Vendor Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VendorOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Vendors
+      summary: Patch Vendor
+      operationId: patch_vendor_vendors__vendor_guid__patch
+      parameters:
+      - name: vendor_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Vendor Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VendorPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VendorOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Vendors
+      summary: Delete Vendor
+      operationId: delete_vendor_vendors__vendor_guid__delete
+      parameters:
+      - name: vendor_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Vendor Guid
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices:
+    post:
+      tags:
+      - Invoices
+      summary: Create Invoice
+      operationId: create_invoice_invoices_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Invoices
+      summary: List Invoices
+      operationId: list_invoices_invoices_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: customer_guid
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Customer Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvoiceOut'
+                title: Response List Invoices Invoices Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}:
+    get:
+      tags:
+      - Invoices
+      summary: Get Invoice
+      operationId: get_invoice_invoices__invoice_guid__get
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Invoices
+      summary: Patch Invoice
+      operationId: patch_invoice_invoices__invoice_guid__patch
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Invoices
+      summary: Delete Invoice
+      operationId: delete_invoice_invoices__invoice_guid__delete
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}/post:
+    post:
+      tags:
+      - Invoices
+      summary: Post Invoice
+      operationId: post_invoice_invoices__invoice_guid__post_post
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePostRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}/unpost:
+    post:
+      tags:
+      - Invoices
+      summary: Unpost Invoice
+      operationId: unpost_invoice_invoices__invoice_guid__unpost_post
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}/payments:
+    post:
+      tags:
+      - Invoices
+      summary: Create Invoice Payment
+      operationId: create_invoice_payment_invoices__invoice_guid__payments_post
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePaymentCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo:
+    post:
+      tags:
+      - Invoices
+      summary: Undo Invoice Payment
+      operationId: undo_invoice_payment_invoices__invoice_guid__payments__payment_tx_guid__undo_post
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      - name: payment_tx_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Payment Tx Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}/entries:
+    post:
+      tags:
+      - Invoices
+      summary: Create Invoice Entry
+      operationId: create_invoice_entry_invoices__invoice_guid__entries_post
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntryOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /invoices/{invoice_guid}/entries/{entry_guid}:
+    patch:
+      tags:
+      - Invoices
+      summary: Patch Invoice Entry
+      operationId: patch_invoice_entry_invoices__invoice_guid__entries__entry_guid__patch
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      - name: entry_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Entry Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntryOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Invoices
+      summary: Delete Invoice Entry
+      operationId: delete_invoice_entry_invoices__invoice_guid__entries__entry_guid__delete
+      parameters:
+      - name: invoice_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Invoice Guid
+      - name: entry_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Entry Guid
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills:
+    post:
+      tags:
+      - Bills
+      summary: Create Bill
+      operationId: create_bill_bills_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Bills
+      summary: List Bills
+      operationId: list_bills_bills_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: vendor_guid
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Vendor Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BillOut'
+                title: Response List Bills Bills Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}:
+    get:
+      tags:
+      - Bills
+      summary: Get Bill
+      operationId: get_bill_bills__bill_guid__get
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Bills
+      summary: Patch Bill
+      operationId: patch_bill_bills__bill_guid__patch
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Bills
+      summary: Delete Bill
+      operationId: delete_bill_bills__bill_guid__delete
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}/post:
+    post:
+      tags:
+      - Bills
+      summary: Post Bill
+      operationId: post_bill_bills__bill_guid__post_post
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillPostRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}/unpost:
+    post:
+      tags:
+      - Bills
+      summary: Unpost Bill
+      operationId: unpost_bill_bills__bill_guid__unpost_post
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}/payments:
+    post:
+      tags:
+      - Bills
+      summary: Create Bill Payment
+      operationId: create_bill_payment_bills__bill_guid__payments_post
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoicePaymentCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}/payments/{payment_tx_guid}/undo:
+    post:
+      tags:
+      - Bills
+      summary: Undo Bill Payment
+      operationId: undo_bill_payment_bills__bill_guid__payments__payment_tx_guid__undo_post
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      - name: payment_tx_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Payment Tx Guid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}/entries:
+    post:
+      tags:
+      - Bills
+      summary: Create Bill Entry
+      operationId: create_bill_entry_bills__bill_guid__entries_post
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntryOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /bills/{bill_guid}/entries/{entry_guid}:
+    patch:
+      tags:
+      - Bills
+      summary: Patch Bill Entry
+      operationId: patch_bill_entry_bills__bill_guid__entries__entry_guid__patch
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      - name: entry_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Entry Guid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceEntryPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceEntryOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Bills
+      summary: Delete Bill Entry
+      operationId: delete_bill_entry_bills__bill_guid__entries__entry_guid__delete
+      parameters:
+      - name: bill_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Bill Guid
+      - name: entry_guid
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Entry Guid
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reports/income-statement:
+    get:
+      tags:
+      - Reports
+      summary: Get Income Statement
+      operationId: get_income_statement_reports_income_statement_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: month
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+          title: Month
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeStatementOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reports/income-statement/matrix:
+    get:
+      tags:
+      - Reports
+      summary: Get Income Statement Matrix
+      operationId: get_income_statement_matrix_reports_income_statement_matrix_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: start_month
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+          title: Start Month
+      - name: end_month
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+          title: End Month
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeStatementMatrixOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reports/income-statement/accounts/{account_id}/entries:
+    get:
+      tags:
+      - Reports
+      summary: Get Income Statement Account Entries
+      operationId: get_income_statement_account_entries_reports_income_statement_accounts__account_id__entries_get
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Account Id
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: month
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+          title: Month
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeStatementAccountEntriesOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
-  parameters:
-    BookId:
-      in: path
-      name: book_id
-      required: true
-      schema:
-        type: string
-        format: uuid
-    CommodityId:
-      in: path
-      name: commodity_id
-      required: true
-      schema:
-        type: string
-        format: uuid
-    AccountId:
-      in: path
-      name: account_id
-      required: true
-      schema:
-        type: string
-        format: uuid
-    TransactionGuid:
-      in: path
-      name: tx_guid
-      required: true
-      schema:
-        type: string
-        format: uuid
-    InvoiceGuid:
-      in: path
-      name: invoice_guid
-      required: true
-      schema:
-        type: string
-        format: uuid
-    BillGuid:
-      in: path
-      name: bill_guid
-      required: true
-      schema:
-        type: string
-        format: uuid
-    EntryGuid:
-      in: path
-      name: entry_guid
-      required: true
-      schema:
-        type: string
-        format: uuid
-    PaymentTransactionGuid:
-      in: path
-      name: payment_tx_guid
-      required: true
-      schema:
-        type: string
-        format: uuid
-
-  responses:
-    BadRequest:
-      description: Request violates validation or invariant rules.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            invalid_parent:
-              value:
-                code: INVALID_PARENT
-                message: parent_id must reference an account in the same book
-                details:
-                  field: parent_id
-    Conflict:
-      description: Resource conflicts with domain integrity constraints.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            has_children:
-              value:
-                code: ACCOUNT_HAS_CHILDREN
-                message: account cannot be deleted while children exist
-                details:
-                  account_id: 2dfd7a53-8899-4dfa-8b14-1749d5cb84d1
-    NotFound:
-      description: Resource not found.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            not_found:
-              value:
-                code: NOT_FOUND
-                message: requested resource was not found
-                details: {}
-
   schemas:
-    ErrorResponse:
-      type: object
-      additionalProperties: false
-      required: [code, message, details]
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-        details:
-          type: object
-          additionalProperties: true
-
-    BookCreate:
-      type: object
-      additionalProperties: false
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Optional client-provided UUID string.
-        name:
-          type: string
-          maxLength: 120
-          nullable: true
-        is_active:
-          type: boolean
-          nullable: true
-      required: []
-
-    BookPatch:
-      type: object
-      additionalProperties: false
-      properties:
-        name:
-          type: string
-          maxLength: 120
-          nullable: true
-        is_active:
-          type: boolean
-          nullable: true
-
-    Book:
-      type: object
-      additionalProperties: false
-      required: [id, name, is_active, created_at]
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-          maxLength: 120
-          nullable: true
-        is_active:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-
-    CommodityCreate:
-      type: object
-      additionalProperties: false
-      required: [namespace, mnemonic, fraction]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Optional client-provided UUID string.
-        namespace:
-          type: string
-          maxLength: 32
-        mnemonic:
-          type: string
-          maxLength: 16
-        fullname:
-          type: string
-          maxLength: 128
-          nullable: true
-        fraction:
-          type: integer
-          minimum: 1
-        quote:
-          type: boolean
-          default: false
-
-    CommodityPatch:
-      type: object
-      additionalProperties: false
-      properties:
-        namespace:
-          type: string
-          maxLength: 32
-        mnemonic:
-          type: string
-          maxLength: 16
-        fullname:
-          type: string
-          maxLength: 128
-          nullable: true
-        fraction:
-          type: integer
-          minimum: 1
-        quote:
-          type: boolean
-
-    Commodity:
-      type: object
-      additionalProperties: false
-      required: [id, namespace, mnemonic, fullname, fraction, quote]
-      properties:
-        id:
-          type: string
-          format: uuid
-        namespace:
-          type: string
-          maxLength: 32
-        mnemonic:
-          type: string
-          maxLength: 16
-        fullname:
-          type: string
-          maxLength: 128
-          nullable: true
-        fraction:
-          type: integer
-          minimum: 1
-        quote:
-          type: boolean
-
-    AccountType:
-      type: string
-      enum: [ROOT, ASSET, LIABILITY, INCOME, EXPENSE, EQUITY]
-
     AccountCreate:
-      type: object
-      additionalProperties: false
-      required: [book_id, name, type, commodity_id]
       properties:
         id:
-          type: string
-          format: uuid
-          description: Optional client-provided UUID string.
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Id
         book_id:
           type: string
           format: uuid
+          title: Book Id
         parent_id:
-          type: string
-          format: uuid
-          nullable: true
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Parent Id
         name:
           type: string
           maxLength: 120
+          title: Name
         code:
-          type: string
-          maxLength: 64
-          nullable: true
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Code
         description:
-          type: string
-          maxLength: 255
-          nullable: true
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
         type:
-          $ref: '#/components/schemas/AccountType'
+          $ref: '#/components/schemas/AccountTypeSchema'
         commodity_id:
           type: string
           format: uuid
+          title: Commodity Id
         is_placeholder:
           type: boolean
+          title: Is Placeholder
           default: false
-
-    AccountPatch:
       type: object
-      additionalProperties: false
-      properties:
-        parent_id:
-          type: string
-          format: uuid
-          nullable: true
-        name:
-          type: string
-          maxLength: 120
-        code:
-          type: string
-          maxLength: 64
-          nullable: true
-        description:
-          type: string
-          maxLength: 255
-          nullable: true
-        type:
-          $ref: '#/components/schemas/AccountType'
-        commodity_id:
-          type: string
-          format: uuid
-        is_placeholder:
-          type: boolean
-
-    Account:
-      type: object
-      additionalProperties: false
       required:
-        - id
-        - book_id
-        - parent_id
-        - name
-        - code
-        - description
-        - type
-        - commodity_id
-        - is_placeholder
-        - created_at
-        - updated_at
+      - book_id
+      - name
+      - type
+      - commodity_id
+      title: AccountCreate
+    AccountOut:
       properties:
         id:
           type: string
-          format: uuid
+          title: Id
         book_id:
           type: string
-          format: uuid
+          title: Book Id
         parent_id:
-          type: string
-          format: uuid
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Id
         name:
           type: string
-          maxLength: 120
+          title: Name
         code:
-          type: string
-          maxLength: 64
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
         description:
-          type: string
-          maxLength: 255
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
         type:
-          $ref: '#/components/schemas/AccountType'
+          $ref: '#/components/schemas/AccountTypeSchema'
         commodity_id:
           type: string
-          format: uuid
+          title: Commodity Id
         is_placeholder:
           type: boolean
+          title: Is Placeholder
         created_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
         updated_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-
-    AccountTreeNode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
       type: object
-      additionalProperties: false
       required:
-        - id
-        - book_id
-        - parent_id
-        - name
-        - code
-        - type
-        - commodity_id
-        - is_placeholder
-        - balance_num
-        - balance_denom
-        - children
+      - id
+      - book_id
+      - parent_id
+      - name
+      - code
+      - description
+      - type
+      - commodity_id
+      - is_placeholder
+      - created_at
+      - updated_at
+      title: AccountOut
+    AccountPatch:
+      properties:
+        parent_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Parent Id
+        name:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Name
+        code:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Code
+        description:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Description
+        type:
+          anyOf:
+          - $ref: '#/components/schemas/AccountTypeSchema'
+          - type: 'null'
+        commodity_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Commodity Id
+        is_placeholder:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Placeholder
+      type: object
+      title: AccountPatch
+    AccountTreeNode:
       properties:
         id:
           type: string
-          format: uuid
+          title: Id
         book_id:
           type: string
-          format: uuid
+          title: Book Id
         parent_id:
-          type: string
-          format: uuid
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Id
         name:
           type: string
+          title: Name
         code:
-          type: string
-          maxLength: 64
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
         type:
-          $ref: '#/components/schemas/AccountType'
+          $ref: '#/components/schemas/AccountTypeSchema'
         commodity_id:
           type: string
-          format: uuid
+          title: Commodity Id
         is_placeholder:
           type: boolean
+          title: Is Placeholder
         balance_num:
           type: integer
-          format: int64
-          description: Numerator of exact account balance.
+          title: Balance Num
+          default: 0
         balance_denom:
           type: integer
-          format: int64
-          minimum: 1
-          description: Denominator of exact account balance.
+          title: Balance Denom
+          default: 1
         children:
-          type: array
           items:
             $ref: '#/components/schemas/AccountTreeNode'
-
-    InvoiceType:
-      type: string
-      enum: [INVOICE, CREDIT_NOTE]
-
-    InvoiceEntryDiscountType:
-      type: string
-      enum: [PERCENT, VALUE]
-
-    InvoiceEntryDiscountHow:
-      type: string
-      enum: [PRETAX, SAMETIME, POSTTAX]
-
-    InvoiceEntryCreate:
+          type: array
+          title: Children
       type: object
-      additionalProperties: false
       required:
-        - date
-        - income_account_guid
-        - quantity_num
-        - quantity_denom
-        - unit_price_num
-        - unit_price_denom
+      - id
+      - book_id
+      - parent_id
+      - name
+      - type
+      - commodity_id
+      - is_placeholder
+      title: AccountTreeNode
+    AccountTypeSchema:
+      type: string
+      enum:
+      - ROOT
+      - ASSET
+      - LIABILITY
+      - INCOME
+      - EXPENSE
+      - EQUITY
+      title: AccountTypeSchema
+    BillCreate:
       properties:
         guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
+        book_id:
           type: string
           format: uuid
-          description: Optional client-provided UUID string.
-        date:
-          type: string
-          format: date-time
-        description:
-          type: string
-          maxLength: 2048
-          nullable: true
-        action:
+          title: Book Id
+        type:
+          $ref: '#/components/schemas/InvoiceTypeSchema'
+          default: INVOICE
+        id:
           type: string
           maxLength: 2048
-          nullable: true
+          title: Id
+        date_opened:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Opened
         notes:
           type: string
           maxLength: 2048
-          nullable: true
-        income_account_guid:
+          title: Notes
+          default: ''
+        active:
+          type: boolean
+          title: Active
+          default: true
+        currency_guid:
           type: string
           format: uuid
-        quantity_num:
+          title: Currency Guid
+        vendor_guid:
+          type: string
+          format: uuid
+          title: Vendor Guid
+        terms:
+          anyOf:
+          - type: string
+            maxLength: 36
+          - type: 'null'
+          title: Terms
+        billing_id:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Billing Id
+      type: object
+      required:
+      - book_id
+      - id
+      - currency_guid
+      - vendor_guid
+      title: BillCreate
+    BillOut:
+      properties:
+        guid:
+          type: string
+          title: Guid
+        book_id:
+          type: string
+          title: Book Id
+        type:
+          $ref: '#/components/schemas/InvoiceTypeSchema'
+        id:
+          type: string
+          title: Id
+        date_opened:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Opened
+        date_posted:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Posted
+        notes:
+          type: string
+          title: Notes
+        active:
+          type: boolean
+          title: Active
+        currency_guid:
+          type: string
+          title: Currency Guid
+        vendor_guid:
+          type: string
+          title: Vendor Guid
+        terms:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms
+        billing_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Billing Id
+        post_tx_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Tx Guid
+        post_lot_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Lot Guid
+        post_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Account Guid
+        status:
+          type: string
+          title: Status
+        subtotal_num:
           type: integer
-          format: int64
-        quantity_denom:
+          title: Subtotal Num
+        subtotal_denom:
           type: integer
-          format: int64
-          minimum: 1
-        unit_price_num:
+          title: Subtotal Denom
+        tax_num:
           type: integer
-          format: int64
-        unit_price_denom:
+          title: Tax Num
+        tax_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Tax Denom
+        total_num:
+          type: integer
+          title: Total Num
+        total_denom:
+          type: integer
+          title: Total Denom
+        paid_amount_num:
+          type: integer
+          title: Paid Amount Num
+        paid_amount_denom:
+          type: integer
+          title: Paid Amount Denom
+        open_amount_num:
+          type: integer
+          title: Open Amount Num
+        open_amount_denom:
+          type: integer
+          title: Open Amount Denom
+        payments:
+          items:
+            $ref: '#/components/schemas/InvoicePaymentOut'
+          type: array
+          title: Payments
+        entries:
+          items:
+            $ref: '#/components/schemas/InvoiceEntryOut'
+          type: array
+          title: Entries
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
+      type: object
+      required:
+      - guid
+      - book_id
+      - type
+      - id
+      - date_opened
+      - date_posted
+      - notes
+      - active
+      - currency_guid
+      - vendor_guid
+      - terms
+      - billing_id
+      - post_tx_guid
+      - post_lot_guid
+      - post_account_guid
+      - status
+      - subtotal_num
+      - subtotal_denom
+      - tax_num
+      - tax_denom
+      - total_num
+      - total_denom
+      - paid_amount_num
+      - paid_amount_denom
+      - open_amount_num
+      - open_amount_denom
+      - payments
+      - entries
+      - created_at
+      - updated_at
+      title: BillOut
+    BillPatch:
+      properties:
+        type:
+          anyOf:
+          - $ref: '#/components/schemas/InvoiceTypeSchema'
+          - type: 'null'
+        id:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Id
+        date_opened:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Opened
+        date_posted:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Posted
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Notes
+        active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Active
+        currency_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Currency Guid
+        vendor_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Vendor Guid
+        terms:
+          anyOf:
+          - type: string
+            maxLength: 36
+          - type: 'null'
+          title: Terms
+        billing_id:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Billing Id
+      type: object
+      title: BillPatch
+    BillPostRequest:
+      properties:
+        post_account_guid:
+          type: string
+          format: uuid
+          title: Post Account Guid
+        post_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Post Date
+        memo:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Memo
+      type: object
+      required:
+      - post_account_guid
+      title: BillPostRequest
+    BookCreate:
+      properties:
+        id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Id
+        name:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Name
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+      type: object
+      title: BookCreate
+    BookOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        is_active:
+          type: boolean
+          title: Is Active
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+      type: object
+      required:
+      - id
+      - name
+      - is_active
+      - created_at
+      title: BookOut
+    BookPatch:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Name
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+      type: object
+      title: BookPatch
+    CommodityCreate:
+      properties:
+        id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Id
+        namespace:
+          type: string
+          maxLength: 32
+          title: Namespace
+        mnemonic:
+          type: string
+          maxLength: 16
+          title: Mnemonic
+        fullname:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Fullname
+        fraction:
+          type: integer
+          minimum: 1.0
+          title: Fraction
+        quote:
+          type: boolean
+          title: Quote
+          default: false
+      type: object
+      required:
+      - namespace
+      - mnemonic
+      - fraction
+      title: CommodityCreate
+    CommodityOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        namespace:
+          type: string
+          title: Namespace
+        mnemonic:
+          type: string
+          title: Mnemonic
+        fullname:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Fullname
+        fraction:
+          type: integer
+          title: Fraction
+        quote:
+          type: boolean
+          title: Quote
+      type: object
+      required:
+      - id
+      - namespace
+      - mnemonic
+      - fullname
+      - fraction
+      - quote
+      title: CommodityOut
+    CommodityPatch:
+      properties:
+        namespace:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Namespace
+        mnemonic:
+          anyOf:
+          - type: string
+            maxLength: 16
+          - type: 'null'
+          title: Mnemonic
+        fullname:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Fullname
+        fraction:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Fraction
+        quote:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Quote
+      type: object
+      title: CommodityPatch
+    CustomerCreate:
+      properties:
+        guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
+        book_id:
+          type: string
+          format: uuid
+          title: Book Id
+        name:
+          type: string
+          maxLength: 2048
+          title: Name
+        id:
+          type: string
+          maxLength: 2048
+          title: Id
+        notes:
+          type: string
+          maxLength: 2048
+          title: Notes
+          default: ''
+        active:
+          type: boolean
+          title: Active
+          default: true
         discount_num:
           type: integer
-          format: int64
+          title: Discount Num
           default: 0
         discount_denom:
           type: integer
-          format: int64
-          minimum: 1
+          exclusiveMinimum: 0.0
+          title: Discount Denom
+          default: 1
+        credit_num:
+          type: integer
+          title: Credit Num
+          default: 0
+        credit_denom:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Credit Denom
+          default: 1
+        currency_guid:
+          type: string
+          format: uuid
+          title: Currency Guid
+        tax_override:
+          type: boolean
+          title: Tax Override
+          default: false
+        addr_name:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Name
+        addr_addr1:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr1
+        addr_addr2:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr2
+        addr_addr3:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr3
+        addr_addr4:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr4
+        addr_phone:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Phone
+        addr_fax:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Fax
+        addr_email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Addr Email
+        shipaddr_name:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Name
+        shipaddr_addr1:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr1
+        shipaddr_addr2:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr2
+        shipaddr_addr3:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr3
+        shipaddr_addr4:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr4
+        shipaddr_phone:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Shipaddr Phone
+        shipaddr_fax:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Shipaddr Fax
+        shipaddr_email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Shipaddr Email
+        terms_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Terms Guid
+        tax_included:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tax Included
+        taxtable_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Taxtable Guid
+      type: object
+      required:
+      - book_id
+      - name
+      - id
+      - currency_guid
+      title: CustomerCreate
+    CustomerOut:
+      properties:
+        guid:
+          type: string
+          title: Guid
+        book_id:
+          type: string
+          title: Book Id
+        name:
+          type: string
+          title: Name
+        id:
+          type: string
+          title: Id
+        notes:
+          type: string
+          title: Notes
+        active:
+          type: boolean
+          title: Active
+        discount_num:
+          type: integer
+          title: Discount Num
+        discount_denom:
+          type: integer
+          title: Discount Denom
+        credit_num:
+          type: integer
+          title: Credit Num
+        credit_denom:
+          type: integer
+          title: Credit Denom
+        currency_guid:
+          type: string
+          title: Currency Guid
+        tax_override:
+          type: boolean
+          title: Tax Override
+        addr_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Name
+        addr_addr1:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr1
+        addr_addr2:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr2
+        addr_addr3:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr3
+        addr_addr4:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr4
+        addr_phone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Phone
+        addr_fax:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Fax
+        addr_email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Email
+        shipaddr_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Name
+        shipaddr_addr1:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Addr1
+        shipaddr_addr2:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Addr2
+        shipaddr_addr3:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Addr3
+        shipaddr_addr4:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Addr4
+        shipaddr_phone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Phone
+        shipaddr_fax:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Fax
+        shipaddr_email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shipaddr Email
+        terms_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms Guid
+        tax_included:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tax Included
+        taxtable_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Taxtable Guid
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
+      type: object
+      required:
+      - guid
+      - book_id
+      - name
+      - id
+      - notes
+      - active
+      - discount_num
+      - discount_denom
+      - credit_num
+      - credit_denom
+      - currency_guid
+      - tax_override
+      - addr_name
+      - addr_addr1
+      - addr_addr2
+      - addr_addr3
+      - addr_addr4
+      - addr_phone
+      - addr_fax
+      - addr_email
+      - shipaddr_name
+      - shipaddr_addr1
+      - shipaddr_addr2
+      - shipaddr_addr3
+      - shipaddr_addr4
+      - shipaddr_phone
+      - shipaddr_fax
+      - shipaddr_email
+      - terms_guid
+      - tax_included
+      - taxtable_guid
+      - created_at
+      - updated_at
+      title: CustomerOut
+    CustomerPatch:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Name
+        id:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Id
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Notes
+        active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Active
+        discount_num:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Discount Num
+        discount_denom:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Discount Denom
+        credit_num:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Credit Num
+        credit_denom:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Credit Denom
+        currency_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Currency Guid
+        tax_override:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Tax Override
+        addr_name:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Name
+        addr_addr1:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr1
+        addr_addr2:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr2
+        addr_addr3:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr3
+        addr_addr4:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr4
+        addr_phone:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Phone
+        addr_fax:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Fax
+        addr_email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Addr Email
+        shipaddr_name:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Name
+        shipaddr_addr1:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr1
+        shipaddr_addr2:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr2
+        shipaddr_addr3:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr3
+        shipaddr_addr4:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Shipaddr Addr4
+        shipaddr_phone:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Shipaddr Phone
+        shipaddr_fax:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Shipaddr Fax
+        shipaddr_email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Shipaddr Email
+        terms_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Terms Guid
+        tax_included:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tax Included
+        taxtable_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Taxtable Guid
+      type: object
+      title: CustomerPatch
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    IncomeStatementAccountEntriesOut:
+      properties:
+        account_id:
+          type: string
+          title: Account Id
+        account_name:
+          type: string
+          title: Account Name
+        account_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Account Code
+        account_type:
+          $ref: '#/components/schemas/AccountTypeSchema'
+        month:
+          type: string
+          title: Month
+        total_amount:
+          type: number
+          title: Total Amount
+        entries:
+          items:
+            $ref: '#/components/schemas/IncomeStatementEntryOut'
+          type: array
+          title: Entries
+      type: object
+      required:
+      - account_id
+      - account_name
+      - account_code
+      - account_type
+      - month
+      - total_amount
+      - entries
+      title: IncomeStatementAccountEntriesOut
+    IncomeStatementComparisonOut:
+      properties:
+        period:
+          type: string
+          title: Period
+        net_income:
+          type: number
+          title: Net Income
+        delta_net_income:
+          type: number
+          title: Delta Net Income
+        delta_percent:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Delta Percent
+      type: object
+      required:
+      - period
+      - net_income
+      - delta_net_income
+      - delta_percent
+      title: IncomeStatementComparisonOut
+    IncomeStatementComparisonsOut:
+      properties:
+        previous_month:
+          $ref: '#/components/schemas/IncomeStatementComparisonOut'
+        same_month_last_year:
+          $ref: '#/components/schemas/IncomeStatementComparisonOut'
+      type: object
+      required:
+      - previous_month
+      - same_month_last_year
+      title: IncomeStatementComparisonsOut
+    IncomeStatementEntryOut:
+      properties:
+        split_guid:
+          type: string
+          title: Split Guid
+        transaction_guid:
+          type: string
+          title: Transaction Guid
+        movement_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Movement Date
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        memo:
+          type: string
+          title: Memo
+        amount:
+          type: number
+          title: Amount
+      type: object
+      required:
+      - split_guid
+      - transaction_guid
+      - movement_date
+      - description
+      - memo
+      - amount
+      title: IncomeStatementEntryOut
+    IncomeStatementGroupOut:
+      properties:
+        group_key:
+          type: string
+          title: Group Key
+        label:
+          type: string
+          title: Label
+        amount:
+          type: number
+          title: Amount
+      type: object
+      required:
+      - group_key
+      - label
+      - amount
+      title: IncomeStatementGroupOut
+    IncomeStatementLineOut:
+      properties:
+        account_id:
+          type: string
+          title: Account Id
+        account_name:
+          type: string
+          title: Account Name
+        account_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Account Code
+        account_type:
+          $ref: '#/components/schemas/AccountTypeSchema'
+        amount:
+          type: number
+          title: Amount
+        transaction_count:
+          type: integer
+          title: Transaction Count
+      type: object
+      required:
+      - account_id
+      - account_name
+      - account_code
+      - account_type
+      - amount
+      - transaction_count
+      title: IncomeStatementLineOut
+    IncomeStatementMatrixOut:
+      properties:
+        book_id:
+          type: string
+          title: Book Id
+        start_month:
+          type: string
+          title: Start Month
+        end_month:
+          type: string
+          title: End Month
+        periods:
+          items:
+            type: string
+          type: array
+          title: Periods
+        currency_mnemonic:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency Mnemonic
+        rows:
+          items:
+            $ref: '#/components/schemas/IncomeStatementMatrixRowOut'
+          type: array
+          title: Rows
+        revenue_totals:
+          items:
+            type: number
+          type: array
+          title: Revenue Totals
+        expense_totals:
+          items:
+            type: number
+          type: array
+          title: Expense Totals
+        net_income_totals:
+          items:
+            type: number
+          type: array
+          title: Net Income Totals
+      type: object
+      required:
+      - book_id
+      - start_month
+      - end_month
+      - periods
+      - currency_mnemonic
+      - rows
+      - revenue_totals
+      - expense_totals
+      - net_income_totals
+      title: IncomeStatementMatrixOut
+    IncomeStatementMatrixRowOut:
+      properties:
+        account_id:
+          type: string
+          title: Account Id
+        account_name:
+          type: string
+          title: Account Name
+        account_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Account Code
+        account_type:
+          $ref: '#/components/schemas/AccountTypeSchema'
+        amounts:
+          items:
+            type: number
+          type: array
+          title: Amounts
+        total_amount:
+          type: number
+          title: Total Amount
+      type: object
+      required:
+      - account_id
+      - account_name
+      - account_code
+      - account_type
+      - amounts
+      - total_amount
+      title: IncomeStatementMatrixRowOut
+    IncomeStatementOut:
+      properties:
+        book_id:
+          type: string
+          title: Book Id
+        month:
+          type: string
+          title: Month
+        currency_mnemonic:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency Mnemonic
+        summary:
+          $ref: '#/components/schemas/IncomeStatementSummaryOut'
+        groups:
+          items:
+            $ref: '#/components/schemas/IncomeStatementGroupOut'
+          type: array
+          title: Groups
+        waterfall:
+          items:
+            $ref: '#/components/schemas/IncomeStatementGroupOut'
+          type: array
+          title: Waterfall
+        lines:
+          items:
+            $ref: '#/components/schemas/IncomeStatementLineOut'
+          type: array
+          title: Lines
+        series:
+          items:
+            $ref: '#/components/schemas/IncomeStatementSeriesPointOut'
+          type: array
+          title: Series
+        comparisons:
+          $ref: '#/components/schemas/IncomeStatementComparisonsOut'
+      type: object
+      required:
+      - book_id
+      - month
+      - currency_mnemonic
+      - summary
+      - groups
+      - waterfall
+      - lines
+      - series
+      - comparisons
+      title: IncomeStatementOut
+    IncomeStatementSeriesPointOut:
+      properties:
+        period:
+          type: string
+          title: Period
+        revenue:
+          type: number
+          title: Revenue
+        expenses:
+          type: number
+          title: Expenses
+        net_income:
+          type: number
+          title: Net Income
+      type: object
+      required:
+      - period
+      - revenue
+      - expenses
+      - net_income
+      title: IncomeStatementSeriesPointOut
+    IncomeStatementSummaryOut:
+      properties:
+        revenue:
+          type: number
+          title: Revenue
+        expenses:
+          type: number
+          title: Expenses
+        net_income:
+          type: number
+          title: Net Income
+        margin_percent:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Margin Percent
+      type: object
+      required:
+      - revenue
+      - expenses
+      - net_income
+      - margin_percent
+      title: IncomeStatementSummaryOut
+    InvoiceCreate:
+      properties:
+        guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
+        book_id:
+          type: string
+          format: uuid
+          title: Book Id
+        type:
+          $ref: '#/components/schemas/InvoiceTypeSchema'
+          default: INVOICE
+        id:
+          type: string
+          maxLength: 2048
+          title: Id
+        date_opened:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Opened
+        notes:
+          type: string
+          maxLength: 2048
+          title: Notes
+          default: ''
+        active:
+          type: boolean
+          title: Active
+          default: true
+        currency_guid:
+          type: string
+          format: uuid
+          title: Currency Guid
+        customer_guid:
+          type: string
+          format: uuid
+          title: Customer Guid
+        terms:
+          anyOf:
+          - type: string
+            maxLength: 36
+          - type: 'null'
+          title: Terms
+        billing_id:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Billing Id
+      type: object
+      required:
+      - book_id
+      - id
+      - currency_guid
+      - customer_guid
+      title: InvoiceCreate
+    InvoiceEntryCreate:
+      properties:
+        guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
+        date:
+          type: string
+          format: date-time
+          title: Date
+        description:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Description
+        action:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Action
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Notes
+        income_account_guid:
+          type: string
+          format: uuid
+          title: Income Account Guid
+        quantity_num:
+          type: integer
+          title: Quantity Num
+        quantity_denom:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Quantity Denom
+        unit_price_num:
+          type: integer
+          title: Unit Price Num
+        unit_price_denom:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Unit Price Denom
+        discount_num:
+          type: integer
+          title: Discount Num
+          default: 0
+        discount_denom:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Discount Denom
           default: 1
         discount_type:
-          $ref: '#/components/schemas/InvoiceEntryDiscountType'
+          $ref: '#/components/schemas/InvoiceEntryDiscountTypeSchema'
+          default: PERCENT
         discount_how:
-          $ref: '#/components/schemas/InvoiceEntryDiscountHow'
+          $ref: '#/components/schemas/InvoiceEntryDiscountHowSchema'
+          default: PRETAX
         taxable:
           type: boolean
+          title: Taxable
           default: false
         tax_included:
           type: boolean
+          title: Tax Included
           default: false
         tax_table_guid:
-          type: string
-          format: uuid
-          nullable: true
-
-    InvoiceEntryPatch:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Tax Table Guid
       type: object
-      additionalProperties: false
-      properties:
-        date:
-          type: string
-          format: date-time
-          nullable: true
-        description:
-          type: string
-          maxLength: 2048
-          nullable: true
-        action:
-          type: string
-          maxLength: 2048
-          nullable: true
-        notes:
-          type: string
-          maxLength: 2048
-          nullable: true
-        income_account_guid:
-          type: string
-          format: uuid
-          nullable: true
-        quantity_num:
-          type: integer
-          format: int64
-          nullable: true
-        quantity_denom:
-          type: integer
-          format: int64
-          minimum: 1
-          nullable: true
-        unit_price_num:
-          type: integer
-          format: int64
-          nullable: true
-        unit_price_denom:
-          type: integer
-          format: int64
-          minimum: 1
-          nullable: true
-        discount_num:
-          type: integer
-          format: int64
-          nullable: true
-        discount_denom:
-          type: integer
-          format: int64
-          minimum: 1
-          nullable: true
-        discount_type:
-          allOf:
-            - $ref: '#/components/schemas/InvoiceEntryDiscountType'
-          nullable: true
-        discount_how:
-          allOf:
-            - $ref: '#/components/schemas/InvoiceEntryDiscountHow'
-          nullable: true
-        taxable:
-          type: boolean
-          nullable: true
-        tax_included:
-          type: boolean
-          nullable: true
-        tax_table_guid:
-          type: string
-          format: uuid
-          nullable: true
-
-    InvoiceEntry:
-      type: object
-      additionalProperties: false
       required:
-        - guid
-        - invoice_guid
-        - date
-        - date_entered
-        - description
-        - action
-        - notes
-        - income_account_guid
-        - quantity_num
-        - quantity_denom
-        - unit_price_num
-        - unit_price_denom
-        - discount_num
-        - discount_denom
-        - discount_type
-        - discount_how
-        - taxable
-        - tax_included
-        - tax_table_guid
-        - subtotal_num
-        - subtotal_denom
-        - tax_num
-        - tax_denom
-        - total_num
-        - total_denom
-        - created_at
-        - updated_at
+      - date
+      - income_account_guid
+      - quantity_num
+      - quantity_denom
+      - unit_price_num
+      - unit_price_denom
+      title: InvoiceEntryCreate
+    InvoiceEntryDiscountHowSchema:
+      type: string
+      enum:
+      - PRETAX
+      - SAMETIME
+      - POSTTAX
+      title: InvoiceEntryDiscountHowSchema
+    InvoiceEntryDiscountTypeSchema:
+      type: string
+      enum:
+      - PERCENT
+      - VALUE
+      title: InvoiceEntryDiscountTypeSchema
+    InvoiceEntryOut:
       properties:
         guid:
           type: string
-          format: uuid
+          title: Guid
         invoice_guid:
           type: string
-          format: uuid
+          title: Invoice Guid
         date:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date
         date_entered:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Entered
         description:
-          type: string
-          maxLength: 2048
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
         action:
-          type: string
-          maxLength: 2048
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Action
         notes:
-          type: string
-          maxLength: 2048
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
         income_account_guid:
           type: string
-          format: uuid
+          title: Income Account Guid
         quantity_num:
           type: integer
-          format: int64
+          title: Quantity Num
         quantity_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Quantity Denom
         unit_price_num:
           type: integer
-          format: int64
+          title: Unit Price Num
         unit_price_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Unit Price Denom
         discount_num:
           type: integer
-          format: int64
+          title: Discount Num
         discount_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Discount Denom
         discount_type:
-          $ref: '#/components/schemas/InvoiceEntryDiscountType'
+          $ref: '#/components/schemas/InvoiceEntryDiscountTypeSchema'
         discount_how:
-          $ref: '#/components/schemas/InvoiceEntryDiscountHow'
+          $ref: '#/components/schemas/InvoiceEntryDiscountHowSchema'
         taxable:
           type: boolean
+          title: Taxable
         tax_included:
           type: boolean
+          title: Tax Included
         tax_table_guid:
-          type: string
-          format: uuid
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tax Table Guid
         subtotal_num:
           type: integer
-          format: int64
+          title: Subtotal Num
         subtotal_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Subtotal Denom
         tax_num:
           type: integer
-          format: int64
+          title: Tax Num
         tax_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Tax Denom
         total_num:
           type: integer
-          format: int64
+          title: Total Num
         total_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Total Denom
         created_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
         updated_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-
-    InvoiceCreate:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
       type: object
-      additionalProperties: false
-      required: [book_id, id, currency_guid, customer_guid]
+      required:
+      - guid
+      - invoice_guid
+      - date
+      - date_entered
+      - description
+      - action
+      - notes
+      - income_account_guid
+      - quantity_num
+      - quantity_denom
+      - unit_price_num
+      - unit_price_denom
+      - discount_num
+      - discount_denom
+      - discount_type
+      - discount_how
+      - taxable
+      - tax_included
+      - tax_table_guid
+      - subtotal_num
+      - subtotal_denom
+      - tax_num
+      - tax_denom
+      - total_num
+      - total_denom
+      - created_at
+      - updated_at
+      title: InvoiceEntryOut
+    InvoiceEntryPatch:
+      properties:
+        date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date
+        description:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Description
+        action:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Action
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Notes
+        income_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Income Account Guid
+        quantity_num:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Quantity Num
+        quantity_denom:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Quantity Denom
+        unit_price_num:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Unit Price Num
+        unit_price_denom:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Unit Price Denom
+        discount_num:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Discount Num
+        discount_denom:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Discount Denom
+        discount_type:
+          anyOf:
+          - $ref: '#/components/schemas/InvoiceEntryDiscountTypeSchema'
+          - type: 'null'
+        discount_how:
+          anyOf:
+          - $ref: '#/components/schemas/InvoiceEntryDiscountHowSchema'
+          - type: 'null'
+        taxable:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Taxable
+        tax_included:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Tax Included
+        tax_table_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Tax Table Guid
+      type: object
+      title: InvoiceEntryPatch
+    InvoiceOut:
       properties:
         guid:
           type: string
-          format: uuid
-          description: Optional client-provided UUID string.
+          title: Guid
         book_id:
           type: string
-          format: uuid
+          title: Book Id
         type:
-          $ref: '#/components/schemas/InvoiceType'
+          $ref: '#/components/schemas/InvoiceTypeSchema'
         id:
           type: string
-          maxLength: 2048
+          title: Id
         date_opened:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Opened
+        date_posted:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Posted
         notes:
           type: string
-          maxLength: 2048
-          default: ""
+          title: Notes
         active:
           type: boolean
-          default: true
+          title: Active
         currency_guid:
           type: string
-          format: uuid
+          title: Currency Guid
         customer_guid:
           type: string
-          format: uuid
+          title: Customer Guid
         terms:
-          type: string
-          maxLength: 36
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms
         billing_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Billing Id
+        post_tx_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Tx Guid
+        post_lot_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Lot Guid
+        post_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Account Guid
+        status:
           type: string
-          maxLength: 2048
-          nullable: true
-
+          title: Status
+        subtotal_num:
+          type: integer
+          title: Subtotal Num
+        subtotal_denom:
+          type: integer
+          title: Subtotal Denom
+        tax_num:
+          type: integer
+          title: Tax Num
+        tax_denom:
+          type: integer
+          title: Tax Denom
+        total_num:
+          type: integer
+          title: Total Num
+        total_denom:
+          type: integer
+          title: Total Denom
+        paid_amount_num:
+          type: integer
+          title: Paid Amount Num
+        paid_amount_denom:
+          type: integer
+          title: Paid Amount Denom
+        open_amount_num:
+          type: integer
+          title: Open Amount Num
+        open_amount_denom:
+          type: integer
+          title: Open Amount Denom
+        payments:
+          items:
+            $ref: '#/components/schemas/InvoicePaymentOut'
+          type: array
+          title: Payments
+        entries:
+          items:
+            $ref: '#/components/schemas/InvoiceEntryOut'
+          type: array
+          title: Entries
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
+      type: object
+      required:
+      - guid
+      - book_id
+      - type
+      - id
+      - date_opened
+      - date_posted
+      - notes
+      - active
+      - currency_guid
+      - customer_guid
+      - terms
+      - billing_id
+      - post_tx_guid
+      - post_lot_guid
+      - post_account_guid
+      - status
+      - subtotal_num
+      - subtotal_denom
+      - tax_num
+      - tax_denom
+      - total_num
+      - total_denom
+      - paid_amount_num
+      - paid_amount_denom
+      - open_amount_num
+      - open_amount_denom
+      - payments
+      - entries
+      - created_at
+      - updated_at
+      title: InvoiceOut
     InvoicePatch:
-      type: object
-      additionalProperties: false
       properties:
         type:
-          allOf:
-            - $ref: '#/components/schemas/InvoiceType'
-          nullable: true
+          anyOf:
+          - $ref: '#/components/schemas/InvoiceTypeSchema'
+          - type: 'null'
         id:
-          type: string
-          maxLength: 2048
-          nullable: true
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Id
         date_opened:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Opened
+        date_posted:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Posted
         notes:
-          type: string
-          maxLength: 2048
-          nullable: true
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Notes
         active:
-          type: boolean
-          nullable: true
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Active
         currency_guid:
-          type: string
-          format: uuid
-          nullable: true
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Currency Guid
         customer_guid:
-          type: string
-          format: uuid
-          nullable: true
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Customer Guid
         terms:
-          type: string
-          maxLength: 36
-          nullable: true
+          anyOf:
+          - type: string
+            maxLength: 36
+          - type: 'null'
+          title: Terms
         billing_id:
-          type: string
-          maxLength: 2048
-          nullable: true
-
-    InvoicePostRequest:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Billing Id
       type: object
-      additionalProperties: false
-      required: [post_account_guid]
-      properties:
-        post_account_guid:
-          type: string
-          format: uuid
-        post_date:
-          type: string
-          format: date-time
-          nullable: true
-        memo:
-          type: string
-          maxLength: 2048
-          nullable: true
-
-    BillCreate:
-      type: object
-      additionalProperties: false
-      required: [book_id, id, currency_guid, vendor_guid]
-      properties:
-        guid:
-          type: string
-          format: uuid
-          description: Optional client-provided UUID string.
-        book_id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/InvoiceType'
-        id:
-          type: string
-          maxLength: 2048
-        date_opened:
-          type: string
-          format: date-time
-          nullable: true
-        notes:
-          type: string
-          maxLength: 2048
-          default: ""
-        active:
-          type: boolean
-          default: true
-        currency_guid:
-          type: string
-          format: uuid
-        vendor_guid:
-          type: string
-          format: uuid
-        terms:
-          type: string
-          maxLength: 36
-          nullable: true
-        billing_id:
-          type: string
-          maxLength: 2048
-          nullable: true
-
-    BillPatch:
-      type: object
-      additionalProperties: false
-      properties:
-        type:
-          allOf:
-            - $ref: '#/components/schemas/InvoiceType'
-          nullable: true
-        id:
-          type: string
-          maxLength: 2048
-          nullable: true
-        date_opened:
-          type: string
-          format: date-time
-          nullable: true
-        notes:
-          type: string
-          maxLength: 2048
-          nullable: true
-        active:
-          type: boolean
-          nullable: true
-        currency_guid:
-          type: string
-          format: uuid
-          nullable: true
-        vendor_guid:
-          type: string
-          format: uuid
-          nullable: true
-        terms:
-          type: string
-          maxLength: 36
-          nullable: true
-        billing_id:
-          type: string
-          maxLength: 2048
-          nullable: true
-
-    BillPostRequest:
-      type: object
-      additionalProperties: false
-      required: [post_account_guid]
-      properties:
-        post_account_guid:
-          type: string
-          format: uuid
-        post_date:
-          type: string
-          format: date-time
-          nullable: true
-        memo:
-          type: string
-          maxLength: 2048
-          nullable: true
-
+      title: InvoicePatch
     InvoicePaymentCreate:
-      type: object
-      additionalProperties: false
-      required: [transfer_account_guid, amount_num, amount_denom]
       properties:
         transfer_account_guid:
           type: string
           format: uuid
+          title: Transfer Account Guid
         amount_num:
           type: integer
-          format: int64
-          minimum: 1
+          exclusiveMinimum: 0.0
+          title: Amount Num
         amount_denom:
           type: integer
-          format: int64
-          minimum: 1
+          exclusiveMinimum: 0.0
+          title: Amount Denom
         payment_date:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Payment Date
         memo:
-          type: string
-          maxLength: 2048
-          nullable: true
-
-    InvoicePayment:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Memo
       type: object
-      additionalProperties: false
       required:
-        - tx_guid
-        - transfer_account_guid
-        - lot_guid
-        - payment_date
-        - memo
-        - amount_num
-        - amount_denom
+      - transfer_account_guid
+      - amount_num
+      - amount_denom
+      title: InvoicePaymentCreate
+    InvoicePaymentOut:
       properties:
         tx_guid:
           type: string
-          format: uuid
+          title: Tx Guid
         transfer_account_guid:
           type: string
-          format: uuid
+          title: Transfer Account Guid
         lot_guid:
           type: string
-          format: uuid
+          title: Lot Guid
         payment_date:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Payment Date
         memo:
-          type: string
-          maxLength: 2048
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Memo
         amount_num:
           type: integer
-          format: int64
+          title: Amount Num
         amount_denom:
           type: integer
-          format: int64
-          minimum: 1
-
-    Invoice:
+          title: Amount Denom
       type: object
-      additionalProperties: false
       required:
-        - guid
-        - book_id
-        - type
-        - id
-        - date_opened
-        - date_posted
-        - notes
-        - active
-        - currency_guid
-        - customer_guid
-        - terms
-        - billing_id
-        - post_tx_guid
-        - post_lot_guid
-        - post_account_guid
-        - status
-        - subtotal_num
-        - subtotal_denom
-        - tax_num
-        - tax_denom
-        - total_num
-        - total_denom
-        - paid_amount_num
-        - paid_amount_denom
-        - open_amount_num
-        - open_amount_denom
-        - payments
-        - entries
-        - created_at
-        - updated_at
+      - tx_guid
+      - transfer_account_guid
+      - lot_guid
+      - payment_date
+      - memo
+      - amount_num
+      - amount_denom
+      title: InvoicePaymentOut
+    InvoicePostRequest:
       properties:
-        guid:
-          type: string
-          format: uuid
-        book_id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/InvoiceType'
-        id:
-          type: string
-          maxLength: 2048
-        date_opened:
-          type: string
-          format: date-time
-          nullable: true
-        date_posted:
-          type: string
-          format: date-time
-          nullable: true
-        notes:
-          type: string
-          maxLength: 2048
-        active:
-          type: boolean
-        currency_guid:
-          type: string
-          format: uuid
-        customer_guid:
-          type: string
-          format: uuid
-        terms:
-          type: string
-          maxLength: 36
-          nullable: true
-        billing_id:
-          type: string
-          maxLength: 2048
-          nullable: true
-        post_tx_guid:
-          type: string
-          format: uuid
-          nullable: true
-        post_lot_guid:
-          type: string
-          format: uuid
-          nullable: true
         post_account_guid:
           type: string
           format: uuid
-          nullable: true
-        status:
-          type: string
-          enum: [INACTIVE, UNPAID, POSTED, PARTIAL, PAID]
-        subtotal_num:
-          type: integer
-          format: int64
-        subtotal_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        tax_num:
-          type: integer
-          format: int64
-        tax_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        total_num:
-          type: integer
-          format: int64
-        total_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        paid_amount_num:
-          type: integer
-          format: int64
-        paid_amount_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        open_amount_num:
-          type: integer
-          format: int64
-        open_amount_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        payments:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoicePayment'
-        entries:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoiceEntry'
-        created_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-        updated_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-
-    Bill:
+          title: Post Account Guid
+        post_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Post Date
+        memo:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Memo
       type: object
-      additionalProperties: false
       required:
-        - guid
-        - book_id
-        - type
-        - id
-        - date_opened
-        - date_posted
-        - notes
-        - active
-        - currency_guid
-        - vendor_guid
-        - terms
-        - billing_id
-        - post_tx_guid
-        - post_lot_guid
-        - post_account_guid
-        - status
-        - subtotal_num
-        - subtotal_denom
-        - tax_num
-        - tax_denom
-        - total_num
-        - total_denom
-        - paid_amount_num
-        - paid_amount_denom
-        - open_amount_num
-        - open_amount_denom
-        - payments
-        - entries
-        - created_at
-        - updated_at
-      properties:
-        guid:
-          type: string
-          format: uuid
-        book_id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/InvoiceType'
-        id:
-          type: string
-          maxLength: 2048
-        date_opened:
-          type: string
-          format: date-time
-          nullable: true
-        date_posted:
-          type: string
-          format: date-time
-          nullable: true
-        notes:
-          type: string
-          maxLength: 2048
-        active:
-          type: boolean
-        currency_guid:
-          type: string
-          format: uuid
-        vendor_guid:
-          type: string
-          format: uuid
-        terms:
-          type: string
-          maxLength: 36
-          nullable: true
-        billing_id:
-          type: string
-          maxLength: 2048
-          nullable: true
-        post_tx_guid:
-          type: string
-          format: uuid
-          nullable: true
-        post_lot_guid:
-          type: string
-          format: uuid
-          nullable: true
-        post_account_guid:
-          type: string
-          format: uuid
-          nullable: true
-        status:
-          type: string
-          enum: [INACTIVE, UNPAID, POSTED, PARTIAL, PAID]
-        subtotal_num:
-          type: integer
-          format: int64
-        subtotal_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        tax_num:
-          type: integer
-          format: int64
-        tax_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        total_num:
-          type: integer
-          format: int64
-        total_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        paid_amount_num:
-          type: integer
-          format: int64
-        paid_amount_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        open_amount_num:
-          type: integer
-          format: int64
-        open_amount_denom:
-          type: integer
-          format: int64
-          minimum: 1
-        payments:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoicePayment'
-        entries:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoiceEntry'
-        created_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-        updated_at:
-          type: string
-          format: date-time
-          description: RFC3339 UTC timestamp (MUST use suffix Z).
-
+      - post_account_guid
+      title: InvoicePostRequest
+    InvoiceTypeSchema:
+      type: string
+      enum:
+      - INVOICE
+      - CREDIT_NOTE
+      title: InvoiceTypeSchema
     SplitIn:
-      type: object
-      additionalProperties: false
-      required:
-        - account_guid
-        - memo
-        - action
-        - reconcile_state
-        - value_num
-        - value_denom
-        - quantity_num
-        - quantity_denom
       properties:
         guid:
-          type: string
-          format: uuid
-          description: Optional client-provided UUID string.
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
         account_guid:
           type: string
           format: uuid
+          title: Account Guid
         memo:
           type: string
           maxLength: 2048
+          title: Memo
+          default: ''
         action:
           type: string
           maxLength: 2048
+          title: Action
+          default: ''
         reconcile_state:
           type: string
-          minLength: 1
           maxLength: 1
+          minLength: 1
+          title: Reconcile State
+          default: n
         reconcile_date:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Reconcile Date
         value_num:
           type: integer
-          format: int64
+          title: Value Num
         value_denom:
           type: integer
-          format: int64
-          minimum: 1
+          exclusiveMinimum: 0.0
+          title: Value Denom
         quantity_num:
           type: integer
-          format: int64
+          title: Quantity Num
         quantity_denom:
           type: integer
-          format: int64
-          minimum: 1
+          exclusiveMinimum: 0.0
+          title: Quantity Denom
         lot_guid:
-          type: string
-          format: uuid
-          nullable: true
-
-    Split:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Lot Guid
       type: object
-      additionalProperties: false
       required:
-        - guid
-        - tx_guid
-        - account_guid
-        - memo
-        - action
-        - reconcile_state
-        - reconcile_date
-        - value_num
-        - value_denom
-        - quantity_num
-        - quantity_denom
-        - lot_guid
+      - account_guid
+      - value_num
+      - value_denom
+      - quantity_num
+      - quantity_denom
+      title: SplitIn
+    SplitOut:
       properties:
         guid:
           type: string
-          format: uuid
+          title: Guid
         tx_guid:
           type: string
-          format: uuid
+          title: Tx Guid
         account_guid:
           type: string
-          format: uuid
+          title: Account Guid
         memo:
           type: string
-          maxLength: 2048
+          title: Memo
         action:
           type: string
-          maxLength: 2048
+          title: Action
         reconcile_state:
           type: string
-          minLength: 1
-          maxLength: 1
+          title: Reconcile State
         reconcile_date:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reconcile Date
         value_num:
           type: integer
-          format: int64
+          title: Value Num
         value_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Value Denom
         quantity_num:
           type: integer
-          format: int64
+          title: Quantity Num
         quantity_denom:
           type: integer
-          format: int64
-          minimum: 1
+          title: Quantity Denom
         lot_guid:
-          type: string
-          format: uuid
-          nullable: true
-
-    TransactionCreate:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Lot Guid
       type: object
-      additionalProperties: false
-      required: [currency_guid, splits]
-      properties:
-        guid:
-          type: string
-          format: uuid
-          description: Optional client-provided UUID string.
-        currency_guid:
-          type: string
-          format: uuid
-        num:
-          type: string
-          maxLength: 2048
-          default: ""
-        post_date:
-          type: string
-          format: date-time
-          nullable: true
-        enter_date:
-          type: string
-          format: date-time
-          nullable: true
-        description:
-          type: string
-          maxLength: 2048
-          nullable: true
-        splits:
-          type: array
-          minItems: 2
-          items:
-            $ref: '#/components/schemas/SplitIn'
-
-    TransactionPatch:
-      type: object
-      additionalProperties: false
-      properties:
-        currency_guid:
-          type: string
-          format: uuid
-        num:
-          type: string
-          maxLength: 2048
-        post_date:
-          type: string
-          format: date-time
-          nullable: true
-        enter_date:
-          type: string
-          format: date-time
-          nullable: true
-        description:
-          type: string
-          maxLength: 2048
-          nullable: true
-        splits:
-          type: array
-          minItems: 2
-          items:
-            $ref: '#/components/schemas/SplitIn'
-
-    Transaction:
-      type: object
-      additionalProperties: false
       required:
-        - guid
-        - currency_guid
-        - num
-        - post_date
-        - enter_date
-        - description
-        - splits
+      - guid
+      - tx_guid
+      - account_guid
+      - memo
+      - action
+      - reconcile_state
+      - reconcile_date
+      - value_num
+      - value_denom
+      - quantity_num
+      - quantity_denom
+      - lot_guid
+      title: SplitOut
+    TransactionCreate:
       properties:
         guid:
-          type: string
-          format: uuid
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
         currency_guid:
           type: string
           format: uuid
+          title: Currency Guid
         num:
           type: string
           maxLength: 2048
+          title: Num
+          default: ''
         post_date:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Post Date
         enter_date:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Enter Date
         description:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Description
+        splits:
+          items:
+            $ref: '#/components/schemas/SplitIn'
+          type: array
+          minItems: 2
+          title: Splits
+      type: object
+      required:
+      - currency_guid
+      - splits
+      title: TransactionCreate
+    TransactionOut:
+      properties:
+        guid:
+          type: string
+          title: Guid
+        currency_guid:
+          type: string
+          title: Currency Guid
+        num:
+          type: string
+          title: Num
+        post_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Post Date
+        enter_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Enter Date
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        splits:
+          items:
+            $ref: '#/components/schemas/SplitOut'
+          type: array
+          title: Splits
+      type: object
+      required:
+      - guid
+      - currency_guid
+      - num
+      - post_date
+      - enter_date
+      - description
+      - splits
+      title: TransactionOut
+    TransactionPatch:
+      properties:
+        currency_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Currency Guid
+        num:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Num
+        post_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Post Date
+        enter_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Enter Date
+        description:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Description
+        splits:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/SplitIn'
+            type: array
+            minItems: 2
+          - type: 'null'
+          title: Splits
+      type: object
+      title: TransactionPatch
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VendorCreate:
+      properties:
+        guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Guid
+        book_id:
+          type: string
+          format: uuid
+          title: Book Id
+        name:
           type: string
           maxLength: 2048
-          nullable: true
-        splits:
-          type: array
-          items:
-            $ref: '#/components/schemas/Split'
+          title: Name
+        id:
+          type: string
+          maxLength: 2048
+          title: Id
+        notes:
+          type: string
+          maxLength: 2048
+          title: Notes
+          default: ''
+        currency_guid:
+          type: string
+          format: uuid
+          title: Currency Guid
+        active:
+          type: boolean
+          title: Active
+          default: true
+        tax_override:
+          type: boolean
+          title: Tax Override
+          default: false
+        addr_name:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Name
+        addr_addr1:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr1
+        addr_addr2:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr2
+        addr_addr3:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr3
+        addr_addr4:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr4
+        addr_phone:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Phone
+        addr_fax:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Fax
+        addr_email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Addr Email
+        terms_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Terms Guid
+        tax_inc:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Tax Inc
+        tax_table_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Tax Table Guid
+      type: object
+      required:
+      - book_id
+      - name
+      - id
+      - currency_guid
+      title: VendorCreate
+    VendorOut:
+      properties:
+        guid:
+          type: string
+          title: Guid
+        book_id:
+          type: string
+          title: Book Id
+        name:
+          type: string
+          title: Name
+        id:
+          type: string
+          title: Id
+        notes:
+          type: string
+          title: Notes
+        currency_guid:
+          type: string
+          title: Currency Guid
+        active:
+          type: boolean
+          title: Active
+        tax_override:
+          type: boolean
+          title: Tax Override
+        addr_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Name
+        addr_addr1:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr1
+        addr_addr2:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr2
+        addr_addr3:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr3
+        addr_addr4:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Addr4
+        addr_phone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Phone
+        addr_fax:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Fax
+        addr_email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Addr Email
+        terms_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms Guid
+        tax_inc:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tax Inc
+        tax_table_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tax Table Guid
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
+      type: object
+      required:
+      - guid
+      - book_id
+      - name
+      - id
+      - notes
+      - currency_guid
+      - active
+      - tax_override
+      - addr_name
+      - addr_addr1
+      - addr_addr2
+      - addr_addr3
+      - addr_addr4
+      - addr_phone
+      - addr_fax
+      - addr_email
+      - terms_guid
+      - tax_inc
+      - tax_table_guid
+      - created_at
+      - updated_at
+      title: VendorOut
+    VendorPatch:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Name
+        id:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Id
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Notes
+        currency_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Currency Guid
+        active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Active
+        tax_override:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Tax Override
+        addr_name:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Name
+        addr_addr1:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr1
+        addr_addr2:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr2
+        addr_addr3:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr3
+        addr_addr4:
+          anyOf:
+          - type: string
+            maxLength: 1024
+          - type: 'null'
+          title: Addr Addr4
+        addr_phone:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Phone
+        addr_fax:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Addr Fax
+        addr_email:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Addr Email
+        terms_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Terms Guid
+        tax_inc:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Tax Inc
+        tax_table_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Tax Table Guid
+      type: object
+      title: VendorPatch

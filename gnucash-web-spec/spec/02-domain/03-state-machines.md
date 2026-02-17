@@ -1,14 +1,30 @@
 # 02.03 - State Machines
 
-## Current status (v0.2.0)
+## Book activation
 
-There is no formal lifecycle state machine for `Book`, `Commodity`, or `Account`.
+`Book.is_active` transition rules:
+- `create`: new book may be active; first book becomes active automatically.
+- `patch is_active=true`: target book becomes active and others become inactive.
+- `patch is_active=false`: allowed only if another active book exists.
+- `delete active book`: first remaining book becomes active.
 
-In v0.2.0:
-- entities are considered active from creation;
-- updates are direct mutations of allowed attributes;
-- physical deletion is allowed, subject to integrity invariants.
+## Invoice and bill lifecycle
 
-## Future extension
+Computed status machine:
+- `UNPAID`: not posted.
+- `POSTED`: posted and open amount equals total (no payments).
+- `PARTIAL`: posted and `0 < open_amount < total`.
+- `PAID`: posted and `open_amount = 0`.
+- `INACTIVE`: header `active=false`.
 
-A future version MAY introduce explicit states (for example, archived, locked) without invalidating existing identifiers.
+Operational transitions:
+- `create` -> `UNPAID`
+- `post` -> `POSTED` (or `PARTIAL`/`PAID` in degenerate historical cases)
+- `payments` -> `PARTIAL` or `PAID`
+- `payment undo` -> `POSTED` or `PARTIAL`
+- `unpost` -> `UNPAID`
+- `patch active=false` -> `INACTIVE`
+
+## Transaction linkage guard
+
+Transactions linked to invoice/bill posting/payment flows are immutable through generic transaction patch/delete APIs.

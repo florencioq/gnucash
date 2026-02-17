@@ -1,17 +1,17 @@
 # 06 - Security
 
-## Scope for v0.2.0
+## Scope boundary
 
-- Detailed authentication and authorization are outside the scope of this domain.
-- Even outside current scope, interfaces SHOULD be designed for secure evolution.
+This spec does not define authentication/authorization product policy.
 
-## Requirements
+## Current requirements
 
-1. The API MUST validate structural input and invariants before persisting data.
-2. Error messages MUST avoid exposing sensitive internal details.
-3. IDs MUST be treated as opaque; clients MUST NOT infer authorization from ID patterns.
-4. Implementations SHOULD be ready for future tenant isolation (multi-tenant readiness) without breaking current contracts.
+1. API MUST validate structural payloads and business invariants before persistence.
+2. Error messages MUST avoid leaking stack traces or internal SQL details.
+3. IDs MUST be treated as opaque references.
+4. Destructive operations with business risk (for example invoice-linked transaction edits) MUST be blocked by server-side guards.
+5. CORS policy SHOULD be explicitly configured.
 
 ## Future-ready guidance
 
-- The contract MAY be extended with explicit tenant context in future versions.
+- Contract may be extended with tenant context and authorization claims without breaking current payload shapes.

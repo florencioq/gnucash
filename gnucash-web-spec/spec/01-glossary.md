@@ -2,31 +2,31 @@
 
 ## Book
 
-Logical container that groups an isolated set of accounts.
+Logical container that isolates accounts, parties, invoices/bills, and reports.
 
-- A `Book` MUST have a unique `id`.
+- A `Book` MUST have a unique UUID `id`.
 - A `Book` MAY have a `name`.
-- A `Book` contains multiple `Account` records.
+- Exactly one book SHOULD be active when books exist.
 
 ## Commodity
 
-Currency or traded unit used to denominate accounts.
+Currency or traded unit used to denominate accounts and transactions.
 
-- `namespace`: commodity category (for example, `CURRENCY`).
-- `mnemonic`: short symbol within the namespace (for example, `BRL`, `USD`).
-- `fraction`: smallest common unit (SCU), for example `100` for cents.
+- `namespace`: commodity category (for example `CURRENCY`).
+- `mnemonic`: short symbol (for example `BRL`, `USD`).
+- `fraction`: smallest common unit (SCU).
 
 ## Account
 
-Chart-of-accounts node that belongs to a `Book` and references one `Commodity`.
+Chart-of-accounts node that belongs to a `Book` and references a `Commodity`.
 
-- `parent_id` defines an optional hierarchy.
-- Without `parent_id`, the account is a root in the `Book`.
-- With `parent_id`, the account is a child of another `Account` in the same `Book`.
+- `parent_id` defines optional hierarchy.
+- `ROOT` accounts are synthetic tree roots.
+- `is_placeholder` identifies non-postable grouping candidates (runtime enforces placeholder restrictions for posting/payment account choices in invoice/bill flows).
 
 ## AccountType
 
-Account category. MUST be one of:
+Allowed account categories:
 - `ROOT`
 - `ASSET`
 - `LIABILITY`
@@ -34,44 +34,49 @@ Account category. MUST be one of:
 - `EXPENSE`
 - `EQUITY`
 
-Type meaning:
-- `ROOT`: synthetic root node for a book's account hierarchy.
-  - API payloads (for example `GET /accounts/tree`) MAY include `ROOT` nodes.
-  - UI pickers used to select posting/parent targets SHOULD hide `ROOT` and expose only actionable descendants.
-- `ASSET`: value owned or controlled by the book (for example, cash, bank balances, receivables, inventory).
-- `LIABILITY`: obligation owed by the book to another party (for example, loans, credit card balances, payables).
-- `INCOME`: inflow that increases economic benefit during a period (for example, salary, sales revenue, interest received).
-- `EXPENSE`: outflow or consumption that reduces economic benefit during a period (for example, rent, utilities, fees).
-- `EQUITY`: residual interest in assets after liabilities (owner's stake, retained earnings, capital accounts).
+## Customer / Vendor
 
-## Placeholder Account
+Master entities used as invoice/bill owners.
 
-Account flagged with `is_placeholder = true` for hierarchical organization.
+- Both belong to one `Book`.
+- Both reference one `Commodity` (`currency_guid`).
 
-- A placeholder account MAY have child accounts.
-- Preventing postings on placeholder accounts is a **future constraint** and is not defined in v0.2.0.
+## Invoice / Bill
 
-## Parent / Child
+Commercial documents persisted in `invoices` with polymorphic owner:
+- `owner_type = CUSTOMER` for invoices
+- `owner_type = VENDOR` for bills
 
-Hierarchical relationship between accounts:
-- `parent`: immediate node above.
-- `children`: immediate nodes below.
+Posting metadata:
+- `post_txn` (posting transaction)
+- `post_lot` (lot used to track open balance)
+- `post_acc` (posting account)
 
-Hierarchy MUST form an acyclic tree (or forest per `Book`).
+## Invoice Entry / Bill Entry
+
+Line item persisted in `entries` and linked to one invoice/bill.
+
+## Lot
+
+Grouping key for open-balance tracking across posting and payment splits.
 
 ## Transaction
 
-Accounting entry header that groups one or more `Split` records.
-
-- A `Transaction` MUST reference one `Commodity` as entry currency.
-- A `Transaction` MUST contain at least two splits.
-- A `Transaction` is balanced only when the sum of all split `value` entries is zero.
+Accounting entry header grouping two or more `Split` records.
 
 ## Split
 
 One leg of a transaction posted to a specific account.
 
-- A `Split` MUST reference one `Transaction`.
-- A `Split` MUST reference one `Account`.
-- `value_num/value_denom` represent value in transaction currency.
-- `quantity_num/quantity_denom` represent quantity in account commodity units.
+- `value_num/value_denom` is transaction value rational.
+- `quantity_num/quantity_denom` is quantity rational.
+- `lot_guid` may link split to a lot.
+
+## Invoice/Bill Status
+
+Computed status values returned by API:
+- `UNPAID`
+- `POSTED`
+- `PARTIAL`
+- `PAID`
+- `INACTIVE`

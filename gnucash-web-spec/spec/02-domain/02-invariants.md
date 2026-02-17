@@ -1,55 +1,75 @@
 # 02.02 - Invariants
 
-## Mandatory rules
+## General
 
-1. `Account.book_id` MUST be present and MUST reference an existing `Book`.
-2. `Account.commodity_id` MUST be present and MUST reference an existing `Commodity`.
-3. `Account.type` MUST be one of: `ROOT`, `ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, `EQUITY`.
-4. `Commodity(namespace, mnemonic)` MUST be unique in the full dataset.
-5. `created_at` and `updated_at` timestamps MUST be represented in UTC.
+1. IDs exposed in API MUST be UUID-formatted strings.
+2. Timestamps MUST be UTC and serialized in RFC3339 (`...Z`).
+3. Validation/invariant errors MUST return structured payload (`code`, `message`, `details`).
 
-## Hierarchy rules
+## Books
 
-6. If `Account.type` is `ROOT`, then `Account.parent_id` MUST be `null`.
-7. If `Account.parent_id` is `null`, then `Account.type` MUST be `ROOT`.
-8. If `Account.parent_id` is present, it MUST reference an existing `Account`.
-9. If `Account.parent_id` is present, parent and child MUST share the same `book_id`.
-10. Account hierarchy MUST be acyclic.
-11. An account MUST NOT be its own parent.
+4. If books exist, there MUST be at least one active book.
+5. Activating one book MUST deactivate all other books.
+6. Deleting an active book MUST promote another existing book to active when possible.
 
-## Delete integrity rules
+## Commodity
 
-12. Deleting a `Book` MUST fail when there are `Account` records linked to it.
-13. Deleting a `Commodity` MUST fail when there are `Account` records linked to it.
-14. Deleting an `Account` MUST fail when it has one or more children.
+7. `(namespace, mnemonic)` MUST be unique.
+8. `fraction` MUST be a positive integer.
 
-## Placeholder note
+## Accounts and hierarchy
 
-15. `is_placeholder = true` MAY be used to model grouping nodes and MAY have children.
-16. Blocking transactional postings on placeholders is a **future constraint** and is out of scope for v0.2.0.
+9. `Account.book_id` MUST reference an existing `Book`.
+10. `Account.commodity_id` MUST reference an existing `Commodity`.
+11. `Account.type` MUST be one of `ROOT|ASSET|LIABILITY|INCOME|EXPENSE|EQUITY`.
+12. `ROOT` accounts MUST have `parent_id = null`.
+13. Non-`ROOT` accounts MUST have `parent_id != null`.
+14. `parent_id`, when present, MUST reference an account in the same `book_id`.
+15. Account hierarchy MUST be acyclic.
+16. Account cannot be its own parent.
 
-## Relational enforcement policy (legacy-aligned SQL)
+## Customers and vendors
 
-17. For SQL implementations aligned with `spec/03-data/04.gnucash-database.md`, invariants SHOULD be enforced with database constraints whenever deterministic.
-18. At minimum, SQL implementations SHOULD enforce foreign keys equivalent to:
-   - `accounts.commodity_guid -> commodities.guid`
-   - `accounts.parent_guid -> accounts.guid`
-   - `books.root_account_guid -> accounts.guid`
-19. SQL implementations SHOULD enforce:
-   - uniqueness equivalent to `Commodity(namespace, mnemonic)`;
-   - positive commodity fraction (`fraction > 0`);
-   - non-self-parent account rule (`parent != self`).
-20. In legacy datasets, constraints MAY be introduced incrementally (for example using `NOT VALID` followed by data remediation and `VALIDATE CONSTRAINT`) while preserving domain behavior.
+17. `Customer.book_id` and `Vendor.book_id` MUST reference an existing `Book`.
+18. `Customer.currency_guid` and `Vendor.currency_guid` MUST reference an existing `Commodity`.
+19. Customer/vendor deletion MUST be rejected while referenced by invoice/bill owners.
 
-## Posting rules
+## Invoices and bills
 
-21. `Transaction.currency_guid` MUST reference an existing `Commodity`.
-22. `Split.tx_guid` MUST reference an existing `Transaction`.
-23. `Split.account_guid` MUST reference an existing `Account`.
-24. A transaction MUST contain at least two splits.
-25. All split accounts in the same transaction MUST belong to the same `Book`.
-26. A transaction is valid only if the exact rational sum of `Split(value_num / value_denom)` is zero.
-27. `Split.value_denom` and `Split.quantity_denom` MUST be positive integers.
-28. Deleting an `Account` MUST fail when there are `Split` records linked to it.
-29. Deleting a `Commodity` MUST fail when there are `Transaction` records linked via `currency_guid`.
-30. Deleting a `Transaction` MUST remove its `Split` records (or reject deletion if removal cannot be guaranteed).
+20. `invoices.owner_type` MUST be `CUSTOMER` or `VENDOR` for API-managed records.
+21. For `owner_type=CUSTOMER`, `owner_guid` MUST reference an existing customer in the same book.
+22. For `owner_type=VENDOR`, `owner_guid` MUST reference an existing vendor in the same book.
+23. `currency_guid` MUST reference an existing commodity.
+24. `date_posted` is read-only via header patch and is controlled by post/unpost operations.
+25. Posted invoices/bills MUST block structural header edits until unposted.
+26. Deleting posted invoices/bills MUST be rejected.
+27. Entry create/patch/delete MUST be rejected for posted invoices/bills.
+
+## Posting and payments
+
+28. Invoice post account MUST be same-book, non-placeholder, `ASSET`, and currency-compatible.
+29. Bill post account MUST be same-book, non-placeholder, `LIABILITY`, and currency-compatible.
+30. Posting requires at least one entry and non-zero total.
+31. Posting MUST create balanced splits and posting lot metadata (`post_txn`, `post_lot`, `post_acc`).
+32. Unpost MUST remove posting transaction and clear posting metadata.
+33. Unpost MUST be rejected when payment splits still exist in posting lot.
+34. Payment requires posted invoice/bill and existing posting lot/account consistency.
+35. Payment transfer account MUST be same-book, non-placeholder, not `ROOT`, currency-compatible, and different from posting account.
+36. Payment amount MUST be positive and MUST NOT exceed lot open balance.
+37. Payment undo MUST reject posting transaction and only accept transactions tied to the document lot.
+
+## Transactions and splits
+
+38. `Transaction.currency_guid` MUST reference an existing commodity.
+39. A transaction MUST have at least two splits.
+40. All split accounts in a transaction MUST belong to one book.
+41. Exact rational sum of split values MUST be zero.
+42. `value_denom` and `quantity_denom` MUST be positive.
+43. Deleting a transaction MUST delete its splits atomically.
+44. Patching/deleting transactions linked to invoice/bill posting/payment flows MUST be rejected.
+
+## Delete integrity
+
+45. Deleting a book MUST be rejected while accounts, invoices/bills, customers, or vendors exist in that book.
+46. Deleting a commodity MUST be rejected while referenced by accounts, transactions, customers, vendors, or invoices/bills.
+47. Deleting an account MUST be rejected while it has children, splits, or invoice/bill entries.

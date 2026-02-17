@@ -2,11 +2,11 @@
 
 ## Current requirements
 
-1. `created_at` MUST be recorded when an entity is created.
-2. `updated_at` MUST be refreshed on every modification of `Account`.
-3. Timestamps MUST be in UTC and exposed in an RFC3339-compatible API format.
+1. `created_at` MUST be recorded for entities that expose creation timestamps (`Book`, `Account`, `Customer`, `Vendor`, `Invoice`, `Entry`).
+2. `updated_at` MUST be refreshed on mutable entities that expose update timestamps (`Account`, `Customer`, `Vendor`, `Invoice`, `Entry`).
+3. `Transaction.enter_date` MUST be recorded for posted transactions.
+4. Timestamp fields exposed by API MUST be UTC RFC3339-compatible strings.
 
 ## Scope boundary
 
-- Complete audit trail (who changed what, before/after, reason) is reserved for future phases.
-- v0.2.0 MAY include operational logs, but that is not a domain conformance requirement.
+- Full audit trail (actor, before/after diff, reason) is outside current conformance scope.

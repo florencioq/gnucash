@@ -3,7 +3,8 @@ POST https://api.example.com/books
 Content-Type: application/json
 
 {
-  "name": "Demo"
+  "name": "Demo",
+  "is_active": true
 }
 
 ### Expected 201
@@ -13,7 +14,8 @@ Content-Type: application/json
 {
   "id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
   "name": "Demo",
-  "created_at": "2026-02-08T12:00:00Z"
+  "is_active": true,
+  "created_at": "2026-02-17T12:00:00Z"
 }
 
 ### List Books
@@ -27,6 +29,10 @@ Content-Type: application/json
   {
     "id": "6a0e4d1d-65f6-43e2-8f70-3748fdc75c06",
     "name": "Demo",
-    "created_at": "2026-02-08T12:00:00Z"
+    "is_active": true,
+    "created_at": "2026-02-17T12:00:00Z"
   }
 ]
+
+### Get Active Book
+GET https://api.example.com/books/active

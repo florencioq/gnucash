@@ -1,6 +1,6 @@
 # Implementation Profile - FastAPI + React + PostgreSQL
 
-This document describes a reference implementation. It DOES NOT modify the normative specification in `spec/**`.
+This document is a reference implementation profile and does not override normative rules in `spec/**`.
 
 ## Stack
 
@@ -8,74 +8,56 @@ This document describes a reference implementation. It DOES NOT modify the norma
 
 - Python 3.12+
 - FastAPI
-- SQLAlchemy 2.0 typed ORM
+- SQLAlchemy 2.x
 - Alembic migrations
-- PostgreSQL 16+
+- PostgreSQL 16+ (primary runtime target)
 - psycopg3
 
 ### Frontend
 
 - React
-- Typescript
+- JavaScript/JSX (TypeScript optional)
 - Bootstrap 5
 
 ## Recommended conventions
 
-1. IDs SHOULD use `uuid4` and be serialized as UUID strings.
+1. IDs SHOULD use UUID textual format.
 2. Date/time values MUST be persisted and exposed in UTC.
-3. Error responses SHOULD map integrity exceptions to `400/409` using `code/message/details`.
-4. Migrations MUST encode constraints aligned with domain invariants.
-5. Backend implementation SHOULD provide a dependency manifest (for example `requirements.txt` or an equivalent lockfile).
-6. Local development MUST provide a PostgreSQL service using Docker Compose (or an equivalent container-based setup), and the backend repository SHOULD include a ready-to-run compose file.
-7. The runtime and Alembic migrations SHOULD read `DATABASE_URL` and it MUST point to PostgreSQL for this profile.
-8. SQLite MAY be used only for lightweight local testing, but it is non-conformant with this profile and SHOULD NOT be the default configuration.
+3. Error payload SHOULD follow `{code, message, details}`.
+4. Runtime and migrations SHOULD read `DATABASE_URL`.
+5. PostgreSQL SHOULD be the default runtime database for this profile.
+6. SQLite MAY be used for lightweight local tests.
 
 ## Suggested backend folder shape
 
 - `app/models.py`
 - `app/schemas.py`
-- `app/routes/books.py`
-- `app/routes/commodities.py`
-- `app/routes/accounts.py`
-- `app/services/`
-- `app/repositories/`
-- `alembic/versions/`
+- `app/routes/*.py`
+- `app/services/*.py`
+- `alembic/versions/*`
 
 ## Suggested frontend folder shape
 
-- `src/pages/BooksPage.jsx`
-- `src/pages/CommoditiesPage.jsx`
-- `src/pages/AccountsPage.jsx`
-- `src/pages/LedgerPage.jsx`
-- `src/components/AccountTree.jsx`
+- `src/pages/*.jsx`
+- `src/components/*.jsx`
 - `src/api/client.js`
+- `src/hooks/*.js`
 
 ## UX guidance
 
-- The account tree view SHOULD be the primary UI for managing accounts.
-- The account tree SHOULD support expand/collapse for nested account navigation.
-- Account tree rows SHOULD surface account `code` (when present) and current balance formatted with commodity mnemonic.
-- Flat account lists MAY be omitted if the tree view provides editing and deletion affordances.
-- Account editing SHOULD allow toggling `is_placeholder` in addition to updating the name.
-- Ledger UI SHOULD allow editing existing postings by reusing `PATCH /transactions/{tx_guid}`.
-- Account creation SHOULD use a hierarchical parent selector (tree picker) instead of a flat parent dropdown.
-- Parent/picking selectors SHOULD hide synthetic `ROOT` nodes and present only actionable descendants.
-- When a parent account is selected in account creation, UI SHOULD auto-set the new account `type` to the parent `type` (except when parent is `ROOT`).
-- UI account path labels in selectors SHOULD omit the synthetic `ROOT` prefix (for example show `Assets / Bank` instead of `Root / Assets / Bank`).
-- Books UI SHOULD provide a way to mark one Book as active.
-- Operational forms (accounts, ledger, customers, vendors, invoicing) SHOULD use the active Book context and SHOULD NOT require manual Book selection per form.
-- Invoicing entry forms SHOULD use a tree picker for `income_account_guid` (revenue account selection) instead of a flat dropdown.
-- Invoicing screen SHOULD allow a wider content container than default pages to improve dense line-item editing usability.
-- Invoicing UI SHOULD expose explicit actions to post and unpost invoices using dedicated posting endpoints.
-- While an invoice is posted, invoicing UI SHOULD block line edits/deletions until posting is undone.
-- Invoicing UI SHOULD provide payment registration with partial amounts and payment undo actions, reflecting `POSTED`/`PARTIAL`/`PAID` states from invoice payload.
-- Invoicing navigation SHOULD be split into two dedicated views: an invoice list view (filters + sortable columns + open action) and an invoice detail view (header editing, entries, posting, payments, delete).
-- Payment account selection in invoicing SHOULD use hierarchical account tree pickers, hiding synthetic `ROOT` nodes.
-- Purchasing/bills UI SHOULD mirror invoicing UX (header editor, entry grid, posting actions, payments list) with vendor context.
-- Purchasing/bills navigation SHOULD follow the same split: a bills list view (filters + sortable columns + open action) and a bill detail view (header editing, entries, posting, payments, delete).
-- Purchasing bill entry selectors SHOULD use expense-account trees and payable posting-account trees.
-- List views SHOULD show explicit fallback labels for missing owner entities (for example, `cliente não encontrado` / `fornecedor não encontrado`) instead of ambiguous placeholders.
+- Account tree should be primary for account navigation.
+- Tree selectors should hide synthetic `ROOT` where user must choose actionable accounts.
+- Books UI should expose active-book selection.
+- Operational forms should consume active book context.
+- Invoicing and purchasing pages should use wider layout for dense editing.
+- Invoicing must expose explicit post/unpost and payment undo actions.
+- Posted invoice/bill should lock line mutations until unposted.
+- Payment account selection should use hierarchical account pickers.
+- Invoicing navigation should be split into list (`Faturamentos`) and detail (`Fatura`).
+- Purchasing navigation should be split into list (`Compras`) and detail (`Compra`).
+- List views should support filtering, sortable columns, and open-to-detail actions.
+- List fallback labels should be explicit for missing owner references (`cliente não encontrado` / `fornecedor não encontrado`).
 
 ## Compliance note
 
-Implementation internals MAY differ, but observable behavior and invariants defined in the spec MUST be preserved.
+Implementation internals may vary, but observable behavior and invariants from `spec/**` must remain preserved.

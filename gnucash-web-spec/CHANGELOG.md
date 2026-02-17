@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.0 - 2026-02-17
+
+Full specification synchronization with runtime system:
+- aligned repository scope and introduction with implemented domains (customers, vendors, invoices, bills, payments, reports)
+- updated domain and data model docs with current entities, invariants, and lifecycle rules
+- regenerated OpenAPI contract from backend runtime (`app.openapi()`) to reflect actual endpoints and schemas
+- updated human endpoint guide to include health, parties, reports, and posting/payment restrictions
+- revised acceptance-testing document to match real automated suite coverage
+- updated release plans and non-functional docs to current baseline
+- refreshed API examples and implementation profile for current frontend/backend architecture
+
 ## v0.3.8 - 2026-02-17
 
 Invoicing and purchasing UI split clarification:

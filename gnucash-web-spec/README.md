@@ -1,44 +1,39 @@
 # gnucash-web-spec
 
-Normative domain specification for the accounting scope including **Book**, **Commodity**, **Account** (with hierarchy), and **Transaction/Split** postings, including API contracts and validation criteria.
+Normative domain specification for the current GnuCash Web scope.
 
 ## Objective
 
-This repository defines stable contracts to guide multiple implementations without technology coupling in the main specification.
+This repository defines stable contracts to guide implementations while keeping `spec/**` technology-agnostic (except `spec/implementation-profiles/**`).
 
-This specification:
-- MUST define domain rules, invariants, and observable behaviors.
-- MUST keep strict focus on the v0.2.0 scope.
-- MUST remain technology-agnostic in `spec/**`, except in `spec/implementation-profiles/**`.
+## Current scope
 
-## Scope v0.2.0
-
-Includes only:
-- Book
+Includes:
+- Book and active-book workflow
 - Commodity
-- Account (with parent/children)
-- Transaction
-- Split
-- CRUD for these entities
-- Account tree endpoint
+- Account hierarchy and account tree balances
+- Customer and Vendor masters
+- Invoice and Bill workflows (entries, posting, unposting, payments, payment undo)
+- Transaction/Split posting and editing restrictions when linked to invoice/bill flows
+- Income statement reporting endpoints
 
 Out of scope:
-- billing
-- accounts payable / accounts receivable
-- invoices, bills, payments
-- any entity outside the five listed above
+- authentication/authorization policy definition
+- tax engine and taxtable behavior
+- inventory costing rules
+- closing process and period lock semantics
 
 ## How to use
 
 1. Read `spec/00-introduction.md` and `spec/01-glossary.md`.
-2. Implement data and rules from `spec/02-domain/**` and `spec/03-data/**`.
-3. Implement API behavior exactly as defined in `spec/04-api/openapi.yaml`.
-4. Validate against `spec/07-testing/acceptance-tests.md`.
+2. Implement data and invariants from `spec/02-domain/**` and `spec/03-data/**`.
+3. Implement API behavior from `spec/04-api/openapi.yaml` and clarifications in `spec/04-api/endpoints.md`.
+4. Validate behavior against `spec/07-testing/acceptance-tests.md` and automated backend tests.
 
 ## Versioning
 
-- Versioning MUST follow SemVer (`MAJOR.MINOR.PATCH`).
-- Breaking contract changes MUST increment `MAJOR`.
-- Backward-compatible additions MUST increment `MINOR`.
-- Editorial fixes/clarifications without contract changes SHOULD increment `PATCH`.
-- Every release MUST record changes in `CHANGELOG.md`.
+- Versioning follows SemVer (`MAJOR.MINOR.PATCH`).
+- Breaking contract changes increment `MAJOR`.
+- Backward-compatible additions increment `MINOR`.
+- Editorial clarifications increment `PATCH`.
+- Every release MUST be recorded in `CHANGELOG.md`.

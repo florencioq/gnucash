@@ -2,133 +2,136 @@
 
 ## General behavior
 
-- IDs MUST be UUID strings.
-- Timestamps MUST use RFC3339 UTC (`...Z`).
-- Validation/invariant errors MUST return `400` or `409` with:
-  - `code`
-  - `message`
-  - `details`
+- IDs are UUID strings.
+- Timestamps use RFC3339 UTC (`...Z`).
+- Error payload format: `code`, `message`, `details`.
+- Validation/invariant failures are returned as `400` or `409` by application handlers.
+- Runtime-generated OpenAPI may still list `422` defaults from FastAPI metadata.
+
+## Health
+
+- `GET /health`: service liveness (`{"status":"ok"}`).
 
 ## Books
 
-- `POST /books`: create a Book.
-  - `is_active` MAY be provided to mark the new Book as active.
-  - if there is no active Book yet, the created Book MUST become active.
-- `GET /books`: list Books.
-- `GET /books/active`: fetch the currently active Book.
-- `GET /books/{book_id}`: fetch a Book by ID.
-- `PATCH /books/{book_id}`: update `name` and/or `is_active`.
-  - when `is_active=true`, other books MUST be deactivated.
-  - implementation MUST keep at least one active Book when books exist.
-- `DELETE /books/{book_id}`: delete a Book.
-  - MUST return `409` if linked `Account` records exist.
-  - when deleting the active Book and other books exist, another Book MUST become active.
+- `POST /books`: create book (`is_active` optional).
+- `GET /books`: list books (active first).
+- `GET /books/active`: get active book.
+- `GET /books/{book_id}`: get by id.
+- `PATCH /books/{book_id}`: patch `name`/`is_active`.
+- `DELETE /books/{book_id}`: delete when no linked accounts, invoices/bills, customers, vendors.
 
 ## Commodities
 
-- `POST /commodities`: create a Commodity.
-- `GET /commodities`: list Commodities.
-  - Optional filter: `?namespace=`.
-- `GET /commodities/{commodity_id}`: fetch by ID.
-- `PATCH /commodities/{commodity_id}`: partial update.
-- `DELETE /commodities/{commodity_id}`: delete a Commodity.
-  - MUST return `409` if any `Account` references it.
+- `POST /commodities`
+- `GET /commodities?namespace=`
+- `GET /commodities/{commodity_id}`
+- `PATCH /commodities/{commodity_id}`
+- `DELETE /commodities/{commodity_id}` (blocked while referenced by accounts, customers, vendors, invoices/bills, transactions).
 
 ## Accounts
 
-- `POST /accounts`: create an Account.
-  - `book_id` and `commodity_id` are required.
-  - `parent_id` is optional, but MUST reference an account in the same `book_id`.
-  - client UIs SHOULD default account `type` to the selected parent account `type` when `parent_id` is chosen (except when parent is `ROOT`).
-- `GET /accounts?book_id=`: list accounts for a Book.
-- `GET /accounts/{account_id}`: fetch by ID.
-- `PATCH /accounts/{account_id}`: partial update.
-  - MUST preserve hierarchy acyclicity.
-  - SHOULD allow updating `is_placeholder` when editing accounts.
-- `DELETE /accounts/{account_id}`: delete an account.
-  - MUST return `409` if the account has children.
-  - Rule about references from future posting entities is reserved for a future phase.
-- `GET /accounts/tree?book_id=`: return hierarchy for `book_id`.
-  - sibling nodes MUST be ordered by `name`.
-  - each node MUST expose `code` (nullable) and current account balance as exact rational fields (`balance_num`, `balance_denom`).
-  - payload MAY include the synthetic `ROOT` node; UI selectors SHOULD hide `ROOT` when choosing parent/posting accounts.
+- `POST /accounts`
+- `GET /accounts?book_id=`
+- `GET /accounts/tree?book_id=` (includes `code`, `balance_num`, `balance_denom`, recursive children ordered by name).
+- `GET /accounts/{account_id}`
+- `PATCH /accounts/{account_id}` (cycle and same-book parent rules enforced).
+- `DELETE /accounts/{account_id}` (blocked when has children/splits/invoice entries).
 
-## Invoices and Entries
+## Customers
 
-- `POST /invoices`: create invoice header.
-- `GET /invoices?book_id=`: list invoices for a book.
-- `GET /invoices/{invoice_guid}`: fetch invoice with entries and totals.
-  - response MUST include `paid_amount_*`, `open_amount_*`, and `payments[]` derived from the posting lot.
-  - `status` SHOULD follow lifecycle values: `UNPAID` (not posted), `POSTED` (posted without payments), `PARTIAL`, `PAID`, and `INACTIVE` (inactive invoice flag).
-- `PATCH /invoices/{invoice_guid}`: partial update invoice header.
-  - `date_posted` MUST be read-only; posting lifecycle MUST be handled by dedicated posting endpoints.
-  - while posted, structural fields (for example customer, currency, invoice id/type and terms) MUST be blocked until unposted.
-- `DELETE /invoices/{invoice_guid}`: delete invoice.
-  - MUST return `409` while the invoice is posted.
-- `POST /invoices/{invoice_guid}/entries`: add invoice entry.
-- `PATCH /invoices/{invoice_guid}/entries/{entry_guid}`: patch invoice entry.
-- `DELETE /invoices/{invoice_guid}/entries/{entry_guid}`: remove invoice entry.
-  - entry create/update/delete MUST return `409` while invoice is posted.
-- `POST /invoices/{invoice_guid}/post`: post invoice into accounting transactions.
-  - MUST create posting transaction and posting lot.
-  - MUST fill invoice posting references (`post_txn`, `post_lot`, `post_acc`) and `date_posted`.
-  - MUST reject posting when invoice has no entries.
-- `POST /invoices/{invoice_guid}/unpost`: undo invoice posting.
-  - MUST remove posting transaction and clear posting references.
-  - MUST reject unpost while payment splits exist in the same posting lot.
-- `POST /invoices/{invoice_guid}/payments`: register an invoice payment in the posting lot.
-  - MUST accept partial amounts.
-  - payment amount MUST be positive and MUST NOT exceed the lot open balance.
-  - MUST create one split in receivable posting account (`post_acc`) linked to invoice lot (`post_lot`) and one counter split in transfer account.
-- `POST /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo`: undo one previously registered payment transaction.
-  - MUST reject undo attempts for the original posting transaction.
-  - MUST restore lot open balance and invoice status accordingly.
+- `POST /customers`
+- `GET /customers?book_id=`
+- `GET /customers/{customer_guid}`
+- `PATCH /customers/{customer_guid}`
+- `DELETE /customers/{customer_guid}` (blocked while referenced by customer invoices).
 
-## Bills and Entries (Vendor Purchases)
+## Vendors
 
-- `POST /bills`: create vendor bill header.
-- `GET /bills?book_id=`: list bills for a book.
-- `GET /bills/{bill_guid}`: fetch bill with entries and totals.
-  - response MUST include `paid_amount_*`, `open_amount_*`, and `payments[]` derived from the posting lot.
-  - `status` SHOULD follow lifecycle values: `UNPAID` (not posted), `POSTED`, `PARTIAL`, `PAID`, and `INACTIVE`.
-- `PATCH /bills/{bill_guid}`: partial update bill header.
-  - `date_posted` MUST be read-only; posting lifecycle MUST be handled by dedicated posting endpoints.
-  - while posted, structural fields (for example vendor, currency, bill id/type and terms) MUST be blocked until unposted.
-- `DELETE /bills/{bill_guid}`: delete bill.
-  - MUST return `409` while the bill is posted.
-- `POST /bills/{bill_guid}/entries`: add bill entry.
-  - entry account MUST be an `EXPENSE` account from the same book.
-- `PATCH /bills/{bill_guid}/entries/{entry_guid}`: patch bill entry.
-- `DELETE /bills/{bill_guid}/entries/{entry_guid}`: remove bill entry.
-  - entry create/update/delete MUST return `409` while bill is posted.
-- `POST /bills/{bill_guid}/post`: post bill into accounting transactions.
-  - MUST create posting transaction and posting lot.
-  - MUST fill bill posting references (`post_txn`, `post_lot`, `post_acc`) and `date_posted`.
-  - posting account MUST be a `LIABILITY` account from same book/currency.
-  - MUST reject posting when bill has no entries.
-- `POST /bills/{bill_guid}/unpost`: undo bill posting.
-  - MUST remove posting transaction and clear posting references.
-  - MUST reject unpost while payment splits exist in the same posting lot.
-- `POST /bills/{bill_guid}/payments`: register a bill payment in the posting lot.
-  - MUST accept partial amounts.
-  - payment amount MUST be positive and MUST NOT exceed the lot open balance.
-  - MUST create one split in payable posting account (`post_acc`) linked to bill lot (`post_lot`) and one counter split in transfer account.
-- `POST /bills/{bill_guid}/payments/{payment_tx_guid}/undo`: undo one previously registered bill payment transaction.
-  - MUST reject undo attempts for the original posting transaction.
-  - MUST restore lot open balance and bill status accordingly.
+- `POST /vendors`
+- `GET /vendors?book_id=`
+- `GET /vendors/{vendor_guid}`
+- `PATCH /vendors/{vendor_guid}`
+- `DELETE /vendors/{vendor_guid}` (blocked while referenced by vendor bills).
 
-## Transactions and Splits (Accounting Postings)
+## Invoices (customer flow)
 
-- `POST /transactions`: create a transaction with its splits.
-  - `currency_guid` is required and MUST reference an existing commodity.
-  - request MUST include at least two splits.
-  - all split accounts MUST belong to the same book.
-  - exact sum of split `value_num/value_denom` MUST be zero.
-- `GET /transactions?book_id=`: list transactions filtered by book through split accounts.
-- `GET /transactions/{tx_guid}`: fetch a transaction with its splits.
-- `PATCH /transactions/{tx_guid}`: partial update transaction fields and optionally replace splits.
-  - when `splits` are provided, the same validation rules as create MUST apply.
-  - this endpoint MUST support editing an existing posting flow (for example, ledger UI editing).
-- `DELETE /transactions/{tx_guid}`: delete transaction.
-  - deleting a transaction MUST remove associated splits (or fail atomically).
-  - implementation MUST reject delete/patch for transactions linked to posted invoices, including posting transaction and invoice-payment transactions linked by posting lot.
+- `POST /invoices`
+- `GET /invoices?book_id=&customer_guid=`
+- `GET /invoices/{invoice_guid}`
+- `PATCH /invoices/{invoice_guid}`
+  - `date_posted` is read-only.
+  - structural fields are blocked while posted.
+- `DELETE /invoices/{invoice_guid}` (blocked while posted).
+
+Entries:
+- `POST /invoices/{invoice_guid}/entries`
+- `PATCH /invoices/{invoice_guid}/entries/{entry_guid}`
+- `DELETE /invoices/{invoice_guid}/entries/{entry_guid}`
+- entry mutations blocked while posted.
+
+Posting:
+- `POST /invoices/{invoice_guid}/post`
+  - requires at least one entry and non-zero total.
+  - post account must be same-book `ASSET`, non-placeholder, commodity-compatible.
+- `POST /invoices/{invoice_guid}/unpost`
+  - blocked if payment splits exist in posting lot.
+
+Payments:
+- `POST /invoices/{invoice_guid}/payments`
+  - partial payments allowed.
+  - amount must be positive and <= open balance.
+- `POST /invoices/{invoice_guid}/payments/{payment_tx_guid}/undo`
+  - posting tx cannot be undone via this endpoint.
+
+## Bills (vendor purchase flow)
+
+- `POST /bills`
+- `GET /bills?book_id=&vendor_guid=`
+- `GET /bills/{bill_guid}`
+- `PATCH /bills/{bill_guid}`
+  - `date_posted` is read-only.
+  - structural fields are blocked while posted.
+- `DELETE /bills/{bill_guid}` (blocked while posted).
+
+Entries:
+- `POST /bills/{bill_guid}/entries`
+  - account must be `EXPENSE` in same book.
+- `PATCH /bills/{bill_guid}/entries/{entry_guid}`
+- `DELETE /bills/{bill_guid}/entries/{entry_guid}`
+- entry mutations blocked while posted.
+
+Posting:
+- `POST /bills/{bill_guid}/post`
+  - requires at least one entry and non-zero total.
+  - post account must be same-book `LIABILITY`, non-placeholder, commodity-compatible.
+- `POST /bills/{bill_guid}/unpost`
+  - blocked if payment splits exist in posting lot.
+
+Payments:
+- `POST /bills/{bill_guid}/payments`
+  - partial payments allowed.
+  - amount must be positive and <= open balance.
+- `POST /bills/{bill_guid}/payments/{payment_tx_guid}/undo`
+  - posting tx cannot be undone via this endpoint.
+
+## Transactions and splits
+
+- `POST /transactions`: create balanced transaction with >=2 splits.
+- `GET /transactions?book_id=`
+- `GET /transactions/{tx_guid}`
+- `PATCH /transactions/{tx_guid}`: optionally replace splits (same validations as create).
+- `DELETE /transactions/{tx_guid}`: deletes transaction + splits.
+
+Protection rule:
+- patch/delete MUST be rejected when transaction is linked to invoice/bill posting/payment flow.
+
+## Reports
+
+- `GET /reports/income-statement?book_id=&month=YYYY-MM`
+- `GET /reports/income-statement/matrix?book_id=&start_month=YYYY-MM&end_month=YYYY-MM`
+- `GET /reports/income-statement/accounts/{account_id}/entries?book_id=&month=YYYY-MM`
+
+Validation notes:
+- month format and range limits are enforced.
+- drill-down account must belong to selected book and be `INCOME` or `EXPENSE`.

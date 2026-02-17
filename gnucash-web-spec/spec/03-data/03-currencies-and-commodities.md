@@ -2,25 +2,26 @@
 
 ## Semantics
 
-`Commodity` represents a denomination unit.
+`Commodity` represents denomination units used by accounts, parties, invoices/bills, and transactions.
 
 Primary fields:
-- `namespace`: commodity class (for example, `CURRENCY`, `FUND`).
-- `mnemonic`: short symbol unique within a namespace.
-- `fraction`: smallest common unit (SCU).
+- `namespace`
+- `mnemonic`
+- `fraction`
 
 ## Rules
 
-- (`namespace`, `mnemonic`) MUST be unique.
-- `fraction` MUST be a positive integer.
-- `fraction` SHOULD reflect the smallest granularity used by the domain.
+1. (`namespace`, `mnemonic`) MUST be unique.
+2. `fraction` MUST be a positive integer.
+3. `fraction` SHOULD match the smallest practical unit used in posting/payment flows.
+
+## Usage alignment rules
+
+4. Account commodity MUST match account posting arithmetic.
+5. Invoice/bill currency MUST match posting account and payment transfer account commodities.
+6. Transaction `currency_guid` MUST match transaction value arithmetic precision constraints.
 
 ## Examples
 
 - BRL: `namespace=CURRENCY`, `mnemonic=BRL`, `fraction=100`
 - USD: `namespace=CURRENCY`, `mnemonic=USD`, `fraction=100`
-
-## Usage with Account
-
-- Every `Account` MUST reference a valid `Commodity` via `commodity_id`.
-- Changing commodity on an existing account MAY be allowed by contract as long as invariants remain valid.
