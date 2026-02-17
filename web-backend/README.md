@@ -62,6 +62,41 @@ export CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 uvicorn app.main:app --reload
 ```
 
+## Import from GnuCash PostgreSQL
+
+To migrate `books`, `commodities`, `accounts`, `customers`, `vendors`, `transactions`, `splits`, `lots`, `invoices` and `entries` from a GnuCash PostgreSQL database:
+
+```bash
+python scripts/import_gnucash_postgres.py
+```
+
+Defaults for source database are:
+- host: `localhost`
+- port: `5431`
+- database: `gnucash`
+- user: `gnucash_user`
+- password: `gnucash_pass`
+
+The target database uses `DATABASE_URL` from environment or `web-backend/.env`.
+
+If source has multiple books and you also want to import `customers/vendors`, set which target book should receive them:
+
+```bash
+python scripts/import_gnucash_postgres.py --business-book-id <book-uuid>
+```
+
+You can skip specific entities when needed:
+
+```bash
+python scripts/import_gnucash_postgres.py --skip-customers --skip-vendors --skip-transactions --skip-splits --skip-lots --skip-invoices --skip-entries
+```
+
+Preview without writing:
+
+```bash
+python scripts/import_gnucash_postgres.py --dry-run
+```
+
 ## Tests
 
 ```bash

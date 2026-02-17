@@ -333,10 +333,10 @@ body {
 }
 
 .dre-panel {
-  border: 1px solid var(--line);
+  border: 1px solid #bcbcbc;
   border-radius: 12px;
-  background: #fff;
-  padding: 0.9rem;
+  background: #dedede;
+  padding: 1rem 1.1rem;
 }
 
 .dre-waterfall-row {
@@ -461,6 +461,73 @@ body {
   color: #1f5f47;
 }
 
+.dre-classic-table-wrap {
+  overflow: auto;
+}
+
+.dre-classic-table {
+  min-width: 1080px;
+}
+
+.dre-classic-table thead th {
+  background: transparent;
+  border-bottom: 2px solid #acacac;
+  white-space: nowrap;
+}
+
+.dre-classic-table tbody td {
+  border-top: 0;
+  border-bottom: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.dre-classic-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #dedede;
+  min-width: 220px;
+}
+
+.dre-classic-table thead .dre-classic-sticky-col {
+  z-index: 2;
+}
+
+.dre-classic-section-row td {
+  font-size: 1.08rem;
+  padding-top: 1rem;
+}
+
+.dre-classic-total-row td {
+  border-top: 2px solid #9f9f9f;
+  padding-top: 0.45rem;
+}
+
+.dre-classic-total-row.net td {
+  border-top-color: #6f6f6f;
+}
+
+.dre-classic-name-link,
+.dre-classic-value-link {
+  border: 0;
+  background: transparent;
+  color: #1435c8;
+  font-style: italic;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+}
+
+.dre-classic-name-link {
+  display: inline-block;
+  text-align: left;
+}
+
+.dre-classic-name-link:hover,
+.dre-classic-value-link:hover {
+  color: #0b2592;
+}
+
 @media (max-width: 768px) {
   .income-statement-kpis {
     grid-template-columns: 1fr 1fr;
@@ -481,6 +548,10 @@ body {
 
   .dre-matrix-table {
     min-width: 680px;
+  }
+
+  .dre-classic-table {
+    min-width: 760px;
   }
 
   .invoice-totals {
