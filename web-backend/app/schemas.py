@@ -546,6 +546,31 @@ class BillOut(BaseOut):
     updated_at: datetime
 
 
+class BillListItemOut(BaseModel):
+    guid: str
+    book_id: str
+    id: str
+    date_opened: datetime | None
+    date_posted: datetime | None
+    currency_guid: str
+    vendor_guid: str
+    vendor_name: str | None
+    status: str
+    payment_status: str
+    total_num: int
+    total_denom: int
+    open_amount_num: int
+    open_amount_denom: int
+
+
+class BillListPageOut(BaseModel):
+    items: list[BillListItemOut]
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+
+
 class SplitIn(BaseModel):
     guid: UUID | None = None
     account_guid: UUID

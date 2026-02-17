@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from fractions import Fraction
+from math import ceil
+from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
@@ -22,6 +24,8 @@ from app.schemas import (
     InvoicePaymentOut,
     BillPostRequest,
     InvoiceEntryPatch,
+    BillListItemOut,
+    BillListPageOut,
     BillOut,
     BillPatch,
 )
@@ -461,6 +465,90 @@ def _bill_to_out(db: Session, invoice: Invoice) -> dict:
     }
 
 
+def _bill_amounts(db: Session, invoice: Invoice) -> tuple[Fraction, Fraction, Fraction]:
+    total_sum = Fraction(0, 1)
+    for entry in invoice.entries:
+        _, _, total = _entry_totals(entry)
+        total_sum += total
+
+    signed_total = total_sum * _bill_sign(invoice)
+    open_signed = signed_total
+    if invoice.date_posted is not None and invoice.post_lot and invoice.post_acc:
+        open_signed = _lot_balance(db, lot_guid=invoice.post_lot, account_guid=invoice.post_acc)
+
+    return total_sum, abs(signed_total), abs(open_signed)
+
+
+def _payment_state_from_amounts(*, total_amount: Fraction, open_amount: Fraction) -> str:
+    if open_amount == 0:
+        return "PAID"
+    if total_amount != 0 and open_amount < total_amount:
+        return "PARTIAL"
+    return "UNPAID"
+
+
+def _bill_to_list_item(db: Session, invoice: Invoice, *, vendor_name: str | None) -> dict:
+    total_sum, total_amount, open_amount = _bill_amounts(db, invoice)
+    return BillListItemOut(
+        guid=invoice.guid,
+        book_id=invoice.book_id,
+        id=invoice.id,
+        date_opened=invoice.date_opened,
+        date_posted=invoice.date_posted,
+        currency_guid=invoice.currency_guid,
+        vendor_guid=invoice.owner_guid,
+        vendor_name=vendor_name,
+        status=_bill_status(invoice, total_amount=total_amount, open_amount=open_amount),
+        payment_status=_payment_state_from_amounts(total_amount=total_amount, open_amount=open_amount),
+        total_num=total_sum.numerator,
+        total_denom=total_sum.denominator,
+        open_amount_num=open_amount.numerator,
+        open_amount_denom=open_amount.denominator,
+    ).model_dump()
+
+
+def _bill_sort_value(item: dict, *, sort_key: str) -> tuple:
+    if sort_key == "id":
+        return (str(item.get("id") or "").lower(),)
+    if sort_key == "vendor":
+        return (str(item.get("vendor_name") or "").lower(),)
+    if sort_key == "date_opened":
+        return (item.get("date_opened") or datetime.min.replace(tzinfo=UTC),)
+    if sort_key == "date_posted":
+        return (item.get("date_posted") or datetime.min.replace(tzinfo=UTC),)
+    if sort_key == "posted_status":
+        return (1 if item.get("date_posted") else 0,)
+    if sort_key == "payment_status":
+        order = {"UNPAID": 0, "PARTIAL": 1, "PAID": 2}
+        return (order.get(str(item.get("payment_status") or "UNPAID"), 0),)
+    if sort_key == "total":
+        return (abs(Fraction(item["total_num"], item["total_denom"])),)
+    if sort_key == "open":
+        return (abs(Fraction(item["open_amount_num"], item["open_amount_denom"])),)
+    return (item.get("date_opened") or datetime.min.replace(tzinfo=UTC),)
+
+
+def _apply_posted_filters(
+    stmt,
+    *,
+    posted_filter: Literal["ALL", "POSTED", "UNPOSTED"],
+    posted_start_date: date | None,
+    posted_end_date: date | None,
+):
+    if posted_filter == "POSTED":
+        stmt = stmt.where(Invoice.date_posted.is_not(None))
+    elif posted_filter == "UNPOSTED":
+        stmt = stmt.where(Invoice.date_posted.is_(None))
+
+    if posted_start_date is not None:
+        start_at = datetime.combine(posted_start_date, time.min, tzinfo=UTC)
+        stmt = stmt.where(Invoice.date_posted >= start_at)
+    if posted_end_date is not None:
+        end_at = datetime.combine(posted_end_date, time.max, tzinfo=UTC)
+        stmt = stmt.where(Invoice.date_posted <= end_at)
+    return stmt
+
+
 def _load_bill(db: Session, *, bill_guid: str) -> Invoice:
     invoice = db.execute(
         select(Invoice)
@@ -532,6 +620,114 @@ def list_bills(
         stmt = stmt.where(Invoice.owner_guid == str(vendor_guid))
     invoices = db.execute(stmt).scalars().all()
     return [_bill_to_out(db, invoice) for invoice in invoices]
+
+
+@router.get("/list", response_model=BillListPageOut)
+def list_bills_paginated(
+    book_id: UUID = Query(...),
+    vendor_guid: UUID | None = Query(default=None),
+    posted_filter: Literal["ALL", "POSTED", "UNPOSTED"] = Query(default="ALL"),
+    payment_filter: Literal["ALL", "PAID", "UNPAID", "PARTIAL"] = Query(default="ALL"),
+    posted_start_date: date | None = Query(default=None),
+    posted_end_date: date | None = Query(default=None),
+    sort_key: Literal["id", "vendor", "date_opened", "date_posted", "posted_status", "payment_status", "total", "open"] = Query(default="date_opened"),
+    sort_direction: Literal["asc", "desc"] = Query(default="desc"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> dict:
+    base_stmt = select(Invoice).where(Invoice.book_id == str(book_id), Invoice.owner_type == "VENDOR")
+    if vendor_guid is not None:
+        base_stmt = base_stmt.where(Invoice.owner_guid == str(vendor_guid))
+    base_stmt = _apply_posted_filters(
+        base_stmt,
+        posted_filter=posted_filter,
+        posted_start_date=posted_start_date,
+        posted_end_date=posted_end_date,
+    )
+
+    needs_python_filter_or_sort = payment_filter != "ALL" or sort_key in {"vendor", "payment_status", "total", "open"}
+
+    if not needs_python_filter_or_sort:
+        total_items = int(db.execute(select(func.count()).select_from(base_stmt.subquery())).scalar_one())
+        total_pages = max(1, ceil(total_items / page_size)) if total_items else 1
+        current_page = min(page, total_pages)
+        offset = (current_page - 1) * page_size
+
+        posted_order_expr = case((Invoice.date_posted.is_(None), 0), else_=1)
+        order_expr = {
+            "id": Invoice.id,
+            "date_opened": Invoice.date_opened,
+            "date_posted": Invoice.date_posted,
+            "posted_status": posted_order_expr,
+        }.get(sort_key, Invoice.date_opened)
+
+        order_fn = order_expr.asc if sort_direction == "asc" else order_expr.desc
+        tie_fn = Invoice.guid.asc if sort_direction == "asc" else Invoice.guid.desc
+        page_stmt = (
+            base_stmt
+            .options(selectinload(Invoice.entries))
+            .order_by(order_fn(), tie_fn())
+            .offset(offset)
+            .limit(page_size)
+        )
+        invoices = db.execute(page_stmt).scalars().all()
+        vendor_ids = {invoice.owner_guid for invoice in invoices}
+        vendors_by_guid = {
+            guid: name
+            for guid, name in db.execute(select(Vendor.guid, Vendor.name).where(Vendor.guid.in_(vendor_ids))).all()
+        } if vendor_ids else {}
+        items = [
+            _bill_to_list_item(db, invoice, vendor_name=vendors_by_guid.get(invoice.owner_guid))
+            for invoice in invoices
+        ]
+        return {
+            "items": items,
+            "page": current_page,
+            "page_size": page_size,
+            "total_items": total_items,
+            "total_pages": total_pages,
+        }
+
+    stmt = base_stmt.options(selectinload(Invoice.entries)).order_by(
+        Invoice.date_opened.asc(),
+        Invoice.id.asc(),
+        Invoice.guid.asc(),
+    )
+    invoices = db.execute(stmt).scalars().all()
+
+    vendor_ids = {invoice.owner_guid for invoice in invoices}
+    vendors_by_guid = {
+        guid: name
+        for guid, name in db.execute(select(Vendor.guid, Vendor.name).where(Vendor.guid.in_(vendor_ids))).all()
+    } if vendor_ids else {}
+
+    items = [
+        _bill_to_list_item(db, invoice, vendor_name=vendors_by_guid.get(invoice.owner_guid))
+        for invoice in invoices
+    ]
+    if payment_filter != "ALL":
+        items = [item for item in items if item["payment_status"] == payment_filter]
+
+    reverse = sort_direction == "desc"
+    items.sort(
+        key=lambda item: (_bill_sort_value(item, sort_key=sort_key), str(item.get("guid") or "")),
+        reverse=reverse,
+    )
+
+    total_items = len(items)
+    total_pages = max(1, ceil(total_items / page_size)) if total_items else 1
+    current_page = min(page, total_pages)
+    offset = (current_page - 1) * page_size
+    paged_items = items[offset:offset + page_size]
+
+    return {
+        "items": paged_items,
+        "page": current_page,
+        "page_size": page_size,
+        "total_items": total_items,
+        "total_pages": total_pages,
+    }
 
 
 @router.get("/{bill_guid}", response_model=BillOut)

@@ -25,48 +25,19 @@ function formatMoney(num, denom, mnemonic) {
   return mnemonic ? `${mnemonic} ${formatted}` : formatted;
 }
 
-function invoicePaymentState(invoice) {
-  const openAmount = Math.abs(rationalToNumber(invoice.open_amount_num, invoice.open_amount_denom));
-  const totalAmount = Math.abs(rationalToNumber(invoice.total_num, invoice.total_denom));
-  const epsilon = 1e-9;
-
-  if (openAmount <= epsilon) return "PAID";
-  if (totalAmount > epsilon && openAmount < (totalAmount - epsilon)) return "PARTIAL";
-  return "UNPAID";
-}
-
-function isoDateOnly(value) {
-  if (!value) return "";
-  const ymd = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
-}
-
-function dateInRange(isoDate, startDate, endDate) {
-  if (!isoDate) return false;
-  if (startDate && isoDate < startDate) return false;
-  if (endDate && isoDate > endDate) return false;
-  return true;
-}
-
 function paymentStateLabel(state) {
   if (state === "PAID") return "Paga";
   if (state === "PARTIAL") return "Parcial";
   return "Não paga";
 }
 
-const PAYMENT_STATE_ORDER = {
-  UNPAID: 0,
-  PARTIAL: 1,
-  PAID: 2
-};
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing = null }) {
   const [commodities, setCommodities] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
 
@@ -77,6 +48,10 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
   const [postedEndDate, setPostedEndDate] = useState("");
   const [sortKey, setSortKey] = useState("date_opened");
   const [sortDirection, setSortDirection] = useState("desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const commoditiesById = useMemo(
     () => new Map(commodities.map((commodity) => [commodity.id, commodity])),
@@ -86,77 +61,6 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
     () => new Map(vendors.map((vendor) => [vendor.guid, vendor])),
     [vendors]
   );
-
-  const filteredInvoices = useMemo(() => {
-    return invoices.filter((invoice) => {
-      if (vendorFilterGuid && invoice.vendor_guid !== vendorFilterGuid) return false;
-
-      if (postedFilter === "POSTED" && !invoice.date_posted) return false;
-      if (postedFilter === "UNPOSTED" && invoice.date_posted) return false;
-
-      if (postedStartDate || postedEndDate) {
-        const postedDate = isoDateOnly(invoice.date_posted);
-        if (!dateInRange(postedDate, postedStartDate, postedEndDate)) return false;
-      }
-
-      if (paymentFilter !== "ALL") {
-        const paymentState = invoicePaymentState(invoice);
-        if (paymentState !== paymentFilter) return false;
-      }
-
-      return true;
-    });
-  }, [
-    invoices,
-    vendorFilterGuid,
-    postedFilter,
-    paymentFilter,
-    postedStartDate,
-    postedEndDate
-  ]);
-
-  const sortedInvoices = useMemo(() => {
-    const getSortValue = (invoice) => {
-      switch (sortKey) {
-        case "id":
-          return String(invoice.id || "").toLowerCase();
-        case "vendor":
-          return String(vendorsById.get(invoice.vendor_guid)?.name || "").toLowerCase();
-        case "date_opened":
-          return isoDateOnly(invoice.date_opened);
-        case "date_posted":
-          return isoDateOnly(invoice.date_posted);
-        case "posted_status":
-          return invoice.date_posted ? 1 : 0;
-        case "payment_status":
-          return PAYMENT_STATE_ORDER[invoicePaymentState(invoice)] || 0;
-        case "total":
-          return Math.abs(rationalToNumber(invoice.total_num, invoice.total_denom));
-        case "open":
-          return Math.abs(rationalToNumber(invoice.open_amount_num, invoice.open_amount_denom));
-        default:
-          return "";
-      }
-    };
-
-    const direction = sortDirection === "asc" ? 1 : -1;
-    return filteredInvoices.slice().sort((a, b) => {
-      const aValue = getSortValue(a);
-      const bValue = getSortValue(b);
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        if (aValue < bValue) return -1 * direction;
-        if (aValue > bValue) return 1 * direction;
-      } else {
-        const aText = String(aValue || "");
-        const bText = String(bValue || "");
-        const compared = aText.localeCompare(bText, "pt-BR");
-        if (compared !== 0) return compared * direction;
-      }
-
-      return String(a.guid || "").localeCompare(String(b.guid || ""), "pt-BR");
-    });
-  }, [filteredInvoices, sortDirection, sortKey, vendorsById]);
 
   const sortIndicator = (key) => {
     if (sortKey !== key) return "↕";
@@ -191,13 +95,32 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
   };
 
   const loadInvoices = async (bookId) => {
-    const response = await api.get(`/bills?book_id=${bookId}`);
+    const params = new URLSearchParams({
+      book_id: bookId,
+      posted_filter: postedFilter,
+      payment_filter: paymentFilter,
+      sort_key: sortKey,
+      sort_direction: sortDirection,
+      page: String(page),
+      page_size: String(pageSize)
+    });
+    if (vendorFilterGuid) params.set("vendor_guid", vendorFilterGuid);
+    if (postedStartDate) params.set("posted_start_date", postedStartDate);
+    if (postedEndDate) params.set("posted_end_date", postedEndDate);
+
+    setLoading(true);
+    const response = await api.get(`/bills/list?${params.toString()}`);
+    setLoading(false);
     if (!response.ok) {
       setError(response.error);
       return;
     }
     setError(null);
-    setInvoices(response.data);
+    setInvoices(response.data.items || []);
+    setPage(response.data.page || 1);
+    setPageSize(response.data.page_size || pageSize);
+    setTotalItems(response.data.total_items || 0);
+    setTotalPages(response.data.total_pages || 1);
   };
 
   useEffect(() => {
@@ -207,14 +130,33 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
   useEffect(() => {
     if (!activeBookId) return;
     loadVendors(activeBookId);
-    loadInvoices(activeBookId);
   }, [activeBookId]);
+
+  useEffect(() => {
+    if (!activeBookId) return;
+    loadInvoices(activeBookId);
+  }, [
+    activeBookId,
+    vendorFilterGuid,
+    postedFilter,
+    paymentFilter,
+    postedStartDate,
+    postedEndDate,
+    sortKey,
+    sortDirection,
+    page,
+    pageSize
+  ]);
 
   useEffect(() => {
     if (!vendorFilterGuid) return;
     if (vendors.some((vendor) => vendor.guid === vendorFilterGuid)) return;
     setVendorFilterGuid("");
   }, [vendors, vendorFilterGuid]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeBookId, vendorFilterGuid, postedFilter, paymentFilter, postedStartDate, postedEndDate, sortKey, sortDirection, pageSize]);
 
   return (
     <div>
@@ -239,7 +181,10 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
           <select
             className="form-select"
             value={vendorFilterGuid}
-            onChange={(event) => setVendorFilterGuid(event.target.value)}
+            onChange={(event) => {
+              setVendorFilterGuid(event.target.value);
+              setPage(1);
+            }}
             disabled={!activeBookId || vendors.length === 0}
           >
             <option value="">Todos</option>
@@ -255,7 +200,10 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
           <select
             className="form-select"
             value={postedFilter}
-            onChange={(event) => setPostedFilter(event.target.value)}
+            onChange={(event) => {
+              setPostedFilter(event.target.value);
+              setPage(1);
+            }}
             disabled={!activeBookId}
           >
             <option value="ALL">Todas</option>
@@ -268,7 +216,10 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
           <select
             className="form-select"
             value={paymentFilter}
-            onChange={(event) => setPaymentFilter(event.target.value)}
+            onChange={(event) => {
+              setPaymentFilter(event.target.value);
+              setPage(1);
+            }}
             disabled={!activeBookId}
           >
             <option value="ALL">Todas</option>
@@ -283,7 +234,10 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
             type="date"
             className="form-control"
             value={postedStartDate}
-            onChange={(event) => setPostedStartDate(event.target.value)}
+            onChange={(event) => {
+              setPostedStartDate(event.target.value);
+              setPage(1);
+            }}
             disabled={!activeBookId}
           />
         </div>
@@ -293,7 +247,10 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
             type="date"
             className="form-control"
             value={postedEndDate}
-            onChange={(event) => setPostedEndDate(event.target.value)}
+            onChange={(event) => {
+              setPostedEndDate(event.target.value);
+              setPage(1);
+            }}
             disabled={!activeBookId}
           />
         </div>
@@ -358,15 +315,22 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
             </tr>
           </thead>
           <tbody>
-            {sortedInvoices.map((invoice) => {
-              const vendor = vendorsById.get(invoice.vendor_guid);
-              const paymentState = invoicePaymentState(invoice);
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="small-muted">
+                  Carregando compras...
+                </td>
+              </tr>
+            ) : null}
+            {!loading ? invoices.map((invoice) => {
+              const vendorName = invoice.vendor_name || vendorsById.get(invoice.vendor_guid)?.name;
+              const paymentState = invoice.payment_status || "UNPAID";
               const mnemonic = commoditiesById.get(invoice.currency_guid)?.mnemonic || "";
 
               return (
                 <tr key={invoice.guid}>
                   <td>{invoice.id || "-"}</td>
-                  <td>{vendor?.name || "fornecedor não encontrado"}</td>
+                  <td>{vendorName || "fornecedor não encontrado"}</td>
                   <td>{formatDateDisplay(invoice.date_opened)}</td>
                   <td>{formatDateDisplay(invoice.date_posted)}</td>
                   <td>{invoice.date_posted ? "Postada" : "Não postada"}</td>
@@ -399,8 +363,8 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
                   </td>
                 </tr>
               );
-            })}
-            {sortedInvoices.length === 0 ? (
+            }) : null}
+            {!loading && invoices.length === 0 ? (
               <tr>
                 <td colSpan={9} className="small-muted">
                   Nenhuma compra para os filtros selecionados.
@@ -409,6 +373,48 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
+        <div className="small-muted">Mostrando {invoices.length} de {totalItems} compras</div>
+        <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0 small-muted">Itens por página</label>
+          <select
+            className="form-select form-select-sm"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value) || 25);
+              setPage(1);
+            }}
+            disabled={!activeBookId}
+            style={{ width: "96px" }}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={!activeBookId || loading || page <= 1}
+          >
+            Anterior
+          </button>
+          <span className="small-muted">
+            Página {totalItems === 0 ? 0 : page} de {totalItems === 0 ? 0 : totalPages}
+          </span>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            disabled={!activeBookId || loading || page >= totalPages || totalItems === 0}
+          >
+            Próxima
+          </button>
+        </div>
       </div>
     </div>
   );

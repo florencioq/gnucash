@@ -60,6 +60,47 @@ def create_vendor(client, *, book_id: str, currency_guid: str, name: str = "Forn
     return response.json()["guid"]
 
 
+def create_bill_with_entry(
+    client,
+    *,
+    book_id: str,
+    currency_guid: str,
+    vendor_guid: str,
+    expense_account_guid: str,
+    bill_id: str,
+    date_opened: str,
+    unit_price_num: int,
+) -> str:
+    created = client.post(
+        "/bills",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": bill_id,
+            "date_opened": date_opened,
+            "currency_guid": currency_guid,
+            "vendor_guid": vendor_guid,
+        },
+    )
+    assert created.status_code == 201
+    bill_guid = created.json()["guid"]
+
+    entry = client.post(
+        f"/bills/{bill_guid}/entries",
+        json={
+            "date": date_opened,
+            "description": "Item",
+            "income_account_guid": expense_account_guid,
+            "quantity_num": 1,
+            "quantity_denom": 1,
+            "unit_price_num": unit_price_num,
+            "unit_price_denom": 100,
+        },
+    )
+    assert entry.status_code == 201
+    return bill_guid
+
+
 def test_bill_crud_and_entries(client):
     book_id = create_book(client, "Bills")
     currency_guid = create_currency(client, "BRL")
@@ -170,6 +211,92 @@ def test_bill_crud_and_entries(client):
 
     missing = client.get(f"/bills/{bill_guid}")
     assert missing.status_code == 404
+
+
+def test_bill_list_paginated_summary(client):
+    book_id = create_book(client, "Bills Paginated")
+    currency_guid = create_currency(client, "BRL")
+    vendor_a_guid = create_vendor(client, book_id=book_id, currency_guid=currency_guid, name="Fornecedor A", vendor_id="VA")
+    vendor_b_guid = create_vendor(client, book_id=book_id, currency_guid=currency_guid, name="Fornecedor B", vendor_id="VB")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    expense_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Despesa",
+        account_type="EXPENSE",
+        parent_id=root_id,
+    )
+
+    create_bill_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        vendor_guid=vendor_a_guid,
+        expense_account_guid=expense_account_guid,
+        bill_id="B00001",
+        date_opened="2026-01-10T00:00:00Z",
+        unit_price_num=10000,
+    )
+    create_bill_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        vendor_guid=vendor_b_guid,
+        expense_account_guid=expense_account_guid,
+        bill_id="B00002",
+        date_opened="2026-01-11T00:00:00Z",
+        unit_price_num=20000,
+    )
+    create_bill_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        vendor_guid=vendor_a_guid,
+        expense_account_guid=expense_account_guid,
+        bill_id="B00003",
+        date_opened="2026-01-12T00:00:00Z",
+        unit_price_num=30000,
+    )
+
+    page1 = client.get(
+        f"/bills/list?book_id={book_id}&sort_key=id&sort_direction=asc&page=1&page_size=2"
+    )
+    assert page1.status_code == 200
+    payload1 = page1.json()
+    assert payload1["total_items"] == 3
+    assert payload1["total_pages"] == 2
+    assert payload1["page"] == 1
+    assert len(payload1["items"]) == 2
+    assert [item["id"] for item in payload1["items"]] == ["B00001", "B00002"]
+    assert payload1["items"][0]["vendor_name"] == "Fornecedor A"
+    assert payload1["items"][0]["payment_status"] == "UNPAID"
+
+    page2 = client.get(
+        f"/bills/list?book_id={book_id}&sort_key=id&sort_direction=asc&page=2&page_size=2"
+    )
+    assert page2.status_code == 200
+    payload2 = page2.json()
+    assert payload2["page"] == 2
+    assert len(payload2["items"]) == 1
+    assert payload2["items"][0]["id"] == "B00003"
+
+    vendor_filtered = client.get(
+        f"/bills/list?book_id={book_id}&vendor_guid={vendor_b_guid}&sort_key=id&sort_direction=asc&page=1&page_size=25"
+    )
+    assert vendor_filtered.status_code == 200
+    filtered_payload = vendor_filtered.json()
+    assert filtered_payload["total_items"] == 1
+    assert len(filtered_payload["items"]) == 1
+    assert filtered_payload["items"][0]["vendor_guid"] == vendor_b_guid
 
 
 def test_bill_post_payment_and_undo_flow(client):
