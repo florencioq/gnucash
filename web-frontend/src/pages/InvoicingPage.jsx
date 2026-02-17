@@ -1603,7 +1603,7 @@ export default function InvoicingPage({ initialInvoiceGuid = "", onOpenInvoicing
 
               <div className="invoice-totals">
                 <div>
-                  <strong>Cliente:</strong> {selectedInvoiceCustomer?.name || "-"}
+                  <strong>Cliente:</strong> {selectedInvoiceCustomer?.name || "cliente não encontrado"}
                 </div>
                 <div>
                   <strong>Subtotal:</strong>{" "}

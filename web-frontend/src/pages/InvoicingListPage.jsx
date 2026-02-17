@@ -366,7 +366,7 @@ export default function InvoicingListPage({ onOpenInvoicing = null }) {
               return (
                 <tr key={invoice.guid}>
                   <td>{invoice.id || "-"}</td>
-                  <td>{customer?.name || "-"}</td>
+                  <td>{customer?.name || "cliente não encontrado"}</td>
                   <td>{formatDateDisplay(invoice.date_opened)}</td>
                   <td>{formatDateDisplay(invoice.date_posted)}</td>
                   <td>{invoice.date_posted ? "Postada" : "Não postada"}</td>
