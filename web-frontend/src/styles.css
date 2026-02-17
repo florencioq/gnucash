@@ -80,6 +80,23 @@ body {
   background: #f0e8dc;
 }
 
+.table-sort-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-weight: 600;
+  color: inherit;
+}
+
+.table-sort-btn.is-numeric {
+  width: 100%;
+  text-align: right;
+}
+
+.table-sort-btn:hover {
+  text-decoration: underline;
+}
+
 .tree-node {
   border-left: 2px solid #e1d8c7;
   padding-left: 1rem;
