@@ -63,7 +63,7 @@ const PAYMENT_STATE_ORDER = {
   PAID: 2
 };
 
-export default function BillingListPage({ onOpenBilling = null }) {
+export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing = null }) {
   const [commodities, setCommodities] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -380,11 +380,19 @@ export default function BillingListPage({ onOpenBilling = null }) {
                       type="button"
                       className="btn btn-outline-primary btn-sm"
                       onClick={() => {
+                        if (!invoice.guid) return;
                         if (typeof onOpenBilling === "function") {
                           onOpenBilling({ billGuid: invoice.guid });
+                          return;
+                        }
+                        if (typeof onOpenInvoicing === "function") {
+                          onOpenInvoicing({ invoiceGuid: invoice.guid });
                         }
                       }}
-                      disabled={typeof onOpenBilling !== "function"}
+                      disabled={
+                        !invoice.guid ||
+                        (typeof onOpenBilling !== "function" && typeof onOpenInvoicing !== "function")
+                      }
                     >
                       Abrir
                     </button>

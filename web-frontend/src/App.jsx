@@ -82,14 +82,20 @@ export default function App() {
             onOpenBilling: handleOpenBilling
           }
       : activeTab === "invoicing-list"
-        ? { onOpenInvoicing: handleOpenInvoicing }
+        ? {
+            onOpenInvoicing: handleOpenInvoicing,
+            onOpenBilling: ({ billGuid }) => handleOpenInvoicing({ invoiceGuid: billGuid })
+          }
       : activeTab === "invoicing"
         ? {
             initialInvoiceGuid: invoicingTargetInvoiceGuid,
             onOpenInvoicingList: () => setActiveTab("invoicing-list")
           }
       : activeTab === "billing-list"
-        ? { onOpenBilling: handleOpenBilling }
+        ? {
+            onOpenBilling: handleOpenBilling,
+            onOpenInvoicing: ({ invoiceGuid }) => handleOpenBilling({ billGuid: invoiceGuid })
+          }
       : activeTab === "billing"
         ? {
             initialBillGuid: billingTargetBillGuid,
@@ -122,7 +128,7 @@ export default function App() {
         </ul>
 
         <div className="section-card">
-          <ActiveComponent {...activeProps} />
+          <ActiveComponent key={activeTab} {...activeProps} />
         </div>
       </main>
     </div>
