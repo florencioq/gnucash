@@ -31,7 +31,7 @@ function paymentStateLabel(state) {
   return "Não paga";
 }
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing = null }) {
   const [commodities, setCommodities] = useState([]);
@@ -398,6 +398,14 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
           <button
             type="button"
             className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage(1)}
+            disabled={!activeBookId || loading || page <= 1}
+          >
+            Primeira
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={!activeBookId || loading || page <= 1}
           >
@@ -413,6 +421,14 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
             disabled={!activeBookId || loading || page >= totalPages || totalItems === 0}
           >
             Próxima
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage(totalPages)}
+            disabled={!activeBookId || loading || page >= totalPages || totalItems === 0}
+          >
+            Última
           </button>
         </div>
       </div>
