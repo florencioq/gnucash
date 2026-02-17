@@ -32,24 +32,41 @@ function paymentStateLabel(state) {
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const BILLING_LIST_STATE_KEY = "gnucash.billing-list-state.v1";
+
+function loadBillingListState() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(BILLING_LIST_STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing = null }) {
+  const persistedState = useMemo(() => loadBillingListState(), []);
   const [commodities, setCommodities] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [vendorsLoaded, setVendorsLoaded] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
 
-  const [vendorFilterGuid, setVendorFilterGuid] = useState("");
-  const [postedFilter, setPostedFilter] = useState("ALL");
-  const [paymentFilter, setPaymentFilter] = useState("ALL");
-  const [postedStartDate, setPostedStartDate] = useState("");
-  const [postedEndDate, setPostedEndDate] = useState("");
-  const [sortKey, setSortKey] = useState("date_opened");
-  const [sortDirection, setSortDirection] = useState("desc");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [vendorFilterGuid, setVendorFilterGuid] = useState(() => String(persistedState?.vendorFilterGuid || ""));
+  const [postedFilter, setPostedFilter] = useState(() => String(persistedState?.postedFilter || "ALL"));
+  const [paymentFilter, setPaymentFilter] = useState(() => String(persistedState?.paymentFilter || "ALL"));
+  const [postedStartDate, setPostedStartDate] = useState(() => String(persistedState?.postedStartDate || ""));
+  const [postedEndDate, setPostedEndDate] = useState(() => String(persistedState?.postedEndDate || ""));
+  const [sortKey, setSortKey] = useState(() => String(persistedState?.sortKey || "date_opened"));
+  const [sortDirection, setSortDirection] = useState(() => String(persistedState?.sortDirection || "desc"));
+  const [page, setPage] = useState(() => Math.max(1, Number(persistedState?.page) || 1));
+  const [pageSize, setPageSize] = useState(() => {
+    const size = Number(persistedState?.pageSize);
+    return PAGE_SIZE_OPTIONS.includes(size) ? size : 25;
+  });
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -70,10 +87,12 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
   const setSort = (key) => {
     if (sortKey === key) {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      setPage(1);
       return;
     }
     setSortKey(key);
     setSortDirection("asc");
+    setPage(1);
   };
 
   const loadCommodities = async () => {
@@ -86,12 +105,15 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
   };
 
   const loadVendors = async (bookId) => {
+    setVendorsLoaded(false);
     const response = await api.get(`/vendors?book_id=${bookId}`);
     if (!response.ok) {
       setError(response.error);
+      setVendorsLoaded(true);
       return;
     }
     setVendors(response.data);
+    setVendorsLoaded(true);
   };
 
   const loadInvoices = async (bookId) => {
@@ -129,6 +151,8 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
 
   useEffect(() => {
     if (!activeBookId) return;
+    setVendors([]);
+    setVendorsLoaded(false);
     loadVendors(activeBookId);
   }, [activeBookId]);
 
@@ -149,14 +173,37 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
   ]);
 
   useEffect(() => {
+    if (!vendorsLoaded) return;
     if (!vendorFilterGuid) return;
     if (vendors.some((vendor) => vendor.guid === vendorFilterGuid)) return;
     setVendorFilterGuid("");
-  }, [vendors, vendorFilterGuid]);
+  }, [vendorsLoaded, vendors, vendorFilterGuid]);
 
   useEffect(() => {
-    setPage(1);
-  }, [activeBookId, vendorFilterGuid, postedFilter, paymentFilter, postedStartDate, postedEndDate, sortKey, sortDirection, pageSize]);
+    if (typeof window === "undefined") return;
+    const state = {
+      vendorFilterGuid,
+      postedFilter,
+      paymentFilter,
+      postedStartDate,
+      postedEndDate,
+      sortKey,
+      sortDirection,
+      page,
+      pageSize
+    };
+    window.sessionStorage.setItem(BILLING_LIST_STATE_KEY, JSON.stringify(state));
+  }, [
+    vendorFilterGuid,
+    postedFilter,
+    paymentFilter,
+    postedStartDate,
+    postedEndDate,
+    sortKey,
+    sortDirection,
+    page,
+    pageSize
+  ]);
 
   return (
     <div>
