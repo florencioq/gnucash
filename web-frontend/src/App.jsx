@@ -7,6 +7,7 @@ import VendorsPage from "./pages/VendorsPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
 import InvoicingListPage from "./pages/InvoicingListPage.jsx";
 import InvoicingPage from "./pages/InvoicingPage.jsx";
+import BillingListPage from "./pages/BillingListPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import { apiBase } from "./api/client.js";
@@ -21,7 +22,8 @@ const tabs = [
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
   { id: "invoicing", label: "Fatura", component: InvoicingPage },
-  { id: "billing", label: "Compras", component: BillingPage }
+  { id: "billing-list", label: "Compras", component: BillingListPage },
+  { id: "billing", label: "Compra", component: BillingPage }
 ];
 
 export default function App() {
@@ -31,7 +33,11 @@ export default function App() {
   const [invoicingTargetInvoiceGuid, setInvoicingTargetInvoiceGuid] = useState("");
   const [billingTargetBillGuid, setBillingTargetBillGuid] = useState("");
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab).component;
-  const isInvoicingTab = activeTab === "invoicing-list" || activeTab === "invoicing" || activeTab === "billing";
+  const isInvoicingTab =
+    activeTab === "invoicing-list" ||
+    activeTab === "invoicing" ||
+    activeTab === "billing-list" ||
+    activeTab === "billing";
 
   useEffect(() => {
     if (activeTab !== "ledger") {
@@ -55,7 +61,10 @@ export default function App() {
   };
 
   const ledgerReturnTab =
-    lastNonLedgerTab === "invoicing-list" || lastNonLedgerTab === "invoicing" || lastNonLedgerTab === "billing"
+    lastNonLedgerTab === "invoicing-list" ||
+    lastNonLedgerTab === "invoicing" ||
+    lastNonLedgerTab === "billing-list" ||
+    lastNonLedgerTab === "billing"
       ? lastNonLedgerTab
       : "";
 
@@ -79,8 +88,13 @@ export default function App() {
             initialInvoiceGuid: invoicingTargetInvoiceGuid,
             onOpenInvoicingList: () => setActiveTab("invoicing-list")
           }
+      : activeTab === "billing-list"
+        ? { onOpenBilling: handleOpenBilling }
       : activeTab === "billing"
-        ? { initialBillGuid: billingTargetBillGuid }
+        ? {
+            initialBillGuid: billingTargetBillGuid,
+            onOpenBillingList: () => setActiveTab("billing-list")
+          }
         : {};
 
   return (
