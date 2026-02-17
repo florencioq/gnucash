@@ -49,6 +49,32 @@ body {
   background: var(--accent);
 }
 
+.app-tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.app-tab-close {
+  border: 0;
+  background: transparent;
+  color: #6b6b6b;
+  font-size: 0.95rem;
+  line-height: 1;
+  border-radius: 999px;
+  width: 1.2rem;
+  height: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.app-tab-close:hover {
+  background: #f0e8dc;
+  color: #1b2b24;
+}
+
 .badge-soft {
   background: #e8f2ed;
   color: #204134;

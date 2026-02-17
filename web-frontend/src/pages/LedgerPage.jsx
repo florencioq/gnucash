@@ -85,6 +85,8 @@ export default function LedgerPage({
   const [sourceByTxGuid, setSourceByTxGuid] = useState({});
   const [ledgerAccountId, setLedgerAccountId] = useState(initialAccountId || "");
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
+  const returnToInvoice = returnTab === "invoicing" || returnTab.startsWith("invoice:");
+  const returnToBilling = returnTab === "billing" || returnTab.startsWith("bill:");
   const [ledgerPickerOpen, setLedgerPickerOpen] = useState(false);
   const [ledgerSearch, setLedgerSearch] = useState("");
   const [counterPickerOpen, setCounterPickerOpen] = useState(false);
@@ -656,13 +658,13 @@ export default function LedgerPage({
           <h2 className="mb-1">Ledger</h2>
           <div className="small-muted">Razao da conta com lancamento direto.</div>
         </div>
-        {returnTab === "invoicing" || returnTab === "billing" ? (
+        {returnToInvoice || returnToBilling ? (
           <button
             type="button"
             className="btn btn-outline-secondary btn-sm"
             onClick={() => onReturnToTab(returnTab)}
           >
-            {returnTab === "invoicing"
+            {returnToInvoice
               ? "Voltar para Faturamento"
               : "Voltar para Compras/Cobranca"}
           </button>

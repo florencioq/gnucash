@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import BooksPage from "./pages/BooksPage.jsx";
 import CommoditiesPage from "./pages/CommoditiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
@@ -12,7 +12,7 @@ import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import { apiBase } from "./api/client.js";
 
-const tabs = [
+const baseTabs = [
   { id: "books", label: "Books", component: BooksPage },
   { id: "commodities", label: "Commodities", component: CommoditiesPage },
   { id: "accounts", label: "Accounts", component: AccountsPage },
@@ -21,23 +21,53 @@ const tabs = [
   { id: "ledger", label: "Ledger", component: LedgerPage },
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
-  { id: "invoicing", label: "Fatura", component: InvoicingPage },
-  { id: "billing-list", label: "Compras", component: BillingListPage },
-  { id: "billing", label: "Compra", component: BillingPage }
+  { id: "billing-list", label: "Compras", component: BillingListPage }
 ];
+
+function normalizeLabel(prefix, documentId, guid) {
+  if (documentId) return `${prefix} ${documentId}`;
+  return `${prefix} ${String(guid || "").slice(0, 8)}`;
+}
+
+function isInvoiceTab(tabId) {
+  return tabId.startsWith("invoice:");
+}
+
+function isBillTab(tabId) {
+  return tabId.startsWith("bill:");
+}
+
+function invoiceGuidFromTab(tabId) {
+  return tabId.slice("invoice:".length);
+}
+
+function billGuidFromTab(tabId) {
+  return tabId.slice("bill:".length);
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("books");
   const [lastNonLedgerTab, setLastNonLedgerTab] = useState("books");
   const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState("");
-  const [invoicingTargetInvoiceGuid, setInvoicingTargetInvoiceGuid] = useState("");
-  const [billingTargetBillGuid, setBillingTargetBillGuid] = useState("");
-  const ActiveComponent = tabs.find((tab) => tab.id === activeTab).component;
+  const [openInvoiceTabs, setOpenInvoiceTabs] = useState([]);
+  const [openBillTabs, setOpenBillTabs] = useState([]);
+
+  const detailTabs = useMemo(
+    () => [
+      ...openInvoiceTabs.map((tab) => ({ ...tab, component: InvoicingPage, closable: true })),
+      ...openBillTabs.map((tab) => ({ ...tab, component: BillingPage, closable: true }))
+    ],
+    [openBillTabs, openInvoiceTabs]
+  );
+  const tabs = useMemo(() => [...baseTabs, ...detailTabs], [detailTabs]);
+  const activeTabDef = tabs.find((tab) => tab.id === activeTab) || baseTabs[0];
+  const ActiveComponent = activeTabDef.component;
+  const tabIds = useMemo(() => new Set(tabs.map((tab) => tab.id)), [tabs]);
   const isInvoicingTab =
     activeTab === "invoicing-list" ||
-    activeTab === "invoicing" ||
     activeTab === "billing-list" ||
-    activeTab === "billing";
+    isInvoiceTab(activeTab) ||
+    isBillTab(activeTab);
 
   useEffect(() => {
     if (activeTab !== "ledger") {
@@ -45,26 +75,73 @@ export default function App() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (tabIds.has(activeTab)) return;
+    setActiveTab("books");
+  }, [activeTab, tabIds]);
+
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");
     setActiveTab("ledger");
   };
 
-  const handleOpenInvoicing = ({ invoiceGuid }) => {
-    setInvoicingTargetInvoiceGuid(invoiceGuid || "");
-    setActiveTab("invoicing");
+  const handleOpenInvoicing = ({ invoiceGuid, invoiceId } = {}) => {
+    if (!invoiceGuid) return;
+    const tabId = `invoice:${invoiceGuid}`;
+    const label = normalizeLabel("Fatura", invoiceId, invoiceGuid);
+
+    setOpenInvoiceTabs((current) => {
+      let found = false;
+      const updated = current.map((tab) => {
+        if (tab.id !== tabId) return tab;
+        found = true;
+        return tab.label === label ? tab : { ...tab, label };
+      });
+      if (found) return updated;
+      return [...updated, { id: tabId, label, invoiceGuid }];
+    });
+    setActiveTab(tabId);
   };
 
-  const handleOpenBilling = ({ billGuid }) => {
-    setBillingTargetBillGuid(billGuid || "");
-    setActiveTab("billing");
+  const handleOpenBilling = ({ billGuid, billId } = {}) => {
+    if (!billGuid) return;
+    const tabId = `bill:${billGuid}`;
+    const label = normalizeLabel("Compra", billId, billGuid);
+
+    setOpenBillTabs((current) => {
+      let found = false;
+      const updated = current.map((tab) => {
+        if (tab.id !== tabId) return tab;
+        found = true;
+        return tab.label === label ? tab : { ...tab, label };
+      });
+      if (found) return updated;
+      return [...updated, { id: tabId, label, billGuid }];
+    });
+    setActiveTab(tabId);
+  };
+
+  const closeDynamicTab = (tabId) => {
+    const currentIds = tabs.map((tab) => tab.id);
+    const currentIndex = currentIds.indexOf(tabId);
+    const fallbackTab = currentIndex > 0 ? currentIds[currentIndex - 1] : "books";
+
+    if (isInvoiceTab(tabId)) {
+      setOpenInvoiceTabs((current) => current.filter((tab) => tab.id !== tabId));
+    }
+    if (isBillTab(tabId)) {
+      setOpenBillTabs((current) => current.filter((tab) => tab.id !== tabId));
+    }
+
+    setActiveTab((current) => (current === tabId ? fallbackTab : current));
   };
 
   const ledgerReturnTab =
-    lastNonLedgerTab === "invoicing-list" ||
-    lastNonLedgerTab === "invoicing" ||
-    lastNonLedgerTab === "billing-list" ||
-    lastNonLedgerTab === "billing"
+    (lastNonLedgerTab === "invoicing-list" ||
+      lastNonLedgerTab === "billing-list" ||
+      isInvoiceTab(lastNonLedgerTab) ||
+      isBillTab(lastNonLedgerTab)) &&
+    tabIds.has(lastNonLedgerTab)
       ? lastNonLedgerTab
       : "";
 
@@ -84,21 +161,23 @@ export default function App() {
       : activeTab === "invoicing-list"
         ? {
             onOpenInvoicing: handleOpenInvoicing,
-            onOpenBilling: ({ billGuid }) => handleOpenInvoicing({ invoiceGuid: billGuid })
-          }
-      : activeTab === "invoicing"
-        ? {
-            initialInvoiceGuid: invoicingTargetInvoiceGuid,
-            onOpenInvoicingList: () => setActiveTab("invoicing-list")
+            onOpenBilling: ({ billGuid, billId }) =>
+              handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
           }
       : activeTab === "billing-list"
         ? {
             onOpenBilling: handleOpenBilling,
-            onOpenInvoicing: ({ invoiceGuid }) => handleOpenBilling({ billGuid: invoiceGuid })
+            onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
+              handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
           }
-      : activeTab === "billing"
+      : isInvoiceTab(activeTab)
         ? {
-            initialBillGuid: billingTargetBillGuid,
+            initialInvoiceGuid: invoiceGuidFromTab(activeTab),
+            onOpenInvoicingList: () => setActiveTab("invoicing-list")
+          }
+      : isBillTab(activeTab)
+        ? {
+            initialBillGuid: billGuidFromTab(activeTab),
             onOpenBillingList: () => setActiveTab("billing-list")
           }
         : {};
@@ -113,9 +192,9 @@ export default function App() {
       </header>
 
       <main className={`container-fluid app-main-container py-4 ${isInvoicingTab ? "is-invoicing" : ""}`}>
-        <ul className="nav nav-pills mb-4">
+        <ul className="nav nav-pills mb-4 flex-wrap gap-1">
           {tabs.map((tab) => (
-            <li key={tab.id} className="nav-item">
+            <li key={tab.id} className={`nav-item app-tab-item ${tab.closable ? "is-closable" : ""}`}>
               <button
                 className={`nav-link ${activeTab === tab.id ? "active" : ""}`}
                 type="button"
@@ -123,6 +202,20 @@ export default function App() {
               >
                 {tab.label}
               </button>
+              {tab.closable ? (
+                <button
+                  type="button"
+                  className="app-tab-close"
+                  aria-label={`Fechar ${tab.label}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeDynamicTab(tab.id);
+                  }}
+                >
+                  ×
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

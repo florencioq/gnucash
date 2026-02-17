@@ -393,11 +393,11 @@ export default function InvoicingListPage({ onOpenInvoicing = null, onOpenBillin
                       onClick={() => {
                         if (!invoice.guid) return;
                         if (typeof onOpenInvoicing === "function") {
-                          onOpenInvoicing({ invoiceGuid: invoice.guid });
+                          onOpenInvoicing({ invoiceGuid: invoice.guid, invoiceId: invoice.id || "" });
                           return;
                         }
                         if (typeof onOpenBilling === "function") {
-                          onOpenBilling({ billGuid: invoice.guid });
+                          onOpenBilling({ billGuid: invoice.guid, billId: invoice.id || "" });
                         }
                       }}
                       disabled={
