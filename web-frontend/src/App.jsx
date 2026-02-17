@@ -12,6 +12,8 @@ import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import { apiBase } from "./api/client.js";
 
+const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
+
 const baseTabs = [
   { id: "books", label: "Books", component: BooksPage },
   { id: "commodities", label: "Commodities", component: CommoditiesPage },
@@ -45,12 +47,81 @@ function billGuidFromTab(tabId) {
   return tabId.slice("bill:".length);
 }
 
+function sanitizeInvoiceTabs(items) {
+  if (!Array.isArray(items)) return [];
+  const seenGuids = new Set();
+  const sanitized = [];
+  for (const item of items) {
+    const invoiceGuid = String(item?.invoiceGuid || "").trim();
+    if (!invoiceGuid || seenGuids.has(invoiceGuid)) continue;
+    seenGuids.add(invoiceGuid);
+    const label =
+      typeof item?.label === "string" && item.label.trim().length > 0
+        ? item.label.trim()
+        : normalizeLabel("Fatura", "", invoiceGuid);
+    sanitized.push({
+      id: `invoice:${invoiceGuid}`,
+      label,
+      invoiceGuid
+    });
+  }
+  return sanitized;
+}
+
+function sanitizeBillTabs(items) {
+  if (!Array.isArray(items)) return [];
+  const seenGuids = new Set();
+  const sanitized = [];
+  for (const item of items) {
+    const billGuid = String(item?.billGuid || "").trim();
+    if (!billGuid || seenGuids.has(billGuid)) continue;
+    seenGuids.add(billGuid);
+    const label =
+      typeof item?.label === "string" && item.label.trim().length > 0
+        ? item.label.trim()
+        : normalizeLabel("Compra", "", billGuid);
+    sanitized.push({
+      id: `bill:${billGuid}`,
+      label,
+      billGuid
+    });
+  }
+  return sanitized;
+}
+
+function loadAppTabsState() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(APP_TABS_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "books",
+      lastNonLedgerTab: typeof parsed.lastNonLedgerTab === "string" ? parsed.lastNonLedgerTab : "books",
+      ledgerTargetAccountId:
+        typeof parsed.ledgerTargetAccountId === "string" ? parsed.ledgerTargetAccountId : "",
+      openInvoiceTabs: sanitizeInvoiceTabs(parsed.openInvoiceTabs),
+      openBillTabs: sanitizeBillTabs(parsed.openBillTabs)
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState("books");
-  const [lastNonLedgerTab, setLastNonLedgerTab] = useState("books");
-  const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState("");
-  const [openInvoiceTabs, setOpenInvoiceTabs] = useState([]);
-  const [openBillTabs, setOpenBillTabs] = useState([]);
+  const persistedTabsState = useMemo(() => loadAppTabsState(), []);
+  const [activeTab, setActiveTab] = useState(() => persistedTabsState?.activeTab || "books");
+  const [lastNonLedgerTab, setLastNonLedgerTab] = useState(
+    () => persistedTabsState?.lastNonLedgerTab || "books"
+  );
+  const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState(
+    () => persistedTabsState?.ledgerTargetAccountId || ""
+  );
+  const [openInvoiceTabs, setOpenInvoiceTabs] = useState(
+    () => persistedTabsState?.openInvoiceTabs || []
+  );
+  const [openBillTabs, setOpenBillTabs] = useState(() => persistedTabsState?.openBillTabs || []);
 
   const detailTabs = useMemo(
     () => [
@@ -79,6 +150,20 @@ export default function App() {
     if (tabIds.has(activeTab)) return;
     setActiveTab("books");
   }, [activeTab, tabIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(
+      APP_TABS_STATE_KEY,
+      JSON.stringify({
+        activeTab,
+        lastNonLedgerTab,
+        ledgerTargetAccountId,
+        openInvoiceTabs,
+        openBillTabs
+      })
+    );
+  }, [activeTab, lastNonLedgerTab, ledgerTargetAccountId, openInvoiceTabs, openBillTabs]);
 
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");
