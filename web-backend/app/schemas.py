@@ -480,6 +480,31 @@ class InvoiceOut(BaseOut):
     updated_at: datetime
 
 
+class InvoiceListItemOut(BaseModel):
+    guid: str
+    book_id: str
+    id: str
+    date_opened: datetime | None
+    date_posted: datetime | None
+    currency_guid: str
+    customer_guid: str
+    customer_name: str | None
+    status: str
+    payment_status: str
+    total_num: int
+    total_denom: int
+    open_amount_num: int
+    open_amount_denom: int
+
+
+class InvoiceListPageOut(BaseModel):
+    items: list[InvoiceListItemOut]
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+
+
 class BillCreate(BaseModel):
     guid: UUID | None = None
     book_id: UUID

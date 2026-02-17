@@ -60,6 +60,47 @@ def create_customer(client, *, book_id: str, currency_guid: str, name: str = "Pa
     return response.json()["guid"]
 
 
+def create_invoice_with_entry(
+    client,
+    *,
+    book_id: str,
+    currency_guid: str,
+    customer_guid: str,
+    income_account_guid: str,
+    invoice_id: str,
+    date_opened: str,
+    unit_price_num: int,
+) -> str:
+    created = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": invoice_id,
+            "date_opened": date_opened,
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert created.status_code == 201
+    invoice_guid = created.json()["guid"]
+
+    entry = client.post(
+        f"/invoices/{invoice_guid}/entries",
+        json={
+            "date": date_opened,
+            "description": "Item",
+            "income_account_guid": income_account_guid,
+            "quantity_num": 1,
+            "quantity_denom": 1,
+            "unit_price_num": unit_price_num,
+            "unit_price_denom": 100,
+        },
+    )
+    assert entry.status_code == 201
+    return invoice_guid
+
+
 def test_invoice_crud_and_entries(client):
     book_id = create_book(client, "Invoices")
     currency_guid = create_currency(client, "BRL")
@@ -175,6 +216,91 @@ def test_invoice_crud_and_entries(client):
 
     missing = client.get(f"/invoices/{invoice_guid}")
     assert missing.status_code == 404
+
+
+def test_invoice_list_paginated_summary(client):
+    book_id = create_book(client, "Invoices Paginated")
+    currency_guid = create_currency(client, "BRL")
+    customer_a_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, name="Partech", customer_id="CA")
+    customer_b_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, name="Banco Inter", customer_id="CB")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+
+    create_invoice_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        customer_guid=customer_a_guid,
+        income_account_guid=income_account_guid,
+        invoice_id="000001",
+        date_opened="2026-01-10T00:00:00Z",
+        unit_price_num=10000,
+    )
+    create_invoice_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        customer_guid=customer_b_guid,
+        income_account_guid=income_account_guid,
+        invoice_id="000002",
+        date_opened="2026-01-11T00:00:00Z",
+        unit_price_num=20000,
+    )
+    create_invoice_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        customer_guid=customer_a_guid,
+        income_account_guid=income_account_guid,
+        invoice_id="000003",
+        date_opened="2026-01-12T00:00:00Z",
+        unit_price_num=30000,
+    )
+
+    page1 = client.get(
+        f"/invoices/list?book_id={book_id}&sort_key=id&sort_direction=asc&page=1&page_size=2"
+    )
+    assert page1.status_code == 200
+    payload1 = page1.json()
+    assert payload1["total_items"] == 3
+    assert payload1["total_pages"] == 2
+    assert payload1["page"] == 1
+    assert len(payload1["items"]) == 2
+    assert [item["id"] for item in payload1["items"]] == ["000001", "000002"]
+    assert payload1["items"][0]["customer_name"] == "Partech"
+    assert payload1["items"][0]["payment_status"] == "UNPAID"
+
+    page2 = client.get(
+        f"/invoices/list?book_id={book_id}&sort_key=id&sort_direction=asc&page=2&page_size=2"
+    )
+    assert page2.status_code == 200
+    payload2 = page2.json()
+    assert payload2["page"] == 2
+    assert len(payload2["items"]) == 1
+    assert payload2["items"][0]["id"] == "000003"
+
+    customer_filtered = client.get(
+        f"/invoices/list?book_id={book_id}&customer_guid={customer_b_guid}&sort_key=id&sort_direction=asc&page=1&page_size=25"
+    )
+    assert customer_filtered.status_code == 200
+    filtered_payload = customer_filtered.json()
+    assert filtered_payload["total_items"] == 1
+    assert len(filtered_payload["items"]) == 1
+    assert filtered_payload["items"][0]["customer_guid"] == customer_b_guid
 
 
 def test_invoice_validation_rules(client):
