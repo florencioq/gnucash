@@ -13,6 +13,8 @@ import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import { apiBase } from "./api/client.js";
 
 const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
+const NEW_INVOICE_TAB_GUID = "new";
+const NEW_BILL_TAB_GUID = "new";
 
 const baseTabs = [
   { id: "books", label: "Books", component: BooksPage },
@@ -62,7 +64,8 @@ function sanitizeInvoiceTabs(items) {
     sanitized.push({
       id: `invoice:${invoiceGuid}`,
       label,
-      invoiceGuid
+      invoiceGuid,
+      openCreate: Boolean(item?.openCreate)
     });
   }
   return sanitized;
@@ -83,7 +86,8 @@ function sanitizeBillTabs(items) {
     sanitized.push({
       id: `bill:${billGuid}`,
       label,
-      billGuid
+      billGuid,
+      openCreate: Boolean(item?.openCreate)
     });
   }
   return sanitized;
@@ -180,10 +184,37 @@ export default function App() {
       const updated = current.map((tab) => {
         if (tab.id !== tabId) return tab;
         found = true;
-        return tab.label === label ? tab : { ...tab, label };
+        if (tab.label === label && !tab.openCreate) return tab;
+        return { ...tab, label, openCreate: false };
       });
       if (found) return updated;
-      return [...updated, { id: tabId, label, invoiceGuid }];
+      return [...updated, { id: tabId, label, invoiceGuid, openCreate: false }];
+    });
+    setActiveTab(tabId);
+  };
+
+  const handleCreateInvoicing = () => {
+    const tabId = `invoice:${NEW_INVOICE_TAB_GUID}`;
+    const label = "Nova Fatura";
+
+    setOpenInvoiceTabs((current) => {
+      let found = false;
+      const updated = current.map((tab) => {
+        if (tab.id !== tabId) return tab;
+        found = true;
+        if (tab.label === label && tab.openCreate) return tab;
+        return { ...tab, label, openCreate: true };
+      });
+      if (found) return updated;
+      return [
+        ...updated,
+        {
+          id: tabId,
+          label,
+          invoiceGuid: NEW_INVOICE_TAB_GUID,
+          openCreate: true
+        }
+      ];
     });
     setActiveTab(tabId);
   };
@@ -198,10 +229,37 @@ export default function App() {
       const updated = current.map((tab) => {
         if (tab.id !== tabId) return tab;
         found = true;
-        return tab.label === label ? tab : { ...tab, label };
+        if (tab.label === label && !tab.openCreate) return tab;
+        return { ...tab, label, openCreate: false };
       });
       if (found) return updated;
-      return [...updated, { id: tabId, label, billGuid }];
+      return [...updated, { id: tabId, label, billGuid, openCreate: false }];
+    });
+    setActiveTab(tabId);
+  };
+
+  const handleCreateBilling = () => {
+    const tabId = `bill:${NEW_BILL_TAB_GUID}`;
+    const label = "Nova Compra";
+
+    setOpenBillTabs((current) => {
+      let found = false;
+      const updated = current.map((tab) => {
+        if (tab.id !== tabId) return tab;
+        found = true;
+        if (tab.label === label && tab.openCreate) return tab;
+        return { ...tab, label, openCreate: true };
+      });
+      if (found) return updated;
+      return [
+        ...updated,
+        {
+          id: tabId,
+          label,
+          billGuid: NEW_BILL_TAB_GUID,
+          openCreate: true
+        }
+      ];
     });
     setActiveTab(tabId);
   };
@@ -246,25 +304,54 @@ export default function App() {
       : activeTab === "invoicing-list"
         ? {
             onOpenInvoicing: handleOpenInvoicing,
+            onCreateInvoicing: handleCreateInvoicing,
             onOpenBilling: ({ billGuid, billId }) =>
               handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
           }
       : activeTab === "billing-list"
         ? {
             onOpenBilling: handleOpenBilling,
+            onCreateBilling: handleCreateBilling,
             onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
               handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
           }
       : isInvoiceTab(activeTab)
-        ? {
-            initialInvoiceGuid: invoiceGuidFromTab(activeTab),
-            onOpenInvoicingList: () => setActiveTab("invoicing-list")
-          }
+        ? (() => {
+            const currentTab = openInvoiceTabs.find((tab) => tab.id === activeTab) || null;
+            const openCreateOnMount = Boolean(currentTab?.openCreate);
+            return {
+              initialInvoiceGuid:
+                currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(activeTab),
+              onOpenInvoicingList: () => setActiveTab("invoicing-list"),
+              openCreateOnMount,
+              onCreateMountHandled: openCreateOnMount
+                ? () =>
+                    setOpenInvoiceTabs((current) =>
+                      current.map((tab) =>
+                        tab.id === activeTab && tab.openCreate ? { ...tab, openCreate: false } : tab
+                      )
+                    )
+                : null
+            };
+          })()
       : isBillTab(activeTab)
-        ? {
-            initialBillGuid: billGuidFromTab(activeTab),
-            onOpenBillingList: () => setActiveTab("billing-list")
-          }
+        ? (() => {
+            const currentTab = openBillTabs.find((tab) => tab.id === activeTab) || null;
+            const openCreateOnMount = Boolean(currentTab?.openCreate);
+            return {
+              initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(activeTab),
+              onOpenBillingList: () => setActiveTab("billing-list"),
+              openCreateOnMount,
+              onCreateMountHandled: openCreateOnMount
+                ? () =>
+                    setOpenBillTabs((current) =>
+                      current.map((tab) =>
+                        tab.id === activeTab && tab.openCreate ? { ...tab, openCreate: false } : tab
+                      )
+                    )
+                : null
+            };
+          })()
         : {};
 
   return (

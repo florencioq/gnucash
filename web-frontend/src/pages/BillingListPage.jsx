@@ -45,7 +45,11 @@ function loadBillingListState() {
   }
 }
 
-export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing = null }) {
+export default function BillingListPage({
+  onOpenBilling = null,
+  onOpenInvoicing = null,
+  onCreateBilling = null
+}) {
   const persistedState = useMemo(() => loadBillingListState(), []);
   const [commodities, setCommodities] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -212,6 +216,16 @@ export default function BillingListPage({ onOpenBilling = null, onOpenInvoicing 
           <h2 className="mb-1">Compras</h2>
           <div className="small-muted">Lista de compras com filtros e ordenação.</div>
         </div>
+        {typeof onCreateBilling === "function" ? (
+          <button
+            type="button"
+            className="btn btn-accent"
+            onClick={onCreateBilling}
+            disabled={!activeBookId}
+          >
+            Nova Compra
+          </button>
+        ) : null}
       </div>
 
       {activeBook ? (

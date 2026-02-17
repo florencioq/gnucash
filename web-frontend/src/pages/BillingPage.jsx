@@ -129,7 +129,12 @@ function keepTypeBranches(nodes, allowedTypes) {
   return nodes.map(visit).filter(Boolean);
 }
 
-export default function BillingPage({ initialBillGuid = "", onOpenBillingList = null }) {
+export default function BillingPage({
+  initialBillGuid = "",
+  onOpenBillingList = null,
+  openCreateOnMount = false,
+  onCreateMountHandled = null
+}) {
   const [commodities, setCommodities] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -666,6 +671,14 @@ export default function BillingPage({ initialBillGuid = "", onOpenBillingList = 
     }));
   };
 
+  useEffect(() => {
+    if (!openCreateOnMount) return;
+    openCreateDialog();
+    if (typeof onCreateMountHandled === "function") {
+      onCreateMountHandled();
+    }
+  }, [openCreateOnMount, onCreateMountHandled]);
+
   const closeCreateDialog = () => {
     setCreateOpen(false);
   };
@@ -863,9 +876,6 @@ export default function BillingPage({ initialBillGuid = "", onOpenBillingList = 
               Lista de compras
             </button>
           ) : null}
-          <button type="button" className="btn btn-accent" onClick={openCreateDialog} disabled={!activeBookId}>
-            Nova Compra
-          </button>
         </div>
       </div>
 

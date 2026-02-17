@@ -45,7 +45,11 @@ function loadInvoicingListState() {
   }
 }
 
-export default function InvoicingListPage({ onOpenInvoicing = null, onOpenBilling = null }) {
+export default function InvoicingListPage({
+  onOpenInvoicing = null,
+  onOpenBilling = null,
+  onCreateInvoicing = null
+}) {
   const persistedState = useMemo(() => loadInvoicingListState(), []);
   const [commodities, setCommodities] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -212,6 +216,16 @@ export default function InvoicingListPage({ onOpenInvoicing = null, onOpenBillin
           <h2 className="mb-1">Faturamentos</h2>
           <div className="small-muted">Lista de faturas com filtros e ordenação.</div>
         </div>
+        {typeof onCreateInvoicing === "function" ? (
+          <button
+            type="button"
+            className="btn btn-accent"
+            onClick={onCreateInvoicing}
+            disabled={!activeBookId}
+          >
+            Nova Fatura
+          </button>
+        ) : null}
       </div>
 
       {activeBook ? (
