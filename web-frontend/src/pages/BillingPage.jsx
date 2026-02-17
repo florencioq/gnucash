@@ -53,6 +53,16 @@ function formatMoney(num, denom, mnemonic) {
   return mnemonic ? `${mnemonic} ${formatted}` : formatted;
 }
 
+function invoicePaymentState(invoice) {
+  const openAmount = Math.abs(rationalToNumber(invoice.open_amount_num, invoice.open_amount_denom));
+  const totalAmount = Math.abs(rationalToNumber(invoice.total_num, invoice.total_denom));
+  const epsilon = 1e-9;
+
+  if (openAmount <= epsilon) return "PAID";
+  if (totalAmount > epsilon && openAmount < (totalAmount - epsilon)) return "PARTIAL";
+  return "UNPAID";
+}
+
 function invoiceDateInput(value) {
   if (!value) return "";
   const ymd = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -60,6 +70,22 @@ function invoiceDateInput(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
+}
+
+function isoDateOnly(value) {
+  if (!value) return "";
+  const ymd = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function dateInRange(isoDate, startDate, endDate) {
+  if (!isoDate) return false;
+  if (startDate && isoDate < startDate) return false;
+  if (endDate && isoDate > endDate) return false;
+  return true;
 }
 
 function nextInvoiceId(invoices) {
@@ -149,6 +175,11 @@ export default function BillingPage({ initialBillGuid = "" }) {
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
+  const [vendorFilterGuid, setVendorFilterGuid] = useState("");
+  const [postedFilter, setPostedFilter] = useState("ALL");
+  const [paymentFilter, setPaymentFilter] = useState("ALL");
+  const [postedStartDate, setPostedStartDate] = useState("");
+  const [postedEndDate, setPostedEndDate] = useState("");
   const [createForm, setCreateForm] = useState({
     type: "INVOICE",
     id: "000001",
@@ -219,6 +250,33 @@ export default function BillingPage({ initialBillGuid = "" }) {
     () => invoices.find((invoice) => invoice.guid === selectedInvoiceGuid) || null,
     [invoices, selectedInvoiceGuid]
   );
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      if (vendorFilterGuid && invoice.vendor_guid !== vendorFilterGuid) return false;
+
+      if (postedFilter === "POSTED" && !invoice.date_posted) return false;
+      if (postedFilter === "UNPOSTED" && invoice.date_posted) return false;
+
+      if (postedStartDate || postedEndDate) {
+        const postedDate = isoDateOnly(invoice.date_posted);
+        if (!dateInRange(postedDate, postedStartDate, postedEndDate)) return false;
+      }
+
+      if (paymentFilter !== "ALL") {
+        const paymentState = invoicePaymentState(invoice);
+        if (paymentState !== paymentFilter) return false;
+      }
+
+      return true;
+    });
+  }, [
+    invoices,
+    vendorFilterGuid,
+    postedFilter,
+    paymentFilter,
+    postedStartDate,
+    postedEndDate
+  ]);
   const selectedInvoiceVendor = selectedInvoice
     ? vendorsById.get(selectedInvoice.vendor_guid) || null
     : null;
@@ -372,6 +430,18 @@ export default function BillingPage({ initialBillGuid = "" }) {
       setEntryForm(defaultEntryForm(defaultIncome));
     }
   }, [selectedInvoiceGuid, incomeAccounts]);
+
+  useEffect(() => {
+    if (!vendorFilterGuid) return;
+    if (vendors.some((vendor) => vendor.guid === vendorFilterGuid)) return;
+    setVendorFilterGuid("");
+  }, [vendors, vendorFilterGuid]);
+
+  useEffect(() => {
+    if (!filteredInvoices.some((invoice) => invoice.guid === selectedInvoiceGuid)) {
+      setSelectedInvoiceGuid(filteredInvoices[0]?.guid || "");
+    }
+  }, [filteredInvoices, selectedInvoiceGuid]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
@@ -866,23 +936,93 @@ export default function BillingPage({ initialBillGuid = "" }) {
       )}
 
       <div className="row g-3 mb-3">
+        <div className="col-md-4">
+          <label className="form-label">Filtro por fornecedor</label>
+          <select
+            className="form-select"
+            value={vendorFilterGuid}
+            onChange={(event) => setVendorFilterGuid(event.target.value)}
+            disabled={!activeBookId || vendors.length === 0}
+          >
+            <option value="">Todos</option>
+            {vendors.map((vendor) => (
+              <option key={vendor.guid} value={vendor.guid}>
+                {vendor.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="col-md-4">
+          <label className="form-label">Filtro por postagem</label>
+          <select
+            className="form-select"
+            value={postedFilter}
+            onChange={(event) => setPostedFilter(event.target.value)}
+            disabled={!activeBookId}
+          >
+            <option value="ALL">Todas</option>
+            <option value="POSTED">Postadas</option>
+            <option value="UNPOSTED">Não postadas</option>
+          </select>
+        </div>
+        <div className="col-md-4">
+          <label className="form-label">Filtro por pagamento</label>
+          <select
+            className="form-select"
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value)}
+            disabled={!activeBookId}
+          >
+            <option value="ALL">Todas</option>
+            <option value="PAID">Pagas</option>
+            <option value="UNPAID">Não pagas</option>
+            <option value="PARTIAL">Parciais</option>
+          </select>
+        </div>
+        <div className="col-md-3">
+          <label className="form-label">Postagem: data inicial</label>
+          <input
+            type="date"
+            className="form-control"
+            value={postedStartDate}
+            onChange={(event) => setPostedStartDate(event.target.value)}
+            disabled={!activeBookId}
+          />
+        </div>
+        <div className="col-md-3">
+          <label className="form-label">Postagem: data final</label>
+          <input
+            type="date"
+            className="form-control"
+            value={postedEndDate}
+            onChange={(event) => setPostedEndDate(event.target.value)}
+            disabled={!activeBookId}
+          />
+        </div>
         <div className="col-12">
           <label className="form-label">Bills</label>
           <select
             className="form-select"
             value={selectedInvoiceGuid}
             onChange={(event) => setSelectedInvoiceGuid(event.target.value)}
-            disabled={!activeBookId || invoices.length === 0}
+            disabled={!activeBookId || filteredInvoices.length === 0}
           >
-            {invoices.length === 0 ? (
-              <option value="">Nenhuma bill neste book.</option>
+            {filteredInvoices.length === 0 ? (
+              <option value="">Nenhuma bill para os filtros selecionados.</option>
             ) : (
-              invoices.map((invoice) => {
+              filteredInvoices.map((invoice) => {
                 const vendor = vendorsById.get(invoice.vendor_guid);
                 const mnemonic = commoditiesById.get(invoice.currency_guid)?.mnemonic || "";
+                const paymentState = invoicePaymentState(invoice);
+                const paymentLabel =
+                  paymentState === "PAID"
+                    ? "Paga"
+                    : paymentState === "PARTIAL"
+                      ? "Parcial"
+                      : "Não paga";
                 return (
                   <option key={invoice.guid} value={invoice.guid}>
-                    {`${invoice.id} | ${vendor?.name || "-"} | ${formatDateDisplay(invoice.date_opened)} | ${formatMoney(invoice.total_num, invoice.total_denom, mnemonic)}`}
+                    {`${invoice.id} | ${vendor?.name || "-"} | ${formatDateDisplay(invoice.date_opened)} | ${invoice.date_posted ? "Postada" : "Não postada"} | ${paymentLabel} | ${formatMoney(invoice.total_num, invoice.total_denom, mnemonic)}`}
                   </option>
                 );
               })
