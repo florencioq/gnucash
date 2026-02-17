@@ -1293,6 +1293,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /bills/list:
+    get:
+      tags:
+      - Bills
+      summary: List Bills Paginated
+      operationId: list_bills_paginated_bills_list_get
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: vendor_guid
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Vendor Guid
+      - name: posted_filter
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ALL
+          - POSTED
+          - UNPOSTED
+          default: ALL
+          title: Posted Filter
+      - name: payment_filter
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ALL
+          - PAID
+          - UNPAID
+          - PARTIAL
+          default: ALL
+          title: Payment Filter
+      - name: posted_start_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Posted Start Date
+      - name: posted_end_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Posted End Date
+      - name: sort_key
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - id
+          - vendor
+          - date_opened
+          - date_posted
+          - posted_status
+          - payment_status
+          - total
+          - open
+          default: date_opened
+          title: Sort Key
+      - name: sort_direction
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+          title: Sort Direction
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1.0
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1.0
+          maximum: 200.0
+          default: 25
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillListPageOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /bills/{bill_guid}:
     get:
       tags:
@@ -1996,6 +2116,100 @@ components:
       - currency_guid
       - vendor_guid
       title: BillCreate
+    BillListItemOut:
+      properties:
+        guid:
+          type: string
+          title: Guid
+        book_id:
+          type: string
+          title: Book Id
+        id:
+          type: string
+          title: Id
+        date_opened:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Opened
+        date_posted:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Posted
+        currency_guid:
+          type: string
+          title: Currency Guid
+        vendor_guid:
+          type: string
+          title: Vendor Guid
+        vendor_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vendor Name
+        status:
+          type: string
+          title: Status
+        payment_status:
+          type: string
+          title: Payment Status
+        total_num:
+          type: integer
+          title: Total Num
+        total_denom:
+          type: integer
+          title: Total Denom
+        open_amount_num:
+          type: integer
+          title: Open Amount Num
+        open_amount_denom:
+          type: integer
+          title: Open Amount Denom
+      type: object
+      required:
+      - guid
+      - book_id
+      - id
+      - date_opened
+      - date_posted
+      - currency_guid
+      - vendor_guid
+      - vendor_name
+      - status
+      - payment_status
+      - total_num
+      - total_denom
+      - open_amount_num
+      - open_amount_denom
+      title: BillListItemOut
+    BillListPageOut:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/BillListItemOut'
+          type: array
+          title: Items
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total_items:
+          type: integer
+          title: Total Items
+        total_pages:
+          type: integer
+          title: Total Pages
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total_items
+      - total_pages
+      title: BillListPageOut
     BillOut:
       properties:
         guid:

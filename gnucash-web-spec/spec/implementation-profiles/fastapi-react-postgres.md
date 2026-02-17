@@ -57,6 +57,9 @@ This document is a reference implementation profile and does not override normat
 - Purchasing navigation should be split into list (`Compras`) and detail (`Compra`).
 - List views should support filtering, sortable columns, and open-to-detail actions.
 - List fallback labels should be explicit for missing owner references (`cliente não encontrado` / `fornecedor não encontrado`).
+- Purchasing list (`Compras`) should use server-side pagination (`/bills/list`) with filtering and sorting parameters.
+- Purchasing list should persist filter/sort/page state when user switches tabs during the same browser session.
+- Purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
 
 ## Compliance note
 

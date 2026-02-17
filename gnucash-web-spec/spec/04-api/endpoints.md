@@ -88,6 +88,10 @@ Payments:
 
 - `POST /bills`
 - `GET /bills?book_id=&vendor_guid=`
+- `GET /bills/list?book_id=&vendor_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&sort_key=&sort_direction=&page=&page_size=`
+  - paginated summary list for purchase listing screens.
+  - supports server-side filtering and sorting.
+  - returns `{items, page, page_size, total_items, total_pages}`.
 - `GET /bills/{bill_guid}`
 - `PATCH /bills/{bill_guid}`
   - `date_posted` is read-only.

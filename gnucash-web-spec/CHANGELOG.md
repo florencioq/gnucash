@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.1 - 2026-02-17
+
+Purchasing list pagination and UX stability sync:
+- documented paginated bill summary endpoint `GET /bills/list` with filter/sort/page contract
+- updated OpenAPI contract with `BillListPageOut`/`BillListItemOut` schemas and `/bills/list` query parameters
+- updated implementation profile to require server-side pagination for `Compras` list and tab-stable filter state
+- updated acceptance coverage notes to include bill paginated listing behavior
+- updated performance/release docs to reflect pagination baseline for heavy purchase list flows
+
 ## v0.4.0 - 2026-02-17
 
 Full specification synchronization with runtime system:
