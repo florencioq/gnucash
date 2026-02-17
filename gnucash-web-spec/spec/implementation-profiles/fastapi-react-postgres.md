@@ -69,9 +69,12 @@ This document describes a reference implementation. It DOES NOT modify the norma
 - Invoicing UI SHOULD expose explicit actions to post and unpost invoices using dedicated posting endpoints.
 - While an invoice is posted, invoicing UI SHOULD block line edits/deletions until posting is undone.
 - Invoicing UI SHOULD provide payment registration with partial amounts and payment undo actions, reflecting `POSTED`/`PARTIAL`/`PAID` states from invoice payload.
+- Invoicing navigation SHOULD be split into two dedicated views: an invoice list view (filters + sortable columns + open action) and an invoice detail view (header editing, entries, posting, payments, delete).
 - Payment account selection in invoicing SHOULD use hierarchical account tree pickers, hiding synthetic `ROOT` nodes.
 - Purchasing/bills UI SHOULD mirror invoicing UX (header editor, entry grid, posting actions, payments list) with vendor context.
+- Purchasing/bills navigation SHOULD follow the same split: a bills list view (filters + sortable columns + open action) and a bill detail view (header editing, entries, posting, payments, delete).
 - Purchasing bill entry selectors SHOULD use expense-account trees and payable posting-account trees.
+- List views SHOULD show explicit fallback labels for missing owner entities (for example, `cliente não encontrado` / `fornecedor não encontrado`) instead of ambiguous placeholders.
 
 ## Compliance note
 

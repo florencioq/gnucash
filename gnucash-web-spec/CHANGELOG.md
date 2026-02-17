@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.8 - 2026-02-17
+
+Invoicing and purchasing UI split clarification:
+- updated React implementation profile to require dedicated list + detail views for invoicing (`Faturamentos`/`Fatura`) and purchasing (`Compras`/`Compra`)
+- documented sortable list expectations and explicit open-to-detail action for both workflows
+- documented explicit missing-owner fallback labels in list views (`cliente não encontrado` / `fornecedor não encontrado`)
+
 ## v0.3.7 - 2026-02-16
 
 Purchasing bill workflow update:
