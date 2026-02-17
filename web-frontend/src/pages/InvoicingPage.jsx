@@ -72,6 +72,22 @@ function invoiceDateInput(value) {
   return date.toISOString().slice(0, 10);
 }
 
+function isoDateOnly(value) {
+  if (!value) return "";
+  const ymd = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function dateInRange(isoDate, startDate, endDate) {
+  if (!isoDate) return false;
+  if (startDate && isoDate < startDate) return false;
+  if (endDate && isoDate > endDate) return false;
+  return true;
+}
+
 function nextInvoiceId(invoices) {
   const numericIds = invoices
     .map((invoice) => Number.parseInt(String(invoice.id || ""), 10))
@@ -162,6 +178,8 @@ export default function InvoicingPage({ initialInvoiceGuid = "" }) {
   const [customerFilterGuid, setCustomerFilterGuid] = useState("");
   const [postedFilter, setPostedFilter] = useState("ALL");
   const [paymentFilter, setPaymentFilter] = useState("ALL");
+  const [postedStartDate, setPostedStartDate] = useState("");
+  const [postedEndDate, setPostedEndDate] = useState("");
   const [createForm, setCreateForm] = useState({
     type: "INVOICE",
     id: "000001",
@@ -239,6 +257,11 @@ export default function InvoicingPage({ initialInvoiceGuid = "" }) {
       if (postedFilter === "POSTED" && !invoice.date_posted) return false;
       if (postedFilter === "UNPOSTED" && invoice.date_posted) return false;
 
+      if (postedStartDate || postedEndDate) {
+        const postedDate = isoDateOnly(invoice.date_posted);
+        if (!dateInRange(postedDate, postedStartDate, postedEndDate)) return false;
+      }
+
       if (paymentFilter !== "ALL") {
         const paymentState = invoicePaymentState(invoice);
         if (paymentState !== paymentFilter) return false;
@@ -246,7 +269,14 @@ export default function InvoicingPage({ initialInvoiceGuid = "" }) {
 
       return true;
     });
-  }, [invoices, customerFilterGuid, postedFilter, paymentFilter]);
+  }, [
+    invoices,
+    customerFilterGuid,
+    postedFilter,
+    paymentFilter,
+    postedStartDate,
+    postedEndDate
+  ]);
   const selectedInvoiceCustomer = selectedInvoice
     ? customersById.get(selectedInvoice.customer_guid) || null
     : null;
@@ -948,6 +978,26 @@ export default function InvoicingPage({ initialInvoiceGuid = "" }) {
             <option value="UNPAID">Não pagas</option>
             <option value="PARTIAL">Parciais</option>
           </select>
+        </div>
+        <div className="col-md-3">
+          <label className="form-label">Postagem: data inicial</label>
+          <input
+            type="date"
+            className="form-control"
+            value={postedStartDate}
+            onChange={(event) => setPostedStartDate(event.target.value)}
+            disabled={!activeBookId}
+          />
+        </div>
+        <div className="col-md-3">
+          <label className="form-label">Postagem: data final</label>
+          <input
+            type="date"
+            className="form-control"
+            value={postedEndDate}
+            onChange={(event) => setPostedEndDate(event.target.value)}
+            disabled={!activeBookId}
+          />
         </div>
         <div className="col-12">
           <label className="form-label">Faturas</label>
