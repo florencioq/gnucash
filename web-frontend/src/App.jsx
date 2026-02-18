@@ -42,6 +42,34 @@ const baseTabs = [
   { id: "billing-list", label: "Compras", component: BillingListPage }
 ];
 
+const primaryNavSectionsConfig = [
+  {
+    id: "operations",
+    label: "Operações",
+    itemIds: ["invoicing-list", "billing-list", "receivables", "payables"]
+  },
+  {
+    id: "accounting",
+    label: "Contábil",
+    itemIds: ["ledger"]
+  },
+  {
+    id: "reports",
+    label: "Relatórios",
+    itemIds: ["income-statement"]
+  },
+  {
+    id: "masters",
+    label: "Cadastros",
+    itemIds: ["books", "commodities", "accounts", "customers", "vendors"]
+  },
+  {
+    id: "administration",
+    label: "Administração",
+    itemIds: ["users"]
+  }
+];
+
 function normalizeLabel(prefix, documentId, guid) {
   if (documentId) return `${prefix} ${documentId}`;
   return `${prefix} ${String(guid || "").slice(0, 8)}`;
@@ -128,7 +156,8 @@ function loadAppTabsState() {
       ledgerTargetAccountId:
         typeof parsed.ledgerTargetAccountId === "string" ? parsed.ledgerTargetAccountId : "",
       openInvoiceTabs: sanitizeInvoiceTabs(parsed.openInvoiceTabs),
-      openBillTabs: sanitizeBillTabs(parsed.openBillTabs)
+      openBillTabs: sanitizeBillTabs(parsed.openBillTabs),
+      sidebarCollapsed: Boolean(parsed.sidebarCollapsed)
     };
   } catch {
     return null;
@@ -151,8 +180,12 @@ export default function App() {
     () => persistedTabsState?.openInvoiceTabs || []
   );
   const [openBillTabs, setOpenBillTabs] = useState(() => persistedTabsState?.openBillTabs || []);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => Boolean(persistedTabsState?.sidebarCollapsed)
+  );
   const [currentUser, setCurrentUser] = useState(null);
   const [hasAuthSession, setHasAuthSession] = useState(() => Boolean(initialAuthSession));
+  const canManageUsers = currentUser == null || Boolean(currentUser.is_superuser);
 
   const detailTabs = useMemo(
     () => [
@@ -161,15 +194,32 @@ export default function App() {
     ],
     [openBillTabs, openInvoiceTabs]
   );
-  const navigationTabs = useMemo(
-    () => (hasAuthSession ? baseTabs.filter((tab) => tab.id !== "login") : baseTabs.filter((tab) => tab.id === "login")),
-    [hasAuthSession]
+  const navigationTabs = useMemo(() => {
+    if (!hasAuthSession) return baseTabs.filter((tab) => tab.id === "login");
+    return baseTabs.filter((tab) => {
+      if (tab.id === "login") return false;
+      if (tab.id === "users" && !canManageUsers) return false;
+      return true;
+    });
+  }, [canManageUsers, hasAuthSession]);
+  const navigationTabsById = useMemo(
+    () => new Map(navigationTabs.map((tab) => [tab.id, tab])),
+    [navigationTabs]
   );
+  const primaryNavSections = useMemo(() => {
+    if (!hasAuthSession) return [];
+    return primaryNavSectionsConfig
+      .map((section) => ({
+        ...section,
+        items: section.itemIds.map((id) => navigationTabsById.get(id)).filter(Boolean)
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [hasAuthSession, navigationTabsById]);
   const tabs = useMemo(
     () => (hasAuthSession ? [...navigationTabs, ...detailTabs] : navigationTabs),
     [detailTabs, hasAuthSession, navigationTabs]
   );
-  const activeTabDef = tabs.find((tab) => tab.id === activeTab) || baseTabs[0];
+  const activeTabDef = tabs.find((tab) => tab.id === activeTab) || tabs[0] || baseTabs[0];
   const ActiveComponent = activeTabDef.component;
   const tabIds = useMemo(() => new Set(tabs.map((tab) => tab.id)), [tabs]);
   const isInvoicingTab =
@@ -248,10 +298,11 @@ export default function App() {
         lastNonLedgerTab,
         ledgerTargetAccountId,
         openInvoiceTabs,
-        openBillTabs
+        openBillTabs,
+        sidebarCollapsed
       })
     );
-  }, [activeTab, lastNonLedgerTab, ledgerTargetAccountId, openInvoiceTabs, openBillTabs]);
+  }, [activeTab, lastNonLedgerTab, ledgerTargetAccountId, openInvoiceTabs, openBillTabs, sidebarCollapsed]);
 
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");
@@ -555,38 +606,84 @@ export default function App() {
         </div>
       </header>
 
-      <main className={`container-fluid app-main-container py-4 ${isInvoicingTab ? "is-invoicing" : ""}`}>
-        <ul className="nav nav-pills mb-4 flex-wrap gap-1">
-          {tabs.map((tab) => (
-            <li key={tab.id} className={`nav-item app-tab-item ${tab.closable ? "is-closable" : ""}`}>
+      <main
+        className={`container-fluid app-main-container py-4 ${isInvoicingTab ? "is-invoicing" : ""} ${
+          hasAuthSession ? "is-authenticated" : ""
+        }`}
+      >
+        {hasAuthSession ? (
+          <div className={`app-layout ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
+            <aside className={`section-card app-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}>
               <button
-                className={`nav-link ${activeTab === tab.id ? "active" : ""}`}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                className="app-sidebar-toggle"
+                aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+                title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+                onClick={() => setSidebarCollapsed((current) => !current)}
               >
-                {tab.label}
+                {sidebarCollapsed ? ">>" : "<<"}
               </button>
-              {tab.closable ? (
-                <button
-                  type="button"
-                  className="app-tab-close"
-                  aria-label={`Fechar ${tab.label}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    closeDynamicTab(tab.id);
-                  }}
-                >
-                  ×
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
 
-        <div className="section-card">
-          <ActiveComponent key={activeTab} {...activeProps} />
-        </div>
+              <div className="app-sidebar-sections">
+                {primaryNavSections.map((section) => (
+                  <section key={section.id} className="app-nav-section">
+                    <h2 className="app-nav-section-title">{section.label}</h2>
+                    <div className="app-nav-links">
+                      {section.items.map((tab) => (
+                        <button
+                          key={tab.id}
+                          className={`app-nav-link ${activeTab === tab.id ? "is-active" : ""}`}
+                          type="button"
+                          onClick={() => setActiveTab(tab.id)}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </aside>
+
+            <section className="app-content">
+              {detailTabs.length > 0 ? (
+                <ul className="nav nav-pills app-detail-tabs mb-3 flex-wrap gap-1">
+                  {detailTabs.map((tab) => (
+                    <li key={tab.id} className="nav-item app-tab-item is-closable">
+                      <button
+                        className={`nav-link ${activeTab === tab.id ? "active" : ""}`}
+                        type="button"
+                        onClick={() => setActiveTab(tab.id)}
+                      >
+                        {tab.label}
+                      </button>
+                      <button
+                        type="button"
+                        className="app-tab-close"
+                        aria-label={`Fechar ${tab.label}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          closeDynamicTab(tab.id);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="section-card">
+                <ActiveComponent key={activeTab} {...activeProps} />
+              </div>
+            </section>
+          </div>
+        ) : (
+          <div className="section-card">
+            <ActiveComponent key={activeTab} {...activeProps} />
+          </div>
+        )}
       </main>
     </div>
   );

@@ -24,6 +24,12 @@ body {
   max-width: 1660px;
 }
 
+.app-main-container.is-authenticated {
+  max-width: none;
+  padding-left: 0.25rem;
+  padding-right: 1rem;
+}
+
 .brand-bar {
   background: linear-gradient(135deg, #1b2b24, #2f6b55);
   color: #f4efe6;
@@ -45,8 +51,89 @@ body {
   padding: 1.5rem;
 }
 
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.app-layout.is-sidebar-collapsed {
+  grid-template-columns: 58px minmax(0, 1fr);
+}
+
+.app-sidebar {
+  padding: 0.65rem 0.45rem 0.75rem;
+  align-self: start;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  min-height: 70vh;
+}
+
+.app-sidebar-toggle {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f5eee2;
+  color: #2c2a26;
+  font-weight: 700;
+  padding: 0.35rem 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.app-sidebar-toggle:hover {
+  background: #ede1cf;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-sections {
+  display: none;
+}
+
+.app-nav-section + .app-nav-section {
+  margin-top: 1rem;
+}
+
+.app-nav-section-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5e5a52;
+}
+
+.app-nav-links {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.app-nav-link {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+  padding: 0.55rem 0.65rem;
+  font-weight: 600;
+}
+
+.app-nav-link:hover {
+  background: #f0e8dc;
+}
+
+.app-nav-link.is-active {
+  background: #dcebe3;
+  color: #204134;
+}
+
+.app-content {
+  min-width: 0;
+}
+
 .nav-pills .nav-link.active {
   background: var(--accent);
+}
+
+.app-detail-tabs {
+  margin-bottom: 0.8rem;
 }
 
 .app-tab-item {
@@ -256,6 +343,41 @@ body {
 
 .counter-tree-name {
   font-weight: 600;
+}
+
+@media (max-width: 992px) {
+  .app-main-container.is-authenticated {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-layout.is-sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    padding: 0.65rem;
+    min-height: auto;
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+  }
+
+  .app-sidebar-sections {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .app-sidebar.is-collapsed .app-sidebar-sections {
+    display: none;
+  }
+
+  .app-nav-section + .app-nav-section {
+    margin-top: 0;
+  }
 }
 
 .invoice-dialog {
