@@ -643,11 +643,17 @@ export default function LedgerPage({
   const openSourceDocument = (source) => {
     if (!source?.documentGuid) return;
     if (source.sourceType === "invoicing") {
-      onOpenInvoicing({ invoiceGuid: source.documentGuid });
+      onOpenInvoicing({
+        invoiceGuid: source.documentGuid,
+        invoiceId: source.documentId || ""
+      });
       return;
     }
     if (source.sourceType === "billing") {
-      onOpenBilling({ billGuid: source.documentGuid });
+      onOpenBilling({
+        billGuid: source.documentGuid,
+        billId: source.documentId || ""
+      });
     }
   };
 
