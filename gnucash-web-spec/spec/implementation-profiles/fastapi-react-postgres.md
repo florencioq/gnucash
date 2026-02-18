@@ -52,7 +52,10 @@ This document is a reference implementation profile and does not override normat
 - Invoicing and purchasing pages should use wider layout for dense editing.
 - Invoicing must expose explicit post/unpost and payment undo actions.
 - Posted invoice/bill should lock line mutations until unposted.
+- Invoicing entry editor should start with no revenue account selected; user must choose `income_account_guid` explicitly.
 - Purchasing entry editor should start with no expense account selected; user must choose `income_account_guid` explicitly.
+- `Nova Fatura` and `Nova Compra` detail tabs should open with clean state and must not render stale header/line data from previously selected documents.
+- Revenue/expense account selectors in entry editors should prioritize leaf-first path labels (`account / parent / ...`) and provide wider input columns to keep leaf names visible.
 - Payment account selection should use hierarchical account pickers.
 - Hierarchical account pickers should provide a tall viewport to improve deep-tree navigation.
 - Invoicing navigation should be split into list (`Faturamentos`) and detail (`Fatura`).

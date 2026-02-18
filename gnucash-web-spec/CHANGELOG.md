@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.6 - 2026-02-18
+
+Invoicing/purchasing entry-editor UX synchronization:
+- updated implementation profile to require empty initial revenue-account selection for invoice entry editor (`income_account_guid`)
+- updated implementation profile to require clean-state behavior in `Nova Fatura`/`Nova Compra` tabs (no stale details from previously selected documents)
+- updated implementation profile to require leaf-first account path labels (`account / parent / ...`) and wider account selector columns in invoice/bill entry editors
+
 ## v0.4.5 - 2026-02-18
 
 Purchasing expense-account initialization sync:

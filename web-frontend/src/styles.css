@@ -315,6 +315,16 @@ body {
     flex: 0 0 20%;
     max-width: 20%;
   }
+
+  .invoice-entry-form .invoicing-entry-description-col {
+    flex: 0 0 13%;
+    max-width: 13%;
+  }
+
+  .invoice-entry-form .invoicing-entry-income-col {
+    flex: 0 0 20%;
+    max-width: 20%;
+  }
 }
 
 .invoice-payment-panel {
