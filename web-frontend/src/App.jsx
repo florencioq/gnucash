@@ -70,6 +70,21 @@ const primaryNavSectionsConfig = [
   }
 ];
 
+const navIconByTabId = {
+  "invoicing-list": "🧾",
+  "billing-list": "🛒",
+  receivables: "💰",
+  payables: "💸",
+  ledger: "📒",
+  "income-statement": "📈",
+  books: "📚",
+  commodities: "💱",
+  accounts: "🏦",
+  customers: "👥",
+  vendors: "🚚",
+  users: "🛡"
+};
+
 function normalizeLabel(prefix, documentId, guid) {
   if (documentId) return `${prefix} ${documentId}`;
   return `${prefix} ${String(guid || "").slice(0, 8)}`;
@@ -634,9 +649,14 @@ export default function App() {
                           key={tab.id}
                           className={`app-nav-link ${activeTab === tab.id ? "is-active" : ""}`}
                           type="button"
+                          title={tab.label}
+                          aria-label={tab.label}
                           onClick={() => setActiveTab(tab.id)}
                         >
-                          {tab.label}
+                          <span className="app-nav-link-icon" aria-hidden="true">
+                            {navIconByTabId[tab.id] || "•"}
+                          </span>
+                          <span className="app-nav-link-label">{tab.label}</span>
                         </button>
                       ))}
                     </div>
