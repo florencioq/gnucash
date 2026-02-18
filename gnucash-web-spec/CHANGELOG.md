@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.3 - 2026-02-18
+
+Ledger UX and detail-tab behavior synchronization:
+- updated implementation profile to require explicit delete confirmation for invoice/bill documents and automatic closure of the corresponding dynamic detail tab after successful deletion
+- updated implementation profile to require business-number-first tab labels (invoice/bill id) for documents opened from linked flows (for example Ledger), with GUID fallback only when number is unavailable
+- updated implementation profile to require taller tree-picker viewport for account selection in deep hierarchies
+- updated implementation profile and performance guidance to include pagination controls for Ledger transaction screens
+
 ## v0.4.2 - 2026-02-17
 
 Invoicing pagination and dynamic-tab UX synchronization:

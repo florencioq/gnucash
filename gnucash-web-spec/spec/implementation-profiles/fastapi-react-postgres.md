@@ -53,6 +53,7 @@ This document is a reference implementation profile and does not override normat
 - Invoicing must expose explicit post/unpost and payment undo actions.
 - Posted invoice/bill should lock line mutations until unposted.
 - Payment account selection should use hierarchical account pickers.
+- Hierarchical account pickers should provide a tall viewport to improve deep-tree navigation.
 - Invoicing navigation should be split into list (`Faturamentos`) and detail (`Fatura`).
 - Purchasing navigation should be split into list (`Compras`) and detail (`Compra`).
 - List views should support filtering, sortable columns, and open-to-detail actions.
@@ -63,6 +64,9 @@ This document is a reference implementation profile and does not override normat
 - Invoicing and purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
 - Detail screens should open as dynamic, closable tabs when launched from list actions.
 - Dynamic detail tabs should persist after browser refresh within the same session.
+- Dynamic detail tab labels should prefer business document numbers (invoice/bill id) when available, with GUID fallback only when needed.
+- Deleting invoice/bill documents should require explicit user confirmation and close the corresponding dynamic detail tab after successful deletion.
+- Ledger transaction grid should support pagination controls (first/previous/next/last + page size options) to keep navigation responsive.
 
 ## Compliance note
 
