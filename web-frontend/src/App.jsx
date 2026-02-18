@@ -5,19 +5,27 @@ import AccountsPage from "./pages/AccountsPage.jsx";
 import CustomersPage from "./pages/CustomersPage.jsx";
 import VendorsPage from "./pages/VendorsPage.jsx";
 import UsersPage from "./pages/UsersPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
 import InvoicingListPage from "./pages/InvoicingListPage.jsx";
 import InvoicingPage from "./pages/InvoicingPage.jsx";
 import BillingListPage from "./pages/BillingListPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
-import { apiBase } from "./api/client.js";
+import {
+  api,
+  apiBase,
+  authSessionChangedEvent,
+  clearAuthSession,
+  getAuthSession
+} from "./api/client.js";
 
 const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
 const NEW_INVOICE_TAB_GUID = "new";
 const NEW_BILL_TAB_GUID = "new";
 
 const baseTabs = [
+  { id: "login", label: "Login", component: LoginPage },
   { id: "books", label: "Books", component: BooksPage },
   { id: "commodities", label: "Commodities", component: CommoditiesPage },
   { id: "accounts", label: "Accounts", component: AccountsPage },
@@ -125,7 +133,10 @@ function loadAppTabsState() {
 
 export default function App() {
   const persistedTabsState = useMemo(() => loadAppTabsState(), []);
-  const [activeTab, setActiveTab] = useState(() => persistedTabsState?.activeTab || "books");
+  const initialAuthSession = useMemo(() => getAuthSession(), []);
+  const [activeTab, setActiveTab] = useState(() =>
+    initialAuthSession ? persistedTabsState?.activeTab || "books" : "login"
+  );
   const [lastNonLedgerTab, setLastNonLedgerTab] = useState(
     () => persistedTabsState?.lastNonLedgerTab || "books"
   );
@@ -136,6 +147,8 @@ export default function App() {
     () => persistedTabsState?.openInvoiceTabs || []
   );
   const [openBillTabs, setOpenBillTabs] = useState(() => persistedTabsState?.openBillTabs || []);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [hasAuthSession, setHasAuthSession] = useState(() => Boolean(initialAuthSession));
 
   const detailTabs = useMemo(
     () => [
@@ -144,7 +157,14 @@ export default function App() {
     ],
     [openBillTabs, openInvoiceTabs]
   );
-  const tabs = useMemo(() => [...baseTabs, ...detailTabs], [detailTabs]);
+  const navigationTabs = useMemo(
+    () => (hasAuthSession ? baseTabs.filter((tab) => tab.id !== "login") : baseTabs.filter((tab) => tab.id === "login")),
+    [hasAuthSession]
+  );
+  const tabs = useMemo(
+    () => (hasAuthSession ? [...navigationTabs, ...detailTabs] : navigationTabs),
+    [detailTabs, hasAuthSession, navigationTabs]
+  );
   const activeTabDef = tabs.find((tab) => tab.id === activeTab) || baseTabs[0];
   const ActiveComponent = activeTabDef.component;
   const tabIds = useMemo(() => new Set(tabs.map((tab) => tab.id)), [tabs]);
@@ -155,6 +175,44 @@ export default function App() {
     isBillTab(activeTab);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const syncCurrentUser = async () => {
+      const session = getAuthSession();
+      if (!session) {
+        if (!cancelled) {
+          setHasAuthSession(false);
+          setCurrentUser(null);
+        }
+        return;
+      }
+
+      if (!cancelled) setHasAuthSession(true);
+      const meRes = await api.get("/auth/me");
+      if (cancelled) return;
+      if (!meRes.ok) {
+        clearAuthSession();
+        setHasAuthSession(false);
+        setCurrentUser(null);
+        return;
+      }
+      setCurrentUser(meRes.data);
+    };
+
+    syncCurrentUser();
+    if (typeof window !== "undefined") {
+      window.addEventListener(authSessionChangedEvent, syncCurrentUser);
+    }
+
+    return () => {
+      cancelled = true;
+      if (typeof window !== "undefined") {
+        window.removeEventListener(authSessionChangedEvent, syncCurrentUser);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeTab !== "ledger") {
       setLastNonLedgerTab(activeTab);
     }
@@ -162,8 +220,18 @@ export default function App() {
 
   useEffect(() => {
     if (tabIds.has(activeTab)) return;
-    setActiveTab("books");
-  }, [activeTab, tabIds]);
+    setActiveTab(hasAuthSession ? "books" : "login");
+  }, [activeTab, hasAuthSession, tabIds]);
+
+  useEffect(() => {
+    if (hasAuthSession) return;
+    setOpenInvoiceTabs([]);
+    setOpenBillTabs([]);
+    setLedgerTargetAccountId("");
+    if (activeTab !== "login") {
+      setActiveTab("login");
+    }
+  }, [activeTab, hasAuthSession]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -327,6 +395,31 @@ export default function App() {
     setActiveTab((current) => (current === tabId ? fallbackTab : current));
   };
 
+  const handleLoginSuccess = async (user) => {
+    if (user) {
+      setHasAuthSession(true);
+      setCurrentUser(user);
+      setActiveTab("books");
+      return;
+    }
+    const meRes = await api.get("/auth/me");
+    if (meRes.ok) {
+      setHasAuthSession(true);
+      setCurrentUser(meRes.data);
+      setActiveTab("books");
+      return;
+    }
+    setHasAuthSession(false);
+    setCurrentUser(null);
+  };
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setHasAuthSession(false);
+    setCurrentUser(null);
+    setActiveTab("login");
+  };
+
   const ledgerReturnTab =
     (lastNonLedgerTab === "invoicing-list" ||
       lastNonLedgerTab === "billing-list" ||
@@ -337,7 +430,9 @@ export default function App() {
       : "";
 
   const activeProps =
-    activeTab === "accounts"
+    activeTab === "login"
+      ? { currentUser, onLoginSuccess: handleLoginSuccess }
+      : activeTab === "accounts"
       ? { onOpenLedger: handleOpenLedger }
       : activeTab === "income-statement"
         ? { onOpenLedger: handleOpenLedger }
@@ -411,9 +506,31 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="brand-bar">
-        <div className="container">
-          <h1 className="brand-title">GnuCash Web</h1>
-          <div className="small-muted">API: {apiBase()}</div>
+        <div className="container d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div>
+            <h1 className="brand-title">GnuCash Web</h1>
+            <div className="small-muted">API: {apiBase()}</div>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            {hasAuthSession && currentUser ? (
+              <span className="small-muted">Usuário: {currentUser.full_name || currentUser.email}</span>
+            ) : hasAuthSession ? (
+              <span className="small-muted">Sessão autenticada</span>
+            ) : null}
+            {hasAuthSession ? (
+              <button className="btn btn-sm btn-outline-light" type="button" onClick={handleLogout}>
+                Sair
+              </button>
+            ) : (
+              <button
+                className="btn btn-sm btn-outline-light"
+                type="button"
+                onClick={() => setActiveTab("login")}
+              >
+                Entrar
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
