@@ -67,6 +67,9 @@ This document is a reference implementation profile and does not override normat
 - Dynamic detail tab labels should prefer business document numbers (invoice/bill id) when available, with GUID fallback only when needed.
 - Deleting invoice/bill documents should require explicit user confirmation and close the corresponding dynamic detail tab after successful deletion.
 - Ledger transaction grid should support pagination controls (first/previous/next/last + page size options) to keep navigation responsive.
+- Ledger transaction grid should default to newest-first chronological order and allow switching to oldest-first.
+- Ledger pagination default page size should be 10 items.
+- Ledger rows linked to invoice/bill workflows should not allow edit/delete actions; users should perform those operations in `Faturamentos` or `Compras`.
 
 ## Compliance note
 

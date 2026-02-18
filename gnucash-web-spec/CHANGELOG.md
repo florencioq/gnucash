@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.4 - 2026-02-18
+
+Ledger interaction rules synchronization:
+- updated implementation profile to require newest-first default order in Ledger with user-selectable chronological inversion
+- updated implementation profile to set Ledger pagination default to 10 items per page
+- updated implementation profile to forbid edit/delete actions in Ledger for transactions linked to invoice/bill workflows, directing users to `Faturamentos`/`Compras`
+
 ## v0.4.3 - 2026-02-18
 
 Ledger UX and detail-tab behavior synchronization:
