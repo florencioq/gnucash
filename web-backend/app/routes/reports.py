@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -8,11 +10,17 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.errors import api_error
 from app.models import Account, AccountType, Book
-from app.schemas import IncomeStatementAccountEntriesOut, IncomeStatementMatrixOut, IncomeStatementOut
+from app.schemas import (
+    IncomeStatementAccountEntriesOut,
+    IncomeStatementMatrixOut,
+    IncomeStatementOut,
+    InvoiceSettlementByCustomerReportOut,
+)
 from app.services.authorization import ensure_book_read_access
 from app.services.reports import (
     build_income_statement,
     build_income_statement_matrix,
+    build_invoice_settlement_by_customer_report,
     list_income_statement_account_entries,
 )
 
@@ -132,4 +140,52 @@ def get_income_statement_account_entries(
         account=account,
         year=year,
         month=month_number,
+    )
+
+
+@router.get(
+    "/invoices/settlement-by-customer",
+    response_model=InvoiceSettlementByCustomerReportOut,
+)
+def get_invoice_settlement_by_customer_report(
+    book_id: UUID = Query(...),
+    customer_guid: UUID | None = Query(default=None),
+    posted_start_date: date | None = Query(default=None),
+    posted_end_date: date | None = Query(default=None),
+    sort_key: Literal[
+        "customer",
+        "invoice_id",
+        "date_posted",
+        "posted_month_end_date",
+        "settled_date",
+        "days_difference",
+    ] = Query(default="posted_month_end_date"),
+    sort_direction: Literal["asc", "desc"] = Query(default="asc"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> dict:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    if db.get(Book, book_id_str) is None:
+        raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id_str})
+
+    if posted_start_date and posted_end_date and posted_start_date > posted_end_date:
+        raise api_error(
+            400,
+            "INVALID_DATE_RANGE",
+            "posted_start_date must be less than or equal to posted_end_date",
+            {"posted_start_date": str(posted_start_date), "posted_end_date": str(posted_end_date)},
+        )
+
+    return build_invoice_settlement_by_customer_report(
+        db,
+        book_id=book_id_str,
+        customer_guid=str(customer_guid) if customer_guid is not None else None,
+        posted_start_date=posted_start_date,
+        posted_end_date=posted_end_date,
+        sort_key=sort_key,
+        sort_direction=sort_direction,
+        page=page,
+        page_size=page_size,
     )

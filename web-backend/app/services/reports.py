@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from fractions import Fraction
+from math import ceil
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Account, AccountType, Commodity, Split, Transaction
+from app.models import Account, AccountType, Commodity, Customer, Invoice, InvoiceEntry, Split, Transaction
 
 
 def _shift_month(year: int, month: int, delta: int) -> tuple[int, int]:
@@ -456,4 +459,225 @@ def build_income_statement_matrix(
         "revenue_totals": [_as_float(value) for value in revenue_totals],
         "expense_totals": [_as_float(value) for value in expense_totals],
         "net_income_totals": [_as_float(value) for value in net_income_totals],
+    }
+
+
+def build_invoice_settlement_by_customer_report(
+    db: Session,
+    *,
+    book_id: str,
+    customer_guid: str | None,
+    posted_start_date: date | None,
+    posted_end_date: date | None,
+    sort_key: Literal[
+        "customer",
+        "invoice_id",
+        "date_posted",
+        "posted_month_end_date",
+        "settled_date",
+        "days_difference",
+    ],
+    sort_direction: Literal["asc", "desc"],
+    page: int,
+    page_size: int,
+) -> dict:
+    def invoice_total_amount(invoice: Invoice, entries: list[InvoiceEntry]) -> Fraction:
+        total = Fraction(0, 1)
+        for entry in entries:
+            quantity = Fraction(entry.quantity_num, entry.quantity_denom)
+            unit_price = Fraction(entry.i_price_num, entry.i_price_denom)
+            base = quantity * unit_price
+            discount_ratio = Fraction(entry.i_discount_num, entry.i_discount_denom)
+            discount_type = (entry.i_disc_type or "").strip().upper()
+            if discount_type in {"VALUE", "VAL"}:
+                discount_amount = discount_ratio
+            else:
+                discount_amount = base * discount_ratio
+            total += base - discount_amount
+
+        invoice_type = (invoice.invoice_type or "INVOICE").strip().upper()
+        sign = Fraction(-1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(1, 1)
+        return abs(total * sign)
+
+    reference_today = datetime.now(UTC).date()
+
+    invoice_rows_stmt = (
+        select(Invoice, Customer.name)
+        .outerjoin(
+            Customer,
+            (Customer.guid == Invoice.owner_guid) & (Customer.book_id == Invoice.book_id),
+        )
+        .where(Invoice.book_id == book_id, Invoice.owner_type == "CUSTOMER")
+        .where(Invoice.date_posted.is_not(None))
+        .where(Invoice.post_lot.is_not(None))
+        .where(Invoice.post_acc.is_not(None))
+        .where(Invoice.post_txn.is_not(None))
+    )
+    if customer_guid:
+        invoice_rows_stmt = invoice_rows_stmt.where(Invoice.owner_guid == customer_guid)
+    if posted_start_date is not None:
+        invoice_rows_stmt = invoice_rows_stmt.where(
+            Invoice.date_posted >= datetime.combine(posted_start_date, time.min, tzinfo=UTC)
+        )
+    if posted_end_date is not None:
+        invoice_rows_stmt = invoice_rows_stmt.where(
+            Invoice.date_posted <= datetime.combine(posted_end_date, time.max, tzinfo=UTC)
+        )
+
+    invoice_rows = db.execute(
+        invoice_rows_stmt.order_by(Invoice.date_posted.asc(), Invoice.id.asc(), Invoice.guid.asc())
+    ).all()
+    if not invoice_rows:
+        return {
+            "book_id": book_id,
+            "items": [],
+            "customer_summaries": [],
+            "page": 1,
+            "page_size": page_size,
+            "total_items": 0,
+            "total_pages": 1,
+        }
+
+    invoice_ids = [invoice.guid for invoice, _customer_name in invoice_rows]
+    invoice_entries = db.execute(
+        select(InvoiceEntry).where(InvoiceEntry.invoice_guid.in_(invoice_ids))
+    ).scalars().all()
+    entries_by_invoice: dict[str, list[InvoiceEntry]] = defaultdict(list)
+    for entry in invoice_entries:
+        entries_by_invoice[entry.invoice_guid].append(entry)
+
+    lot_guids = {invoice.post_lot for invoice, _customer_name in invoice_rows if invoice.post_lot}
+    movement_date = func.coalesce(Transaction.post_date, Transaction.enter_date)
+    lot_split_rows = db.execute(
+        select(
+            Split.lot_guid,
+            Split.account_guid,
+            Split.tx_guid,
+            Split.value_num,
+            Split.value_denom,
+            movement_date.label("movement_date"),
+        )
+        .join(Transaction, Transaction.guid == Split.tx_guid)
+        .where(Split.lot_guid.in_(lot_guids))
+        .order_by(Split.lot_guid.asc(), movement_date.asc(), Split.tx_guid.asc(), Split.guid.asc())
+    ).all()
+
+    splits_by_lot: dict[str, list] = defaultdict(list)
+    for row in lot_split_rows:
+        splits_by_lot[row.lot_guid].append(row)
+
+    items: list[dict] = []
+    customer_names: dict[str, str | None] = {}
+    for invoice, customer_name in invoice_rows:
+        if not invoice.date_posted or not invoice.post_lot or not invoice.post_acc or not invoice.post_txn:
+            continue
+
+        posted_at = invoice.date_posted
+        if posted_at.tzinfo is None:
+            posted_at = posted_at.replace(tzinfo=UTC)
+
+        customer_names[invoice.owner_guid] = customer_name
+        lot_balance = Fraction(0, 1)
+        latest_payment_date: date | None = None
+        for row in splits_by_lot.get(invoice.post_lot, []):
+            if row.account_guid != invoice.post_acc:
+                continue
+            lot_balance += Fraction(row.value_num, row.value_denom)
+            if row.tx_guid == invoice.post_txn:
+                continue
+            if row.movement_date is None:
+                continue
+            movement_at = row.movement_date
+            if movement_at.tzinfo is None:
+                movement_at = movement_at.replace(tzinfo=UTC)
+            movement_day = movement_at.date()
+            if latest_payment_date is None or movement_day > latest_payment_date:
+                latest_payment_date = movement_day
+
+        posted_month_end_day = date(posted_at.year, posted_at.month, monthrange(posted_at.year, posted_at.month)[1])
+        if lot_balance == 0:
+            payment_status = "PAID"
+            reference_date = latest_payment_date or reference_today
+        else:
+            payment_status = "OPEN"
+            reference_date = reference_today
+        days_difference = (reference_date - posted_month_end_day).days
+        total_amount = invoice_total_amount(invoice, entries_by_invoice.get(invoice.guid, []))
+        items.append(
+            {
+                "customer_guid": invoice.owner_guid,
+                "customer_name": customer_name,
+                "invoice_guid": invoice.guid,
+                "invoice_id": invoice.id or "",
+                "payment_status": payment_status,
+                "currency_guid": invoice.currency_guid,
+                "total_num": total_amount.numerator,
+                "total_denom": total_amount.denominator,
+                "date_posted": posted_at,
+                "posted_month_end_date": posted_month_end_day,
+                "settled_date": reference_date,
+                "days_difference": days_difference,
+            }
+        )
+
+    summary_days_by_customer: dict[str, list[int]] = defaultdict(list)
+    for item in items:
+        summary_days_by_customer[item["customer_guid"]].append(item["days_difference"])
+
+    customer_summaries = []
+    for item_customer_guid, days in summary_days_by_customer.items():
+        customer_summaries.append(
+            {
+                "customer_guid": item_customer_guid,
+                "customer_name": customer_names.get(item_customer_guid),
+                "invoice_count": len(days),
+                "avg_days_difference": round(sum(days) / len(days), 2),
+                "min_days_difference": min(days),
+                "max_days_difference": max(days),
+            }
+        )
+
+    customer_summaries.sort(
+        key=lambda item: (str(item["customer_name"] or "").lower(), str(item["customer_guid"] or ""))
+    )
+
+    def sort_value(item: dict) -> tuple:
+        if sort_key == "customer":
+            return (str(item.get("customer_name") or "").lower(),)
+        if sort_key == "invoice_id":
+            return (str(item.get("invoice_id") or "").lower(),)
+        if sort_key == "date_posted":
+            return (item.get("date_posted"),)
+        if sort_key == "posted_month_end_date":
+            return (item.get("posted_month_end_date"),)
+        if sort_key == "settled_date":
+            return (item.get("settled_date"),)
+        if sort_key == "days_difference":
+            return (int(item.get("days_difference") or 0),)
+        return (item.get("date_posted"),)
+
+    reverse = sort_direction == "desc"
+    items.sort(
+        key=lambda item: (
+            sort_value(item),
+            str(item.get("invoice_id") or "").lower(),
+            str(item.get("invoice_guid") or ""),
+        ),
+        reverse=reverse,
+    )
+
+    total_items = len(items)
+    total_pages = max(1, ceil(total_items / page_size)) if total_items else 1
+    current_page = min(page, total_pages)
+    offset = (current_page - 1) * page_size
+    paged_items = items[offset:offset + page_size]
+
+    return {
+        "book_id": book_id,
+        "items": paged_items,
+        "customer_summaries": customer_summaries,
+        "page": current_page,
+        "page_size": page_size,
+        "total_items": total_items,
+        "total_pages": total_pages,
     }

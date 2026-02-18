@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 
@@ -88,6 +90,77 @@ def post_transaction(
         },
     )
     assert response.status_code == 201
+
+
+def create_posted_invoice(
+    client,
+    *,
+    book_id: str,
+    currency_guid: str,
+    customer_guid: str,
+    invoice_id: str,
+    income_account_guid: str,
+    receivable_account_guid: str,
+    date_opened: str,
+    post_date: str,
+) -> str:
+    create_response = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "id": invoice_id,
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+            "date_opened": date_opened,
+        },
+    )
+    assert create_response.status_code == 201
+    invoice_guid = create_response.json()["guid"]
+
+    entry_response = client.post(
+        f"/invoices/{invoice_guid}/entries",
+        json={
+            "date": date_opened,
+            "description": f"Serviço {invoice_id}",
+            "income_account_guid": income_account_guid,
+            "quantity_num": 1,
+            "quantity_denom": 1,
+            "unit_price_num": 10000,
+            "unit_price_denom": 100,
+        },
+    )
+    assert entry_response.status_code == 201
+
+    post_response = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={
+            "post_account_guid": receivable_account_guid,
+            "post_date": post_date,
+        },
+    )
+    assert post_response.status_code == 200
+    return invoice_guid
+
+
+def pay_invoice(
+    client,
+    *,
+    invoice_guid: str,
+    bank_account_guid: str,
+    payment_date: str,
+    amount_num: int = 10000,
+    amount_denom: int = 100,
+) -> None:
+    payment_response = client.post(
+        f"/invoices/{invoice_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": amount_num,
+            "amount_denom": amount_denom,
+            "payment_date": payment_date,
+        },
+    )
+    assert payment_response.status_code == 200
 
 
 def test_income_statement_report_monthly_summary(client):
@@ -405,3 +478,201 @@ def test_income_statement_matrix_by_month_and_account(client):
     )
     assert invalid_range.status_code == 400
     assert invalid_range.json()["code"] == "INVALID_MONTH_RANGE"
+
+
+def test_invoice_settlement_by_customer_report(client):
+    book_id = create_book(client)
+    currency_id = create_commodity(client, "BRL")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_id,
+        name="Root",
+        account_type="ROOT",
+    )
+    receivable_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_id,
+        parent_id=root_id,
+        name="Contas a Receber",
+        account_type="ASSET",
+    )
+    income_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_id,
+        parent_id=root_id,
+        name="Receita",
+        account_type="INCOME",
+    )
+    bank_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_id,
+        parent_id=root_id,
+        name="Banco",
+        account_type="ASSET",
+    )
+
+    customer_a_response = client.post(
+        "/customers",
+        json={
+            "book_id": book_id,
+            "name": "Cliente A",
+            "id": "C-A",
+            "currency_guid": currency_id,
+        },
+    )
+    assert customer_a_response.status_code == 201
+    customer_a = customer_a_response.json()["guid"]
+
+    customer_b_response = client.post(
+        "/customers",
+        json={
+            "book_id": book_id,
+            "name": "Cliente B",
+            "id": "C-B",
+            "currency_guid": currency_id,
+        },
+    )
+    assert customer_b_response.status_code == 201
+    customer_b = customer_b_response.json()["guid"]
+
+    inv_a1 = create_posted_invoice(
+        client,
+        book_id=book_id,
+        currency_guid=currency_id,
+        customer_guid=customer_a,
+        invoice_id="000101",
+        income_account_guid=income_id,
+        receivable_account_guid=receivable_id,
+        date_opened="2026-01-10T00:00:00Z",
+        post_date="2026-01-15T00:00:00Z",
+    )
+    pay_invoice(
+        client,
+        invoice_guid=inv_a1,
+        bank_account_guid=bank_id,
+        payment_date="2026-02-10T00:00:00Z",
+    )
+
+    inv_a2 = create_posted_invoice(
+        client,
+        book_id=book_id,
+        currency_guid=currency_id,
+        customer_guid=customer_a,
+        invoice_id="000102",
+        income_account_guid=income_id,
+        receivable_account_guid=receivable_id,
+        date_opened="2026-01-03T00:00:00Z",
+        post_date="2026-01-05T00:00:00Z",
+    )
+    pay_invoice(
+        client,
+        invoice_guid=inv_a2,
+        bank_account_guid=bank_id,
+        payment_date="2026-01-20T00:00:00Z",
+    )
+
+    inv_b1 = create_posted_invoice(
+        client,
+        book_id=book_id,
+        currency_guid=currency_id,
+        customer_guid=customer_b,
+        invoice_id="000201",
+        income_account_guid=income_id,
+        receivable_account_guid=receivable_id,
+        date_opened="2026-02-05T00:00:00Z",
+        post_date="2026-02-10T00:00:00Z",
+    )
+    pay_invoice(
+        client,
+        invoice_guid=inv_b1,
+        bank_account_guid=bank_id,
+        payment_date="2026-02-28T00:00:00Z",
+    )
+
+    create_posted_invoice(
+        client,
+        book_id=book_id,
+        currency_guid=currency_id,
+        customer_guid=customer_b,
+        invoice_id="000202",
+        income_account_guid=income_id,
+        receivable_account_guid=receivable_id,
+        date_opened="2026-02-11T00:00:00Z",
+        post_date="2026-02-11T00:00:00Z",
+    )
+
+    response = client.get(
+        f"/reports/invoices/settlement-by-customer?book_id={book_id}&sort_key=invoice_id&sort_direction=asc"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    today = datetime.now(UTC).date().isoformat()
+    assert payload["book_id"] == book_id
+    assert payload["total_items"] == 4
+    assert len(payload["items"]) == 4
+
+    by_invoice = {item["invoice_id"]: item for item in payload["items"]}
+    assert by_invoice["000101"]["payment_status"] == "PAID"
+    assert by_invoice["000101"]["currency_guid"] == currency_id
+    assert by_invoice["000101"]["total_num"] == 100
+    assert by_invoice["000101"]["total_denom"] == 1
+    assert by_invoice["000101"]["posted_month_end_date"] == "2026-01-31"
+    assert by_invoice["000101"]["settled_date"] == "2026-02-10"
+    assert by_invoice["000101"]["days_difference"] == 10
+
+    assert by_invoice["000102"]["payment_status"] == "PAID"
+    assert by_invoice["000102"]["currency_guid"] == currency_id
+    assert by_invoice["000102"]["total_num"] == 100
+    assert by_invoice["000102"]["total_denom"] == 1
+    assert by_invoice["000102"]["posted_month_end_date"] == "2026-01-31"
+    assert by_invoice["000102"]["settled_date"] == "2026-01-20"
+    assert by_invoice["000102"]["days_difference"] == -11
+
+    assert by_invoice["000201"]["payment_status"] == "PAID"
+    assert by_invoice["000201"]["currency_guid"] == currency_id
+    assert by_invoice["000201"]["total_num"] == 100
+    assert by_invoice["000201"]["total_denom"] == 1
+    assert by_invoice["000201"]["posted_month_end_date"] == "2026-02-28"
+    assert by_invoice["000201"]["settled_date"] == "2026-02-28"
+    assert by_invoice["000201"]["days_difference"] == 0
+
+    assert by_invoice["000202"]["payment_status"] == "OPEN"
+    assert by_invoice["000202"]["currency_guid"] == currency_id
+    assert by_invoice["000202"]["total_num"] == 100
+    assert by_invoice["000202"]["total_denom"] == 1
+    assert by_invoice["000202"]["posted_month_end_date"] == "2026-02-28"
+    assert by_invoice["000202"]["settled_date"] == today
+
+    summaries_by_customer = {item["customer_guid"]: item for item in payload["customer_summaries"]}
+    assert len(summaries_by_customer) == 2
+    assert summaries_by_customer[customer_a]["invoice_count"] == 2
+    assert summaries_by_customer[customer_a]["avg_days_difference"] == pytest.approx(-0.5)
+    assert summaries_by_customer[customer_a]["min_days_difference"] == -11
+    assert summaries_by_customer[customer_a]["max_days_difference"] == 10
+
+    expected_open_days = (datetime.now(UTC).date() - datetime(2026, 2, 28, tzinfo=UTC).date()).days
+    assert summaries_by_customer[customer_b]["invoice_count"] == 2
+    assert summaries_by_customer[customer_b]["avg_days_difference"] == pytest.approx((0 + expected_open_days) / 2)
+    assert summaries_by_customer[customer_b]["min_days_difference"] == expected_open_days
+    assert summaries_by_customer[customer_b]["max_days_difference"] == 0
+
+    by_customer_response = client.get(
+        f"/reports/invoices/settlement-by-customer?book_id={book_id}&customer_guid={customer_a}"
+    )
+    assert by_customer_response.status_code == 200
+    by_customer_payload = by_customer_response.json()
+    assert by_customer_payload["total_items"] == 2
+    assert all(item["customer_guid"] == customer_a for item in by_customer_payload["items"])
+
+
+def test_invoice_settlement_by_customer_report_invalid_date_range(client):
+    book_id = create_book(client)
+    response = client.get(
+        f"/reports/invoices/settlement-by-customer?book_id={book_id}&posted_start_date=2026-02-10&posted_end_date=2026-02-01"
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "INVALID_DATE_RANGE"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import date, datetime, UTC
 from enum import Enum
 from uuid import UUID
 
@@ -765,6 +765,40 @@ class IncomeStatementMatrixOut(BaseModel):
     revenue_totals: list[float]
     expense_totals: list[float]
     net_income_totals: list[float]
+
+
+class InvoiceSettlementByCustomerItemOut(BaseModel):
+    customer_guid: str
+    customer_name: str | None
+    invoice_guid: str
+    invoice_id: str
+    payment_status: str
+    currency_guid: str
+    total_num: int
+    total_denom: int
+    date_posted: datetime
+    posted_month_end_date: date
+    settled_date: date
+    days_difference: int
+
+
+class InvoiceSettlementByCustomerSummaryOut(BaseModel):
+    customer_guid: str
+    customer_name: str | None
+    invoice_count: int
+    avg_days_difference: float
+    min_days_difference: int
+    max_days_difference: int
+
+
+class InvoiceSettlementByCustomerReportOut(BaseModel):
+    book_id: str
+    items: list[InvoiceSettlementByCustomerItemOut]
+    customer_summaries: list[InvoiceSettlementByCustomerSummaryOut]
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
 
 
 class AuthRegisterRequest(BaseModel):
