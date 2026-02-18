@@ -65,7 +65,11 @@ function sanitizeInvoiceTabs(items) {
       id: `invoice:${invoiceGuid}`,
       label,
       invoiceGuid,
-      openCreate: Boolean(item?.openCreate)
+      openCreate: Boolean(item?.openCreate),
+      initialPostingAccountGuid:
+        typeof item?.initialPostingAccountGuid === "string"
+          ? item.initialPostingAccountGuid.trim()
+          : ""
     });
   }
   return sanitized;
@@ -87,7 +91,11 @@ function sanitizeBillTabs(items) {
       id: `bill:${billGuid}`,
       label,
       billGuid,
-      openCreate: Boolean(item?.openCreate)
+      openCreate: Boolean(item?.openCreate),
+      initialPostingAccountGuid:
+        typeof item?.initialPostingAccountGuid === "string"
+          ? item.initialPostingAccountGuid.trim()
+          : ""
     });
   }
   return sanitized;
@@ -174,21 +182,39 @@ export default function App() {
     setActiveTab("ledger");
   };
 
-  const handleOpenInvoicing = ({ invoiceGuid, invoiceId } = {}) => {
+  const handleOpenInvoicing = ({
+    invoiceGuid,
+    invoiceId,
+    tabLabel = "",
+    initialPostingAccountGuid = ""
+  } = {}) => {
     if (!invoiceGuid) return;
     const tabId = `invoice:${invoiceGuid}`;
-    const label = normalizeLabel("Fatura", invoiceId, invoiceGuid);
+    const label = String(tabLabel || "").trim() || normalizeLabel("Fatura", invoiceId, invoiceGuid);
 
     setOpenInvoiceTabs((current) => {
       let found = false;
       const updated = current.map((tab) => {
         if (tab.id !== tabId) return tab;
         found = true;
-        if (tab.label === label && !tab.openCreate) return tab;
-        return { ...tab, label, openCreate: false };
+        const nextPostingGuid =
+          String(initialPostingAccountGuid || "").trim() || tab.initialPostingAccountGuid || "";
+        if (tab.label === label && !tab.openCreate && tab.initialPostingAccountGuid === nextPostingGuid) {
+          return tab;
+        }
+        return { ...tab, label, openCreate: false, initialPostingAccountGuid: nextPostingGuid };
       });
       if (found) return updated;
-      return [...updated, { id: tabId, label, invoiceGuid, openCreate: false }];
+      return [
+        ...updated,
+        {
+          id: tabId,
+          label,
+          invoiceGuid,
+          openCreate: false,
+          initialPostingAccountGuid: String(initialPostingAccountGuid || "").trim()
+        }
+      ];
     });
     setActiveTab(tabId);
   };
@@ -212,28 +238,47 @@ export default function App() {
           id: tabId,
           label,
           invoiceGuid: NEW_INVOICE_TAB_GUID,
-          openCreate: true
+          openCreate: true,
+          initialPostingAccountGuid: ""
         }
       ];
     });
     setActiveTab(tabId);
   };
 
-  const handleOpenBilling = ({ billGuid, billId } = {}) => {
+  const handleOpenBilling = ({
+    billGuid,
+    billId,
+    tabLabel = "",
+    initialPostingAccountGuid = ""
+  } = {}) => {
     if (!billGuid) return;
     const tabId = `bill:${billGuid}`;
-    const label = normalizeLabel("Compra", billId, billGuid);
+    const label = String(tabLabel || "").trim() || normalizeLabel("Compra", billId, billGuid);
 
     setOpenBillTabs((current) => {
       let found = false;
       const updated = current.map((tab) => {
         if (tab.id !== tabId) return tab;
         found = true;
-        if (tab.label === label && !tab.openCreate) return tab;
-        return { ...tab, label, openCreate: false };
+        const nextPostingGuid =
+          String(initialPostingAccountGuid || "").trim() || tab.initialPostingAccountGuid || "";
+        if (tab.label === label && !tab.openCreate && tab.initialPostingAccountGuid === nextPostingGuid) {
+          return tab;
+        }
+        return { ...tab, label, openCreate: false, initialPostingAccountGuid: nextPostingGuid };
       });
       if (found) return updated;
-      return [...updated, { id: tabId, label, billGuid, openCreate: false }];
+      return [
+        ...updated,
+        {
+          id: tabId,
+          label,
+          billGuid,
+          openCreate: false,
+          initialPostingAccountGuid: String(initialPostingAccountGuid || "").trim()
+        }
+      ];
     });
     setActiveTab(tabId);
   };
@@ -257,7 +302,8 @@ export default function App() {
           id: tabId,
           label,
           billGuid: NEW_BILL_TAB_GUID,
-          openCreate: true
+          openCreate: true,
+          initialPostingAccountGuid: ""
         }
       ];
     });
@@ -323,7 +369,9 @@ export default function App() {
               initialInvoiceGuid:
                 currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(activeTab),
               onOpenInvoicingList: () => setActiveTab("invoicing-list"),
+              onOpenInvoiceTab: handleOpenInvoicing,
               onInvoiceDeleted: () => closeDynamicTab(activeTab),
+              initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
               openCreateOnMount,
               onCreateMountHandled: openCreateOnMount
                 ? () =>
@@ -342,7 +390,9 @@ export default function App() {
             return {
               initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(activeTab),
               onOpenBillingList: () => setActiveTab("billing-list"),
+              onOpenBillTab: handleOpenBilling,
               onBillDeleted: () => closeDynamicTab(activeTab),
+              initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
               openCreateOnMount,
               onCreateMountHandled: openCreateOnMount
                 ? () =>

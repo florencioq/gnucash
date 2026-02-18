@@ -33,6 +33,32 @@ from app.schemas import (
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
 
+def _next_invoice_id(db: Session, *, book_id: str, owner_type: str, minimum_width: int = 6) -> str:
+    existing_ids = db.execute(
+        select(Invoice.id).where(
+            Invoice.book_id == book_id,
+            Invoice.owner_type == owner_type,
+        )
+    ).scalars().all()
+
+    highest_value = 0
+    width = minimum_width
+    for existing_id in existing_ids:
+        normalized = str(existing_id or "").strip()
+        if not normalized.isdigit():
+            continue
+        width = max(width, len(normalized))
+        highest_value = max(highest_value, int(normalized))
+    return str(highest_value + 1).zfill(width)
+
+
+def _resolved_invoice_id(db: Session, *, book_id: str, owner_type: str, requested_id: str | None) -> str:
+    normalized = str(requested_id or "").strip()
+    if normalized:
+        return normalized
+    return _next_invoice_id(db, book_id=book_id, owner_type=owner_type)
+
+
 def _ensure_book_currency_customer(
     db: Session,
     *,
@@ -576,7 +602,12 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> dic
     invoice = Invoice(
         guid=str(payload.guid or uuid4()),
         book_id=book_id,
-        id=payload.id,
+        id=_resolved_invoice_id(
+            db,
+            book_id=book_id,
+            owner_type="CUSTOMER",
+            requested_id=payload.id,
+        ),
         invoice_type=payload.type.value,
         date_opened=payload.date_opened or datetime.now(UTC),
         date_posted=None,

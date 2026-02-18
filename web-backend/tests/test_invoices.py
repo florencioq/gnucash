@@ -218,6 +218,54 @@ def test_invoice_crud_and_entries(client):
     assert missing.status_code == 404
 
 
+def test_invoice_create_autonumbers_when_id_is_blank(client):
+    book_id = create_book(client, "Invoices Auto Number")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid)
+
+    first = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "000009",
+            "date_opened": "2026-02-15T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert first.status_code == 201
+    assert first.json()["id"] == "000009"
+
+    second = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "",
+            "date_opened": "2026-02-16T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert second.status_code == 201
+    assert second.json()["id"] == "000010"
+
+    third = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "   ",
+            "date_opened": "2026-02-17T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert third.status_code == 201
+    assert third.json()["id"] == "000011"
+
+
 def test_invoice_list_paginated_summary(client):
     book_id = create_book(client, "Invoices Paginated")
     currency_guid = create_currency(client, "BRL")

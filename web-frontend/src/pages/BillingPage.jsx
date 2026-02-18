@@ -132,7 +132,9 @@ function keepTypeBranches(nodes, allowedTypes) {
 export default function BillingPage({
   initialBillGuid = "",
   onOpenBillingList = null,
+  onOpenBillTab = null,
   onBillDeleted = null,
+  initialPostingAccountGuid = "",
   openCreateOnMount = false,
   onCreateMountHandled = null
 }) {
@@ -152,6 +154,7 @@ export default function BillingPage({
   const [paymentForm, setPaymentForm] = useState(defaultPaymentForm());
   const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
   const [paymentSearch, setPaymentSearch] = useState("");
+  const [duplicatingBill, setDuplicatingBill] = useState(false);
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
@@ -386,8 +389,15 @@ export default function BillingPage({
       postingAccounts.some((account) => account.id === selectedInvoice.post_account_guid)
     ) {
       setPostingAccountGuid(selectedInvoice.post_account_guid);
+      return;
     }
-  }, [selectedInvoice, postingAccounts]);
+    if (
+      initialPostingAccountGuid &&
+      postingAccounts.some((account) => account.id === initialPostingAccountGuid)
+    ) {
+      setPostingAccountGuid(initialPostingAccountGuid);
+    }
+  }, [selectedInvoice, postingAccounts, initialPostingAccountGuid]);
 
   useEffect(() => {
     if (!selectedInvoice) {
@@ -765,6 +775,87 @@ export default function BillingPage({
     await loadBookData(activeBookId);
   };
 
+  const duplicateBill = async () => {
+    if (!selectedInvoice || !activeBookId || duplicatingBill) return;
+
+    setError(null);
+    setDuplicatingBill(true);
+
+    const today = todayIsoDate();
+    const sourcePostingAccountGuid = selectedInvoice.post_account_guid || postingAccountGuid || "";
+    const sourceEntries = Array.isArray(selectedInvoice.entries) ? selectedInvoice.entries : [];
+
+    const createPayload = {
+      book_id: activeBookId,
+      type: selectedInvoice.type,
+      id: "",
+      date_opened: `${today}T00:00:00Z`,
+      notes: selectedInvoice.notes || "",
+      active: Boolean(selectedInvoice.active),
+      currency_guid: selectedInvoice.currency_guid,
+      vendor_guid: selectedInvoice.vendor_guid,
+      billing_id: selectedInvoice.billing_id || null,
+      terms: selectedInvoice.terms || null
+    };
+
+    let duplicatedGuid = "";
+    try {
+      const created = await api.post("/bills", createPayload);
+      if (!created.ok) {
+        setError(created.error);
+        return;
+      }
+      duplicatedGuid = created.data.guid;
+
+      for (const entry of sourceEntries) {
+        const entryPayload = {
+          date: `${today}T00:00:00Z`,
+          description: entry.description || null,
+          action: entry.action || null,
+          notes: entry.notes || null,
+          income_account_guid: entry.income_account_guid,
+          quantity_num: entry.quantity_num,
+          quantity_denom: entry.quantity_denom,
+          unit_price_num: entry.unit_price_num,
+          unit_price_denom: entry.unit_price_denom,
+          discount_num: entry.discount_num,
+          discount_denom: entry.discount_denom,
+          discount_type: entry.discount_type,
+          discount_how: entry.discount_how,
+          taxable: Boolean(entry.taxable),
+          tax_included: Boolean(entry.tax_included),
+          tax_table_guid: entry.tax_table_guid || null
+        };
+
+        const createdEntry = await api.post(`/bills/${duplicatedGuid}/entries`, entryPayload);
+        if (!createdEntry.ok) {
+          if (duplicatedGuid) {
+            await api.del(`/bills/${duplicatedGuid}`);
+          }
+          setError(createdEntry.error);
+          return;
+        }
+      }
+
+      if (typeof onOpenBillTab === "function") {
+        onOpenBillTab({
+          billGuid: duplicatedGuid,
+          billId: created.data?.id || createPayload.id || "",
+          tabLabel: "Nova Cobrança",
+          initialPostingAccountGuid: sourcePostingAccountGuid
+        });
+        return;
+      }
+
+      await loadBookData(activeBookId, duplicatedGuid);
+      if (sourcePostingAccountGuid) {
+        setPostingAccountGuid(sourcePostingAccountGuid);
+      }
+    } finally {
+      setDuplicatingBill(false);
+    }
+  };
+
   const resetEntryEditor = () => {
     setEditingEntryGuid("");
     setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
@@ -1044,14 +1135,24 @@ export default function BillingPage({
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <h5 className="mb-0">Edite a bill - {selectedInvoice.id}</h5>
-                <button
-                  type="button"
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={() => removeInvoice(selectedInvoice.guid)}
-                  disabled={isInvoicePosted}
-                >
-                  Excluir bill
-                </button>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={duplicateBill}
+                    disabled={!activeBookId || duplicatingBill}
+                  >
+                    {duplicatingBill ? "Duplicando..." : "Duplicar compra"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => removeInvoice(selectedInvoice.guid)}
+                    disabled={isInvoicePosted}
+                  >
+                    Excluir bill
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={submitInvoicePatch} className="row g-3 mb-3">

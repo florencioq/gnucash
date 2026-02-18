@@ -213,6 +213,54 @@ def test_bill_crud_and_entries(client):
     assert missing.status_code == 404
 
 
+def test_bill_create_autonumbers_when_id_is_blank(client):
+    book_id = create_book(client, "Bills Auto Number")
+    currency_guid = create_currency(client, "BRL")
+    vendor_guid = create_vendor(client, book_id=book_id, currency_guid=currency_guid)
+
+    first = client.post(
+        "/bills",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "000020",
+            "date_opened": "2026-02-15T00:00:00Z",
+            "currency_guid": currency_guid,
+            "vendor_guid": vendor_guid,
+        },
+    )
+    assert first.status_code == 201
+    assert first.json()["id"] == "000020"
+
+    second = client.post(
+        "/bills",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "",
+            "date_opened": "2026-02-16T00:00:00Z",
+            "currency_guid": currency_guid,
+            "vendor_guid": vendor_guid,
+        },
+    )
+    assert second.status_code == 201
+    assert second.json()["id"] == "000021"
+
+    third = client.post(
+        "/bills",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "   ",
+            "date_opened": "2026-02-17T00:00:00Z",
+            "currency_guid": currency_guid,
+            "vendor_guid": vendor_guid,
+        },
+    )
+    assert third.status_code == 201
+    assert third.json()["id"] == "000022"
+
+
 def test_bill_list_paginated_summary(client):
     book_id = create_book(client, "Bills Paginated")
     currency_guid = create_currency(client, "BRL")
