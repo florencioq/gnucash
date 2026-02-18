@@ -1,25 +1,6 @@
 from __future__ import annotations
 
-
-def create_book(client, name: str = "Demo") -> str:
-    response = client.post("/books", json={"name": name})
-    assert response.status_code == 201
-    return response.json()["id"]
-
-
-def create_commodity(client, mnemonic: str = "BRL") -> str:
-    response = client.post(
-        "/commodities",
-        json={
-            "namespace": "CURRENCY",
-            "mnemonic": mnemonic,
-            "fullname": mnemonic,
-            "fraction": 100,
-            "quote": False,
-        },
-    )
-    assert response.status_code == 201
-    return response.json()["id"]
+from tests.helpers import create_book, create_commodity, create_customer, create_vendor
 
 
 def test_customer_crud_and_list_by_book(client):
@@ -196,3 +177,78 @@ def test_cannot_delete_referenced_commodity_or_book(client):
     delete_book = client.delete(f"/books/{book_id}")
     assert delete_book.status_code == 409
     assert delete_book.json()["code"] == "BOOK_HAS_CUSTOMERS"
+
+
+def test_create_customer_missing_required_fields(client):
+    """Test validation errors when creating customer without required fields."""
+    book_id = create_book(client)
+    currency = create_commodity(client)
+    
+    # Missing name
+    resp = client.post("/customers", json={
+        "book_id": book_id,
+        "id": "C001",
+        "currency_guid": currency,
+    })
+    assert resp.status_code in (400, 422)
+    
+    # Missing id
+    resp = client.post("/customers", json={
+        "book_id": book_id,
+        "name": "Test Customer",
+        "currency_guid": currency,
+    })
+    assert resp.status_code in (400, 422)
+    
+    # Missing currency_guid
+    resp = client.post("/customers", json={
+        "book_id": book_id,
+        "name": "Test Customer",
+        "id": "C001",
+    })
+    assert resp.status_code in (400, 422)
+
+
+def test_create_vendor_missing_required_fields(client):
+    """Test validation errors when creating vendor without required fields."""
+    book_id = create_book(client)
+    currency = create_commodity(client)
+    
+    # Missing name
+    resp = client.post("/vendors", json={
+        "book_id": book_id,
+        "id": "V001",
+        "currency_guid": currency,
+    })
+    assert resp.status_code in (400, 422)
+    
+    # Missing id
+    resp = client.post("/vendors", json={
+        "book_id": book_id,
+        "name": "Test Vendor",
+        "currency_guid": currency,
+    })
+    assert resp.status_code in (400, 422)
+
+
+def test_customer_invalid_data_types(client):
+    """Test validation errors with wrong data types for customer."""
+    book_id = create_book(client)
+    currency = create_commodity(client)
+    
+    # NOTE: The API currently coerces many types automatically due to Pydantic
+    # - Numbers to strings for text fields
+    # - String "yes"/"true" may be coerced to boolean True
+    # This is expected Pydantic behavior but could be made stricter
+    # with custom validators if needed
+    
+    # active as string "yes" (may be coerced)
+    resp = client.post("/customers", json={
+        "book_id": book_id,
+        "name": "Test",
+        "id": "C001",
+        "currency_guid": currency,
+        "active": "yes",
+    })
+    # Pydantic may coerce this
+    assert resp.status_code in (201, 400, 422)

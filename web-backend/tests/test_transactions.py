@@ -2,55 +2,19 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-
-def create_book(client, name: str = "Demo") -> str:
-    response = client.post("/books", json={"name": name})
-    assert response.status_code == 201
-    return response.json()["id"]
-
-
-def create_commodity(client, mnemonic: str = "BRL") -> str:
-    response = client.post(
-        "/commodities",
-        json={
-            "namespace": "CURRENCY",
-            "mnemonic": mnemonic,
-            "fullname": mnemonic,
-            "fraction": 100,
-            "quote": False,
-        },
-    )
-    assert response.status_code == 201
-    return response.json()["id"]
-
-
-def create_root_account(client, *, book_id: str, commodity_id: str, name: str = "Root") -> str:
-    response = client.post(
-        "/accounts",
-        json={
-            "book_id": book_id,
-            "name": name,
-            "type": "ROOT",
-            "commodity_id": commodity_id,
-            "is_placeholder": True,
-        },
-    )
-    assert response.status_code == 201
-    return response.json()["id"]
+from tests.helpers import create_account, create_book, create_commodity, create_root_account, find_tree_node
 
 
 def create_child_account(client, *, book_id: str, commodity_id: str, parent_id: str, name: str, account_type: str) -> str:
-    payload = {
-        "book_id": book_id,
-        "parent_id": parent_id,
-        "name": name,
-        "type": account_type,
-        "commodity_id": commodity_id,
-        "is_placeholder": False,
-    }
-    response = client.post("/accounts", json=payload)
-    assert response.status_code == 201
-    return response.json()["id"]
+    """Helper wrapper for create_account for child accounts."""
+    return create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=parent_id,
+        name=name,
+        account_type=account_type,
+    )
 
 
 def create_child_account_with_code(
@@ -63,30 +27,16 @@ def create_child_account_with_code(
     account_type: str,
     code: str,
 ) -> str:
-    response = client.post(
-        "/accounts",
-        json={
-            "book_id": book_id,
-            "parent_id": parent_id,
-            "name": name,
-            "code": code,
-            "type": account_type,
-            "commodity_id": commodity_id,
-            "is_placeholder": False,
-        },
+    """Helper wrapper for create_account with code."""
+    return create_account(
+        client,
+        book_id=book_id,
+        commodity_id=commodity_id,
+        parent_id=parent_id,
+        name=name,
+        account_type=account_type,
+        code=code,
     )
-    assert response.status_code == 201
-    return response.json()["id"]
-
-
-def find_tree_node(nodes: list[dict], account_id: str) -> dict | None:
-    for node in nodes:
-        if node["id"] == account_id:
-            return node
-        found = find_tree_node(node.get("children", []), account_id)
-        if found is not None:
-            return found
-    return None
 
 
 def test_create_and_get_transaction_with_balanced_splits(client):
@@ -520,3 +470,104 @@ def test_cannot_delete_account_or_commodity_in_use_by_transactions(client):
 
     delete_tx = client.delete(f"/transactions/{tx_id}")
     assert delete_tx.status_code == 204
+
+
+def test_create_transaction_missing_required_fields(client):
+    """Test validation errors when creating transaction without required fields."""
+    book_id = create_book(client)
+    commodity_id = create_commodity(client)
+    root_id = create_root_account(client, book_id=book_id, commodity_id=commodity_id)
+    account_id = create_child_account(
+        client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Cash", account_type="ASSET"
+    )
+    
+    # Missing currency_guid
+    resp = client.post("/transactions", json={
+        "description": "Test",
+        "splits": [],
+    })
+    assert resp.status_code in (400, 422)
+    
+    # Missing splits
+    resp = client.post("/transactions", json={
+        "currency_guid": commodity_id,
+        "description": "Test",
+    })
+    assert resp.status_code in (400, 422)
+
+
+def test_create_transaction_invalid_split_data(client):
+    """Test validation errors with invalid split data."""
+    book_id = create_book(client)
+    commodity_id = create_commodity(client)
+    root_id = create_root_account(client, book_id=book_id, commodity_id=commodity_id)
+    account_id = create_child_account(
+        client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Cash", account_type="ASSET"
+    )
+    
+    # Split with missing account_guid
+    resp = client.post("/transactions", json={
+        "currency_guid": commodity_id,
+        "description": "Test",
+        "splits": [
+            {
+                "memo": "",
+                "action": "",
+                "reconcile_state": "n",
+                "value_num": 100,
+                "value_denom": 1,
+                "quantity_num": 100,
+                "quantity_denom": 1,
+            }
+        ],
+    })
+    assert resp.status_code in (400, 422)
+    
+    # Split with string instead of number
+    resp = client.post("/transactions", json={
+        "currency_guid": commodity_id,
+        "description": "Test",
+        "splits": [
+            {
+                "account_guid": account_id,
+                "memo": "",
+                "action": "",
+                "reconcile_state": "n",
+                "value_num": "not_a_number",
+                "value_denom": 1,
+                "quantity_num": 100,
+                "quantity_denom": 1,
+            }
+        ],
+    })
+    assert resp.status_code in (400, 422)
+
+
+def test_create_transaction_invalid_reconcile_state(client):
+    """Test validation error with invalid reconcile_state value."""
+    book_id = create_book(client)
+    commodity_id = create_commodity(client)
+    root_id = create_root_account(client, book_id=book_id, commodity_id=commodity_id)
+    account_id = create_child_account(
+        client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Cash", account_type="ASSET"
+    )
+    
+    # Invalid reconcile_state (should be n, c, y, f, or v)
+    resp = client.post("/transactions", json={
+        "currency_guid": commodity_id,
+        "description": "Test",
+        "splits": [
+            {
+                "account_guid": account_id,
+                "memo": "",
+                "action": "",
+                "reconcile_state": "invalid",
+                "value_num": 100,
+                "value_denom": 1,
+                "quantity_num": 100,
+                "quantity_denom": 1,
+            }
+        ],
+    })
+    # API validates reconcile_state and returns 400
+    assert resp.status_code in (400, 422)
