@@ -7,10 +7,55 @@ function emptyToNull(value) {
   return trimmed ? trimmed : null;
 }
 
+function filterTree(nodes, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+
+  const visit = (node) => {
+    const selfMatch =
+      (node.name || "").toLowerCase().includes(q) ||
+      (node.type || "").toLowerCase().includes(q);
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (selfMatch || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
+function keepTypeBranches(nodes, allowedTypes) {
+  const visit = (node) => {
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (node.type === "ROOT") {
+      return children.length > 0 ? { ...node, children } : null;
+    }
+    if (allowedTypes.has(node.type) || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
+function reverseAccountPath(path) {
+  const parts = String(path || "")
+    .split(" / ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return String(path || "");
+  return parts.reverse().join(" / ");
+}
+
 export default function VendorsPage() {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [accountTree, setAccountTree] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [expensePickerOpen, setExpensePickerOpen] = useState(false);
+  const [expenseSearch, setExpenseSearch] = useState("");
   const [editingGuid, setEditingGuid] = useState("");
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
@@ -36,9 +81,56 @@ export default function VendorsPage() {
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts]
   );
-  const expenseAccounts = useMemo(
-    () => accounts.filter((account) => account.type === "EXPENSE" && !account.is_placeholder),
-    [accounts]
+  const accountFullNameById = useMemo(() => {
+    const cache = new Map();
+
+    const build = (accountId, visited = new Set()) => {
+      if (cache.has(accountId)) return cache.get(accountId);
+      if (visited.has(accountId)) return accountsById.get(accountId)?.name || accountId;
+      visited.add(accountId);
+
+      const account = accountsById.get(accountId);
+      if (!account) return accountId;
+      if (account.type === "ROOT" || !account.parent_id) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parent = accountsById.get(account.parent_id);
+      if (!parent) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parentName = build(account.parent_id, visited);
+      const fullName =
+        parent.type === "ROOT"
+          ? account.name
+          : `${parentName} / ${account.name}`;
+      cache.set(accountId, fullName);
+      return fullName;
+    };
+
+    for (const account of accounts) {
+      build(account.id);
+    }
+
+    return cache;
+  }, [accounts, accountsById]);
+  const selectedExpenseAccount = accountsById.get(form.expense_account_guid) || null;
+  const selectedExpenseAccountPath = selectedExpenseAccount
+    ? accountFullNameById.get(selectedExpenseAccount.id) || selectedExpenseAccount.name
+    : "";
+  const expenseAccountLabel = selectedExpenseAccount
+    ? `${reverseAccountPath(selectedExpenseAccountPath)} (${selectedExpenseAccount.type})`
+    : "Selecione a conta de despesa";
+  const expenseTree = useMemo(
+    () => keepTypeBranches(accountTree, new Set(["EXPENSE"])),
+    [accountTree]
+  );
+  const visibleExpenseTree = useMemo(
+    () => filterTree(expenseTree, expenseSearch),
+    [expenseTree, expenseSearch]
   );
 
   const resetForm = (currencyGuid = "") => {
@@ -91,6 +183,17 @@ export default function VendorsPage() {
     setAccounts(res.data.filter((account) => account.type !== "ROOT"));
   };
 
+  const loadAccountTree = async (bookId) => {
+    if (!bookId) return;
+    const res = await api.get(`/accounts/tree?book_id=${bookId}`);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setError(null);
+    setAccountTree(res.data);
+  };
+
   useEffect(() => {
     loadCommodities();
   }, []);
@@ -99,13 +202,74 @@ export default function VendorsPage() {
     if (activeBookId) {
       loadVendors(activeBookId);
       loadAccounts(activeBookId);
+      loadAccountTree(activeBookId);
       setEditingGuid("");
       return;
     }
     setVendors([]);
     setAccounts([]);
+    setAccountTree([]);
+    setExpensePickerOpen(false);
+    setExpenseSearch("");
     setEditingGuid("");
   }, [activeBookId]);
+
+  useEffect(() => {
+    setExpensePickerOpen(false);
+    setExpenseSearch("");
+  }, [editingGuid, accountTree]);
+
+  const selectExpenseAccount = (accountId) => {
+    setForm((current) => ({ ...current, expense_account_guid: accountId }));
+    setExpenseSearch("");
+    setExpensePickerOpen(false);
+  };
+
+  const toggleExpensePicker = () => {
+    setExpensePickerOpen((current) => {
+      const next = !current;
+      if (next) setExpenseSearch("");
+      return next;
+    });
+  };
+
+  const renderExpenseTreeNodes = (nodes, depth = 0) => {
+    return nodes.map((node) => {
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderExpenseTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
+      const selected = form.expense_account_guid === node.id;
+      const selectable = node.type === "EXPENSE" && !node.is_placeholder;
+
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            className={`counter-tree-node ${selected ? "is-selected" : ""}`}
+            style={{ marginLeft: `${depth * 14}px` }}
+            disabled={!selectable}
+            onClick={() => {
+              if (selectable) selectExpenseAccount(node.id);
+            }}
+          >
+            <span className="counter-tree-name">{node.name}</span>
+            <span className="badge badge-soft text-uppercase">{node.type}</span>
+            {node.is_placeholder ? <span className="small-muted">marcador</span> : null}
+          </button>
+          {node.children && node.children.length > 0
+            ? renderExpenseTreeNodes(node.children, depth + 1)
+            : null}
+        </div>
+      );
+    });
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -291,18 +455,42 @@ export default function VendorsPage() {
         </div>
         <div className="col-md-4">
           <label className="form-label">Conta de Despesa Padrão</label>
-          <select
-            className="form-select"
-            value={form.expense_account_guid}
-            onChange={(event) => setForm({ ...form, expense_account_guid: event.target.value })}
-          >
-            <option value="">Selecione...</option>
-            {expenseAccounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
+          <div className="tree-select">
+            <button
+              type="button"
+              className="form-select tree-select-toggle"
+              onClick={toggleExpensePicker}
+            >
+              <span
+                className="tree-select-label"
+                title={
+                  selectedExpenseAccount
+                    ? `${selectedExpenseAccountPath} (${selectedExpenseAccount.type})`
+                    : expenseAccountLabel
+                }
+              >
+                {expenseAccountLabel}
+              </span>
+              <span className="tree-select-caret">{expensePickerOpen ? "▲" : "▼"}</span>
+            </button>
+            {expensePickerOpen ? (
+              <div className="tree-select-menu">
+                <input
+                  className="form-control mb-2"
+                  value={expenseSearch}
+                  onChange={(event) => setExpenseSearch(event.target.value)}
+                  placeholder="Filtrar conta de despesa"
+                />
+                <div className="counter-tree-panel">
+                  {visibleExpenseTree.length > 0 ? (
+                    renderExpenseTreeNodes(visibleExpenseTree)
+                  ) : (
+                    <div className="small-muted">Nenhuma conta de despesa encontrada para o filtro.</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="col-md-12 d-flex justify-content-end gap-2 mt-2">
@@ -358,7 +546,13 @@ export default function VendorsPage() {
                   <td>{commoditiesById.get(vendor.currency_guid)?.mnemonic || vendor.currency_guid}</td>
                   <td>{vendor.addr_email || "-"}</td>
                   <td>{vendor.addr_phone || "-"}</td>
-                  <td>{accountsById.get(vendor.expense_account_guid)?.name || "-"}</td>
+                  <td>
+                    {vendor.expense_account_guid
+                      ? accountFullNameById.get(vendor.expense_account_guid) ||
+                        accountsById.get(vendor.expense_account_guid)?.name ||
+                        vendor.expense_account_guid
+                      : "-"}
+                  </td>
                   <td>{vendor.active ? "Sim" : "Não"}</td>
                   <td className="small-muted">{vendor.guid}</td>
                   <td className="text-end">

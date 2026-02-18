@@ -7,10 +7,55 @@ function emptyToNull(value) {
   return trimmed ? trimmed : null;
 }
 
+function filterTree(nodes, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
+
+  const visit = (node) => {
+    const selfMatch =
+      (node.name || "").toLowerCase().includes(q) ||
+      (node.type || "").toLowerCase().includes(q);
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (selfMatch || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
+function keepTypeBranches(nodes, allowedTypes) {
+  const visit = (node) => {
+    const children = (node.children || []).map(visit).filter(Boolean);
+    if (node.type === "ROOT") {
+      return children.length > 0 ? { ...node, children } : null;
+    }
+    if (allowedTypes.has(node.type) || children.length > 0) {
+      return { ...node, children };
+    }
+    return null;
+  };
+
+  return nodes.map(visit).filter(Boolean);
+}
+
+function reverseAccountPath(path) {
+  const parts = String(path || "")
+    .split(" / ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return String(path || "");
+  return parts.reverse().join(" / ");
+}
+
 export default function CustomersPage() {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [accountTree, setAccountTree] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [incomePickerOpen, setIncomePickerOpen] = useState(false);
+  const [incomeSearch, setIncomeSearch] = useState("");
   const [editingGuid, setEditingGuid] = useState("");
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
@@ -41,9 +86,56 @@ export default function CustomersPage() {
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts]
   );
-  const incomeAccounts = useMemo(
-    () => accounts.filter((account) => account.type === "INCOME" && !account.is_placeholder),
-    [accounts]
+  const accountFullNameById = useMemo(() => {
+    const cache = new Map();
+
+    const build = (accountId, visited = new Set()) => {
+      if (cache.has(accountId)) return cache.get(accountId);
+      if (visited.has(accountId)) return accountsById.get(accountId)?.name || accountId;
+      visited.add(accountId);
+
+      const account = accountsById.get(accountId);
+      if (!account) return accountId;
+      if (account.type === "ROOT" || !account.parent_id) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parent = accountsById.get(account.parent_id);
+      if (!parent) {
+        cache.set(accountId, account.name);
+        return account.name;
+      }
+
+      const parentName = build(account.parent_id, visited);
+      const fullName =
+        parent.type === "ROOT"
+          ? account.name
+          : `${parentName} / ${account.name}`;
+      cache.set(accountId, fullName);
+      return fullName;
+    };
+
+    for (const account of accounts) {
+      build(account.id);
+    }
+
+    return cache;
+  }, [accounts, accountsById]);
+  const selectedIncomeAccount = accountsById.get(form.income_account_guid) || null;
+  const selectedIncomeAccountPath = selectedIncomeAccount
+    ? accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name
+    : "";
+  const incomeAccountLabel = selectedIncomeAccount
+    ? `${reverseAccountPath(selectedIncomeAccountPath)} (${selectedIncomeAccount.type})`
+    : "Selecione a conta de receita";
+  const incomeTree = useMemo(
+    () => keepTypeBranches(accountTree, new Set(["INCOME"])),
+    [accountTree]
+  );
+  const visibleIncomeTree = useMemo(
+    () => filterTree(incomeTree, incomeSearch),
+    [incomeTree, incomeSearch]
   );
 
   const resetForm = (currencyGuid = "") => {
@@ -101,6 +193,17 @@ export default function CustomersPage() {
     setAccounts(res.data.filter((account) => account.type !== "ROOT"));
   };
 
+  const loadAccountTree = async (bookId) => {
+    if (!bookId) return;
+    const res = await api.get(`/accounts/tree?book_id=${bookId}`);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setError(null);
+    setAccountTree(res.data);
+  };
+
   useEffect(() => {
     loadCommodities();
   }, []);
@@ -109,13 +212,74 @@ export default function CustomersPage() {
     if (activeBookId) {
       loadCustomers(activeBookId);
       loadAccounts(activeBookId);
+      loadAccountTree(activeBookId);
       setEditingGuid("");
       return;
     }
     setCustomers([]);
     setAccounts([]);
+    setAccountTree([]);
+    setIncomePickerOpen(false);
+    setIncomeSearch("");
     setEditingGuid("");
   }, [activeBookId]);
+
+  useEffect(() => {
+    setIncomePickerOpen(false);
+    setIncomeSearch("");
+  }, [editingGuid, accountTree]);
+
+  const selectIncomeAccount = (accountId) => {
+    setForm((current) => ({ ...current, income_account_guid: accountId }));
+    setIncomeSearch("");
+    setIncomePickerOpen(false);
+  };
+
+  const toggleIncomePicker = () => {
+    setIncomePickerOpen((current) => {
+      const next = !current;
+      if (next) setIncomeSearch("");
+      return next;
+    });
+  };
+
+  const renderIncomeTreeNodes = (nodes, depth = 0) => {
+    return nodes.map((node) => {
+      if (node.type === "ROOT") {
+        return (
+          <div key={node.id}>
+            {node.children && node.children.length > 0
+              ? renderIncomeTreeNodes(node.children, depth)
+              : null}
+          </div>
+        );
+      }
+
+      const selected = form.income_account_guid === node.id;
+      const selectable = node.type === "INCOME" && !node.is_placeholder;
+
+      return (
+        <div key={node.id}>
+          <button
+            type="button"
+            className={`counter-tree-node ${selected ? "is-selected" : ""}`}
+            style={{ marginLeft: `${depth * 14}px` }}
+            disabled={!selectable}
+            onClick={() => {
+              if (selectable) selectIncomeAccount(node.id);
+            }}
+          >
+            <span className="counter-tree-name">{node.name}</span>
+            <span className="badge badge-soft text-uppercase">{node.type}</span>
+            {node.is_placeholder ? <span className="small-muted">marcador</span> : null}
+          </button>
+          {node.children && node.children.length > 0
+            ? renderIncomeTreeNodes(node.children, depth + 1)
+            : null}
+        </div>
+      );
+    });
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -308,18 +472,42 @@ export default function CustomersPage() {
         </div>
         <div className="col-md-4">
           <label className="form-label">Conta de Receita Padrão</label>
-          <select
-            className="form-select"
-            value={form.income_account_guid}
-            onChange={(event) => setForm({ ...form, income_account_guid: event.target.value })}
-          >
-            <option value="">Selecione...</option>
-            {incomeAccounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
+          <div className="tree-select">
+            <button
+              type="button"
+              className="form-select tree-select-toggle"
+              onClick={toggleIncomePicker}
+            >
+              <span
+                className="tree-select-label"
+                title={
+                  selectedIncomeAccount
+                    ? `${selectedIncomeAccountPath} (${selectedIncomeAccount.type})`
+                    : incomeAccountLabel
+                }
+              >
+                {incomeAccountLabel}
+              </span>
+              <span className="tree-select-caret">{incomePickerOpen ? "▲" : "▼"}</span>
+            </button>
+            {incomePickerOpen ? (
+              <div className="tree-select-menu">
+                <input
+                  className="form-control mb-2"
+                  value={incomeSearch}
+                  onChange={(event) => setIncomeSearch(event.target.value)}
+                  placeholder="Filtrar conta de receita"
+                />
+                <div className="counter-tree-panel">
+                  {visibleIncomeTree.length > 0 ? (
+                    renderIncomeTreeNodes(visibleIncomeTree)
+                  ) : (
+                    <div className="small-muted">Nenhuma conta de receita encontrada para o filtro.</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="col-md-2">
           <label className="form-label">Nome de cobrança</label>
@@ -423,7 +611,13 @@ export default function CustomersPage() {
                   <td>{commoditiesById.get(customer.currency_guid)?.mnemonic || customer.currency_guid}</td>
                   <td>{customer.addr_email || "-"}</td>
                   <td>{customer.addr_phone || "-"}</td>
-                  <td>{accountsById.get(customer.income_account_guid)?.name || "-"}</td>
+                  <td>
+                    {customer.income_account_guid
+                      ? accountFullNameById.get(customer.income_account_guid) ||
+                        accountsById.get(customer.income_account_guid)?.name ||
+                        customer.income_account_guid
+                      : "-"}
+                  </td>
                   <td>{customer.active ? "Sim" : "Não"}</td>
                   <td className="small-muted">{customer.guid}</td>
                   <td className="text-end">
