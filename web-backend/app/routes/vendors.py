@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Book, Commodity, Invoice, Vendor
+from app.models import Account, AccountType, Book, Commodity, Invoice, Vendor
 from app.schemas import VendorCreate, VendorOut, VendorPatch
 from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 
@@ -27,16 +27,67 @@ def _ensure_book_and_currency_exist(db: Session, *, book_id: str, currency_guid:
         )
 
 
+def _resolve_expense_account_guid(
+    db: Session,
+    *,
+    book_id: str,
+    expense_account_guid: str | None,
+) -> str | None:
+    if expense_account_guid is None:
+        return None
+
+    account = db.get(Account, expense_account_guid)
+    if account is None:
+        raise api_error(
+            400,
+            "INVALID_ACCOUNT",
+            "expense_account_guid must reference an existing account",
+            {"expense_account_guid": expense_account_guid},
+        )
+    if account.book_id != book_id:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_BOOK",
+            "expense account must belong to the same book as the vendor",
+            {
+                "expense_account_guid": expense_account_guid,
+                "book_id": book_id,
+                "account_book_id": account.book_id,
+            },
+        )
+    if account.type != AccountType.EXPENSE:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_TYPE",
+            "vendor default expense account must use type EXPENSE",
+            {"expense_account_guid": expense_account_guid, "account_type": account.type.value},
+        )
+    if account.is_placeholder:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT",
+            "expense account cannot be a placeholder account",
+            {"expense_account_guid": expense_account_guid},
+        )
+    return account.id
+
+
 @router.post("", response_model=VendorOut, status_code=201)
 def create_vendor(payload: VendorCreate, db: Session = Depends(get_db)) -> Vendor:
     book_id = str(payload.book_id)
     currency_guid = str(payload.currency_guid)
+    expense_account_guid = str(payload.expense_account_guid) if payload.expense_account_guid else None
     terms_guid = str(payload.terms_guid) if payload.terms_guid else None
     tax_table_guid = str(payload.tax_table_guid) if payload.tax_table_guid else None
 
     ensure_book_write_access(db, book_id=book_id)
 
     _ensure_book_and_currency_exist(db, book_id=book_id, currency_guid=currency_guid)
+    resolved_expense_account_guid = _resolve_expense_account_guid(
+        db,
+        book_id=book_id,
+        expense_account_guid=expense_account_guid,
+    )
 
     vendor = Vendor(
         guid=str(payload.guid or uuid4()),
@@ -45,6 +96,7 @@ def create_vendor(payload: VendorCreate, db: Session = Depends(get_db)) -> Vendo
         id=payload.id,
         notes=payload.notes,
         currency_guid=currency_guid,
+        expense_account_guid=resolved_expense_account_guid,
         active=payload.active,
         tax_override=payload.tax_override,
         addr_name=payload.addr_name,
@@ -105,6 +157,13 @@ def patch_vendor(vendor_guid: UUID, payload: VendorPatch, db: Session = Depends(
         data["terms_guid"] = str(data["terms_guid"]) if data["terms_guid"] else None
     if "tax_table_guid" in data:
         data["tax_table_guid"] = str(data["tax_table_guid"]) if data["tax_table_guid"] else None
+    if "expense_account_guid" in data:
+        expense_account_guid = str(data["expense_account_guid"]) if data["expense_account_guid"] else None
+        data["expense_account_guid"] = _resolve_expense_account_guid(
+            db,
+            book_id=vendor.book_id,
+            expense_account_guid=expense_account_guid,
+        )
 
     for key, value in data.items():
         setattr(vendor, key, value)

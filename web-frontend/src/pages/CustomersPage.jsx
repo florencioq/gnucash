@@ -9,6 +9,7 @@ function emptyToNull(value) {
 
 export default function CustomersPage() {
   const [commodities, setCommodities] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [editingGuid, setEditingGuid] = useState("");
   const [error, setError] = useState(null);
@@ -23,6 +24,7 @@ export default function CustomersPage() {
     discount_denom: "1",
     credit_num: "0",
     credit_denom: "1",
+    income_account_guid: "",
     addr_name: "",
     addr_phone: "",
     addr_email: "",
@@ -34,6 +36,14 @@ export default function CustomersPage() {
   const commoditiesById = useMemo(
     () => new Map(commodities.map((commodity) => [commodity.id, commodity])),
     [commodities]
+  );
+  const accountsById = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account])),
+    [accounts]
+  );
+  const incomeAccounts = useMemo(
+    () => accounts.filter((account) => account.type === "INCOME" && !account.is_placeholder),
+    [accounts]
   );
 
   const resetForm = (currencyGuid = "") => {
@@ -47,6 +57,7 @@ export default function CustomersPage() {
       discount_denom: "1",
       credit_num: "0",
       credit_denom: "1",
+      income_account_guid: "",
       addr_name: "",
       addr_phone: "",
       addr_email: "",
@@ -79,6 +90,17 @@ export default function CustomersPage() {
     setCustomers(res.data);
   };
 
+  const loadAccounts = async (bookId) => {
+    if (!bookId) return;
+    const res = await api.get(`/accounts?book_id=${bookId}`);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setError(null);
+    setAccounts(res.data.filter((account) => account.type !== "ROOT"));
+  };
+
   useEffect(() => {
     loadCommodities();
   }, []);
@@ -86,8 +108,13 @@ export default function CustomersPage() {
   useEffect(() => {
     if (activeBookId) {
       loadCustomers(activeBookId);
+      loadAccounts(activeBookId);
       setEditingGuid("");
+      return;
     }
+    setCustomers([]);
+    setAccounts([]);
+    setEditingGuid("");
   }, [activeBookId]);
 
   const submit = async (event) => {
@@ -104,6 +131,7 @@ export default function CustomersPage() {
       discount_denom: Number(form.discount_denom),
       credit_num: Number(form.credit_num),
       credit_denom: Number(form.credit_denom),
+      income_account_guid: emptyToNull(form.income_account_guid),
       addr_name: emptyToNull(form.addr_name),
       addr_phone: emptyToNull(form.addr_phone),
       addr_email: emptyToNull(form.addr_email),
@@ -142,6 +170,7 @@ export default function CustomersPage() {
       discount_denom: String(customer.discount_denom ?? 1),
       credit_num: String(customer.credit_num ?? 0),
       credit_denom: String(customer.credit_denom ?? 1),
+      income_account_guid: customer.income_account_guid || "",
       addr_name: customer.addr_name || "",
       addr_phone: customer.addr_phone || "",
       addr_email: customer.addr_email || "",
@@ -277,6 +306,21 @@ export default function CustomersPage() {
             onChange={(event) => setForm({ ...form, credit_denom: event.target.value })}
           />
         </div>
+        <div className="col-md-4">
+          <label className="form-label">Conta de Receita Padrão</label>
+          <select
+            className="form-select"
+            value={form.income_account_guid}
+            onChange={(event) => setForm({ ...form, income_account_guid: event.target.value })}
+          >
+            <option value="">Selecione...</option>
+            {incomeAccounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="col-md-2">
           <label className="form-label">Nome de cobrança</label>
           <input
@@ -358,6 +402,7 @@ export default function CustomersPage() {
               <th>Moeda</th>
               <th>E-mail</th>
               <th>Telefone</th>
+              <th>Conta Receita</th>
               <th>Ativo</th>
               <th>GUID</th>
               <th></th>
@@ -366,7 +411,7 @@ export default function CustomersPage() {
           <tbody>
             {customers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="small-muted">
+                <td colSpan={9} className="small-muted">
                   Nenhum cliente cadastrado.
                 </td>
               </tr>
@@ -378,6 +423,7 @@ export default function CustomersPage() {
                   <td>{commoditiesById.get(customer.currency_guid)?.mnemonic || customer.currency_guid}</td>
                   <td>{customer.addr_email || "-"}</td>
                   <td>{customer.addr_phone || "-"}</td>
+                  <td>{accountsById.get(customer.income_account_guid)?.name || "-"}</td>
                   <td>{customer.active ? "Sim" : "Não"}</td>
                   <td className="small-muted">{customer.guid}</td>
                   <td className="text-end">

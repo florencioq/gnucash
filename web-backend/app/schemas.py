@@ -155,6 +155,7 @@ class CustomerCreate(BaseModel):
     credit_num: int = 0
     credit_denom: int = Field(default=1, gt=0)
     currency_guid: UUID
+    income_account_guid: UUID | None = None
     tax_override: bool = False
     addr_name: str | None = Field(default=None, max_length=1024)
     addr_addr1: str | None = Field(default=None, max_length=1024)
@@ -187,6 +188,7 @@ class CustomerPatch(BaseModel):
     credit_num: int | None = None
     credit_denom: int | None = Field(default=None, gt=0)
     currency_guid: UUID | None = None
+    income_account_guid: UUID | None = None
     tax_override: bool | None = None
     addr_name: str | None = Field(default=None, max_length=1024)
     addr_addr1: str | None = Field(default=None, max_length=1024)
@@ -221,6 +223,7 @@ class CustomerOut(BaseOut):
     credit_num: int
     credit_denom: int
     currency_guid: str
+    income_account_guid: str | None
     tax_override: bool
     addr_name: str | None
     addr_addr1: str | None
@@ -252,6 +255,7 @@ class VendorCreate(BaseModel):
     id: str = Field(max_length=2048)
     notes: str = Field(default="", max_length=2048)
     currency_guid: UUID
+    expense_account_guid: UUID | None = None
     active: bool = True
     tax_override: bool = False
     addr_name: str | None = Field(default=None, max_length=1024)
@@ -272,6 +276,7 @@ class VendorPatch(BaseModel):
     id: str | None = Field(default=None, max_length=2048)
     notes: str | None = Field(default=None, max_length=2048)
     currency_guid: UUID | None = None
+    expense_account_guid: UUID | None = None
     active: bool | None = None
     tax_override: bool | None = None
     addr_name: str | None = Field(default=None, max_length=1024)
@@ -294,6 +299,7 @@ class VendorOut(BaseOut):
     id: str
     notes: str
     currency_guid: str
+    expense_account_guid: str | None
     active: bool
     tax_override: bool
     addr_name: str | None

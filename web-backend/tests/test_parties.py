@@ -1,12 +1,26 @@
 from __future__ import annotations
 
-from tests.helpers import create_book, create_commodity, create_customer, create_vendor
+from tests.helpers import create_account, create_book, create_commodity, create_customer, create_vendor
 
 
 def test_customer_crud_and_list_by_book(client):
     book_a = create_book(client, "Book A")
     book_b = create_book(client, "Book B")
     currency = create_commodity(client, "BRL")
+    income_account_a = create_account(
+        client,
+        book_id=book_a,
+        commodity_id=currency,
+        name="Receita de Servicos",
+        account_type="INCOME",
+    )
+    income_account_other = create_account(
+        client,
+        book_id=book_a,
+        commodity_id=currency,
+        name="Receita de Consultoria",
+        account_type="INCOME",
+    )
 
     created = client.post(
         "/customers",
@@ -16,6 +30,7 @@ def test_customer_crud_and_list_by_book(client):
             "id": "C0001",
             "notes": "Primary customer",
             "currency_guid": currency,
+            "income_account_guid": income_account_a,
             "addr_email": "acme@example.com",
         },
     )
@@ -39,15 +54,22 @@ def test_customer_crud_and_list_by_book(client):
     assert len(payload) == 1
     assert payload[0]["guid"] == customer_guid
     assert payload[0]["id"] == "C0001"
+    assert payload[0]["income_account_guid"] == income_account_a
 
     patched = client.patch(
         f"/customers/{customer_guid}",
-        json={"notes": "Updated note", "active": False, "shipaddr_email": "shipping@example.com"},
+        json={
+            "notes": "Updated note",
+            "active": False,
+            "shipaddr_email": "shipping@example.com",
+            "income_account_guid": income_account_other,
+        },
     )
     assert patched.status_code == 200
     assert patched.json()["notes"] == "Updated note"
     assert patched.json()["active"] is False
     assert patched.json()["shipaddr_email"] == "shipping@example.com"
+    assert patched.json()["income_account_guid"] == income_account_other
 
     deleted = client.delete(f"/customers/{customer_guid}")
     assert deleted.status_code == 204
@@ -59,6 +81,20 @@ def test_customer_crud_and_list_by_book(client):
 def test_vendor_crud_and_list_by_book(client):
     book_id = create_book(client)
     currency = create_commodity(client, "USD")
+    expense_account_a = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Despesas Administrativas",
+        account_type="EXPENSE",
+    )
+    expense_account_other = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Despesas de Material",
+        account_type="EXPENSE",
+    )
 
     created = client.post(
         "/vendors",
@@ -68,6 +104,7 @@ def test_vendor_crud_and_list_by_book(client):
             "id": "V0100",
             "notes": "Preferred supplier",
             "currency_guid": currency,
+            "expense_account_guid": expense_account_a,
             "addr_phone": "+55 11 3000-0000",
         },
     )
@@ -80,15 +117,22 @@ def test_vendor_crud_and_list_by_book(client):
     assert len(payload) == 1
     assert payload[0]["guid"] == vendor_guid
     assert payload[0]["id"] == "V0100"
+    assert payload[0]["expense_account_guid"] == expense_account_a
 
     patched = client.patch(
         f"/vendors/{vendor_guid}",
-        json={"active": False, "tax_inc": "YES", "addr_email": "billing@office.example"},
+        json={
+            "active": False,
+            "tax_inc": "YES",
+            "addr_email": "billing@office.example",
+            "expense_account_guid": expense_account_other,
+        },
     )
     assert patched.status_code == 200
     assert patched.json()["active"] is False
     assert patched.json()["tax_inc"] == "YES"
     assert patched.json()["addr_email"] == "billing@office.example"
+    assert patched.json()["expense_account_guid"] == expense_account_other
 
     deleted = client.delete(f"/vendors/{vendor_guid}")
     assert deleted.status_code == 204
@@ -153,6 +197,138 @@ def test_vendor_requires_existing_book_and_currency(client):
     )
     assert invalid_currency.status_code == 400
     assert invalid_currency.json()["code"] == "INVALID_CURRENCY"
+
+
+def test_customer_default_income_account_validation(client):
+    book_id = create_book(client)
+    other_book_id = create_book(client, "Other")
+    currency = create_commodity(client, "BRL")
+    income_account = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Receita",
+        account_type="INCOME",
+    )
+    expense_account = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Despesa",
+        account_type="EXPENSE",
+    )
+    foreign_income_account = create_account(
+        client,
+        book_id=other_book_id,
+        commodity_id=currency,
+        name="Receita externa",
+        account_type="INCOME",
+    )
+
+    valid = client.post(
+        "/customers",
+        json={
+            "book_id": book_id,
+            "name": "Cliente Conta",
+            "id": "CC01",
+            "currency_guid": currency,
+            "income_account_guid": income_account,
+        },
+    )
+    assert valid.status_code == 201
+    assert valid.json()["income_account_guid"] == income_account
+
+    invalid_type = client.post(
+        "/customers",
+        json={
+            "book_id": book_id,
+            "name": "Cliente Tipo",
+            "id": "CC02",
+            "currency_guid": currency,
+            "income_account_guid": expense_account,
+        },
+    )
+    assert invalid_type.status_code == 409
+    assert invalid_type.json()["code"] == "INVALID_ACCOUNT_TYPE"
+
+    invalid_book = client.post(
+        "/customers",
+        json={
+            "book_id": book_id,
+            "name": "Cliente Livro",
+            "id": "CC03",
+            "currency_guid": currency,
+            "income_account_guid": foreign_income_account,
+        },
+    )
+    assert invalid_book.status_code == 409
+    assert invalid_book.json()["code"] == "INVALID_ACCOUNT_BOOK"
+
+
+def test_vendor_default_expense_account_validation(client):
+    book_id = create_book(client)
+    other_book_id = create_book(client, "Other")
+    currency = create_commodity(client, "BRL")
+    expense_account = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Despesa",
+        account_type="EXPENSE",
+    )
+    income_account = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Receita",
+        account_type="INCOME",
+    )
+    foreign_expense_account = create_account(
+        client,
+        book_id=other_book_id,
+        commodity_id=currency,
+        name="Despesa externa",
+        account_type="EXPENSE",
+    )
+
+    valid = client.post(
+        "/vendors",
+        json={
+            "book_id": book_id,
+            "name": "Fornecedor Conta",
+            "id": "FC01",
+            "currency_guid": currency,
+            "expense_account_guid": expense_account,
+        },
+    )
+    assert valid.status_code == 201
+    assert valid.json()["expense_account_guid"] == expense_account
+
+    invalid_type = client.post(
+        "/vendors",
+        json={
+            "book_id": book_id,
+            "name": "Fornecedor Tipo",
+            "id": "FC02",
+            "currency_guid": currency,
+            "expense_account_guid": income_account,
+        },
+    )
+    assert invalid_type.status_code == 409
+    assert invalid_type.json()["code"] == "INVALID_ACCOUNT_TYPE"
+
+    invalid_book = client.post(
+        "/vendors",
+        json={
+            "book_id": book_id,
+            "name": "Fornecedor Livro",
+            "id": "FC03",
+            "currency_guid": currency,
+            "expense_account_guid": foreign_expense_account,
+        },
+    )
+    assert invalid_book.status_code == 409
+    assert invalid_book.json()["code"] == "INVALID_ACCOUNT_BOOK"
 
 
 def test_cannot_delete_referenced_commodity_or_book(client):

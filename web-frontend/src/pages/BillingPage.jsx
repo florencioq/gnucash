@@ -289,6 +289,16 @@ export default function BillingPage({
     [paymentTree, paymentSearch]
   );
 
+  const resolveVendorDefaultExpenseAccountGuid = (vendorGuid, accountList = accounts) => {
+    if (!vendorGuid) return "";
+    const vendor = vendorsById.get(vendorGuid);
+    const accountGuid = vendor?.expense_account_guid || "";
+    if (!accountGuid) return "";
+    const account = accountList.find((item) => item.id === accountGuid);
+    if (!account || account.type !== "EXPENSE" || account.is_placeholder) return "";
+    return account.id;
+  };
+
   const loadCommodities = async () => {
     const response = await api.get("/commodities?namespace=CURRENCY");
     if (!response.ok) {
@@ -420,6 +430,16 @@ export default function BillingPage({
       setEntryForm(defaultEntryForm());
     }
   }, [selectedInvoiceGuid]);
+
+  useEffect(() => {
+    if (!selectedInvoice || editingEntryGuid) return;
+    const defaultExpenseAccountGuid = resolveVendorDefaultExpenseAccountGuid(selectedInvoice.vendor_guid);
+    if (!defaultExpenseAccountGuid) return;
+    setEntryForm((current) => {
+      if (current.income_account_guid) return current;
+      return { ...current, income_account_guid: defaultExpenseAccountGuid };
+    });
+  }, [selectedInvoice, editingEntryGuid, accounts, vendorsById]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
@@ -897,7 +917,7 @@ export default function BillingPage({
 
   const resetEntryEditor = () => {
     setEditingEntryGuid("");
-    setEntryForm(defaultEntryForm());
+    setEntryForm(defaultEntryForm(resolveVendorDefaultExpenseAccountGuid(selectedInvoice?.vendor_guid || "")));
   };
 
   const startEditEntry = (entry) => {
@@ -1259,19 +1279,29 @@ export default function BillingPage({
                     className="form-select"
                     value={selectedInvoice.vendor_guid}
                     disabled={isInvoicePosted}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const vendorGuid = event.target.value;
                       setInvoices((current) =>
                         current.map((invoice) => {
                           if (invoice.guid !== selectedInvoice.guid) return invoice;
-                          const vendor = vendorsById.get(event.target.value);
+                          const vendor = vendorsById.get(vendorGuid);
                           return {
                             ...invoice,
-                            vendor_guid: event.target.value,
+                            vendor_guid: vendorGuid,
                             currency_guid: vendor?.currency_guid || invoice.currency_guid
                           };
                         })
-                      )
-                    }
+                      );
+                      if (!editingEntryGuid) {
+                        const defaultExpenseAccountGuid = resolveVendorDefaultExpenseAccountGuid(vendorGuid);
+                        if (!defaultExpenseAccountGuid) return;
+                        setEntryForm((current) => (
+                          current.income_account_guid
+                            ? current
+                            : { ...current, income_account_guid: defaultExpenseAccountGuid }
+                        ));
+                      }
+                    }}
                   >
                     {vendors.map((vendor) => (
                       <option key={vendor.guid} value={vendor.guid}>

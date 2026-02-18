@@ -9,6 +9,7 @@ function emptyToNull(value) {
 
 export default function VendorsPage() {
   const [commodities, setCommodities] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [editingGuid, setEditingGuid] = useState("");
   const [error, setError] = useState(null);
@@ -18,6 +19,7 @@ export default function VendorsPage() {
     id: "",
     currency_guid: "",
     notes: "",
+    expense_account_guid: "",
     active: true,
     tax_override: false,
     addr_name: "",
@@ -30,6 +32,14 @@ export default function VendorsPage() {
     () => new Map(commodities.map((commodity) => [commodity.id, commodity])),
     [commodities]
   );
+  const accountsById = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account])),
+    [accounts]
+  );
+  const expenseAccounts = useMemo(
+    () => accounts.filter((account) => account.type === "EXPENSE" && !account.is_placeholder),
+    [accounts]
+  );
 
   const resetForm = (currencyGuid = "") => {
     setForm({
@@ -37,6 +47,7 @@ export default function VendorsPage() {
       id: "",
       currency_guid: currencyGuid,
       notes: "",
+      expense_account_guid: "",
       active: true,
       tax_override: false,
       addr_name: "",
@@ -69,6 +80,17 @@ export default function VendorsPage() {
     setVendors(res.data);
   };
 
+  const loadAccounts = async (bookId) => {
+    if (!bookId) return;
+    const res = await api.get(`/accounts?book_id=${bookId}`);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setError(null);
+    setAccounts(res.data.filter((account) => account.type !== "ROOT"));
+  };
+
   useEffect(() => {
     loadCommodities();
   }, []);
@@ -76,8 +98,13 @@ export default function VendorsPage() {
   useEffect(() => {
     if (activeBookId) {
       loadVendors(activeBookId);
+      loadAccounts(activeBookId);
       setEditingGuid("");
+      return;
     }
+    setVendors([]);
+    setAccounts([]);
+    setEditingGuid("");
   }, [activeBookId]);
 
   const submit = async (event) => {
@@ -89,6 +116,7 @@ export default function VendorsPage() {
       id: form.id.trim(),
       currency_guid: form.currency_guid,
       notes: form.notes,
+      expense_account_guid: emptyToNull(form.expense_account_guid),
       active: Boolean(form.active),
       tax_override: Boolean(form.tax_override),
       addr_name: emptyToNull(form.addr_name),
@@ -121,6 +149,7 @@ export default function VendorsPage() {
       id: vendor.id || "",
       currency_guid: vendor.currency_guid || "",
       notes: vendor.notes || "",
+      expense_account_guid: vendor.expense_account_guid || "",
       active: Boolean(vendor.active),
       tax_override: Boolean(vendor.tax_override),
       addr_name: vendor.addr_name || "",
@@ -260,6 +289,21 @@ export default function VendorsPage() {
             onChange={(event) => setForm({ ...form, tax_inc: event.target.value })}
           />
         </div>
+        <div className="col-md-4">
+          <label className="form-label">Conta de Despesa Padrão</label>
+          <select
+            className="form-select"
+            value={form.expense_account_guid}
+            onChange={(event) => setForm({ ...form, expense_account_guid: event.target.value })}
+          >
+            <option value="">Selecione...</option>
+            {expenseAccounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="col-md-12 d-flex justify-content-end gap-2 mt-2">
           {editingGuid ? (
@@ -293,6 +337,7 @@ export default function VendorsPage() {
               <th>Moeda</th>
               <th>E-mail</th>
               <th>Telefone</th>
+              <th>Conta Despesa</th>
               <th>Ativo</th>
               <th>GUID</th>
               <th></th>
@@ -301,7 +346,7 @@ export default function VendorsPage() {
           <tbody>
             {vendors.length === 0 ? (
               <tr>
-                <td colSpan={8} className="small-muted">
+                <td colSpan={9} className="small-muted">
                   Nenhum fornecedor cadastrado.
                 </td>
               </tr>
@@ -313,6 +358,7 @@ export default function VendorsPage() {
                   <td>{commoditiesById.get(vendor.currency_guid)?.mnemonic || vendor.currency_guid}</td>
                   <td>{vendor.addr_email || "-"}</td>
                   <td>{vendor.addr_phone || "-"}</td>
+                  <td>{accountsById.get(vendor.expense_account_guid)?.name || "-"}</td>
                   <td>{vendor.active ? "Sim" : "Não"}</td>
                   <td className="small-muted">{vendor.guid}</td>
                   <td className="text-end">

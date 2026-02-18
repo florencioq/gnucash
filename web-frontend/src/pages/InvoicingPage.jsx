@@ -297,6 +297,16 @@ export default function InvoicingPage({
     [paymentTree, paymentSearch]
   );
 
+  const resolveCustomerDefaultIncomeAccountGuid = (customerGuid, accountList = accounts) => {
+    if (!customerGuid) return "";
+    const customer = customersById.get(customerGuid);
+    const accountGuid = customer?.income_account_guid || "";
+    if (!accountGuid) return "";
+    const account = accountList.find((item) => item.id === accountGuid);
+    if (!account || account.type !== "INCOME" || account.is_placeholder) return "";
+    return account.id;
+  };
+
   const loadCommodities = async () => {
     const response = await api.get("/commodities?namespace=CURRENCY");
     if (!response.ok) {
@@ -428,6 +438,16 @@ export default function InvoicingPage({
       setEntryForm(defaultEntryForm());
     }
   }, [selectedInvoiceGuid]);
+
+  useEffect(() => {
+    if (!selectedInvoice || editingEntryGuid) return;
+    const defaultIncomeAccountGuid = resolveCustomerDefaultIncomeAccountGuid(selectedInvoice.customer_guid);
+    if (!defaultIncomeAccountGuid) return;
+    setEntryForm((current) => {
+      if (current.income_account_guid) return current;
+      return { ...current, income_account_guid: defaultIncomeAccountGuid };
+    });
+  }, [selectedInvoice, editingEntryGuid, accounts, customersById]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
@@ -939,7 +959,7 @@ export default function InvoicingPage({
 
   const resetEntryEditor = () => {
     setEditingEntryGuid("");
-    setEntryForm(defaultEntryForm());
+    setEntryForm(defaultEntryForm(resolveCustomerDefaultIncomeAccountGuid(selectedInvoice?.customer_guid || "")));
   };
 
   const startEditEntry = (entry) => {
@@ -1309,19 +1329,29 @@ export default function InvoicingPage({
                     className="form-select"
                     value={selectedInvoice.customer_guid}
                     disabled={isInvoicePosted}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const customerGuid = event.target.value;
                       setInvoices((current) =>
                         current.map((invoice) => {
                           if (invoice.guid !== selectedInvoice.guid) return invoice;
-                          const customer = customersById.get(event.target.value);
+                          const customer = customersById.get(customerGuid);
                           return {
                             ...invoice,
-                            customer_guid: event.target.value,
+                            customer_guid: customerGuid,
                             currency_guid: customer?.currency_guid || invoice.currency_guid
                           };
                         })
-                      )
-                    }
+                      );
+                      if (!editingEntryGuid) {
+                        const defaultIncomeAccountGuid = resolveCustomerDefaultIncomeAccountGuid(customerGuid);
+                        if (!defaultIncomeAccountGuid) return;
+                        setEntryForm((current) => (
+                          current.income_account_guid
+                            ? current
+                            : { ...current, income_account_guid: defaultIncomeAccountGuid }
+                        ));
+                      }
+                    }}
                   >
                     {customers.map((customer) => (
                       <option key={customer.guid} value={customer.guid}>

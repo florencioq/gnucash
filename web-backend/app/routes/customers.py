@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Book, Commodity, Customer, Invoice
+from app.models import Account, AccountType, Book, Commodity, Customer, Invoice
 from app.schemas import CustomerCreate, CustomerOut, CustomerPatch
 from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 
@@ -27,16 +27,67 @@ def _ensure_book_and_currency_exist(db: Session, *, book_id: str, currency_guid:
         )
 
 
+def _resolve_income_account_guid(
+    db: Session,
+    *,
+    book_id: str,
+    income_account_guid: str | None,
+) -> str | None:
+    if income_account_guid is None:
+        return None
+
+    account = db.get(Account, income_account_guid)
+    if account is None:
+        raise api_error(
+            400,
+            "INVALID_ACCOUNT",
+            "income_account_guid must reference an existing account",
+            {"income_account_guid": income_account_guid},
+        )
+    if account.book_id != book_id:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_BOOK",
+            "income account must belong to the same book as the customer",
+            {
+                "income_account_guid": income_account_guid,
+                "book_id": book_id,
+                "account_book_id": account.book_id,
+            },
+        )
+    if account.type != AccountType.INCOME:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_TYPE",
+            "customer default income account must use type INCOME",
+            {"income_account_guid": income_account_guid, "account_type": account.type.value},
+        )
+    if account.is_placeholder:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT",
+            "income account cannot be a placeholder account",
+            {"income_account_guid": income_account_guid},
+        )
+    return account.id
+
+
 @router.post("", response_model=CustomerOut, status_code=201)
 def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> Customer:
     book_id = str(payload.book_id)
     currency_guid = str(payload.currency_guid)
+    income_account_guid = str(payload.income_account_guid) if payload.income_account_guid else None
     terms_guid = str(payload.terms_guid) if payload.terms_guid else None
     taxtable_guid = str(payload.taxtable_guid) if payload.taxtable_guid else None
 
     ensure_book_write_access(db, book_id=book_id)
 
     _ensure_book_and_currency_exist(db, book_id=book_id, currency_guid=currency_guid)
+    resolved_income_account_guid = _resolve_income_account_guid(
+        db,
+        book_id=book_id,
+        income_account_guid=income_account_guid,
+    )
 
     customer = Customer(
         guid=str(payload.guid or uuid4()),
@@ -50,6 +101,7 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
         credit_num=payload.credit_num,
         credit_denom=payload.credit_denom,
         currency_guid=currency_guid,
+        income_account_guid=resolved_income_account_guid,
         tax_override=payload.tax_override,
         addr_name=payload.addr_name,
         addr_addr1=payload.addr_addr1,
@@ -121,6 +173,13 @@ def patch_customer(customer_guid: UUID, payload: CustomerPatch, db: Session = De
         data["terms_guid"] = str(data["terms_guid"]) if data["terms_guid"] else None
     if "taxtable_guid" in data:
         data["taxtable_guid"] = str(data["taxtable_guid"]) if data["taxtable_guid"] else None
+    if "income_account_guid" in data:
+        income_account_guid = str(data["income_account_guid"]) if data["income_account_guid"] else None
+        data["income_account_guid"] = _resolve_income_account_guid(
+            db,
+            book_id=customer.book_id,
+            income_account_guid=income_account_guid,
+        )
 
     for key, value in data.items():
         setattr(customer, key, value)

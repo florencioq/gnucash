@@ -169,6 +169,11 @@ class Customer(Base):
     credit_denom: Mapped[int] = mapped_column(BigInteger, default=1)
 
     currency_guid: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
+    income_account_guid: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     tax_override: Mapped[bool] = mapped_column(Boolean, default=False)
 
     addr_name: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
@@ -215,6 +220,11 @@ class Vendor(Base):
     id: Mapped[str] = mapped_column(String(2048), nullable=False)
     notes: Mapped[str] = mapped_column(String(2048), default="")
     currency_guid: Mapped[str] = mapped_column(ForeignKey("commodities.id"), index=True)
+    expense_account_guid: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     tax_override: Mapped[bool] = mapped_column(Boolean, default=False)
 
