@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 function todayIsoDate() {
   const now = new Date();
   const year = now.getFullYear();
@@ -95,6 +97,8 @@ export default function LedgerPage({
   const [editingTxGuid, setEditingTxGuid] = useState("");
   const [savingTxGuid, setSavingTxGuid] = useState("");
   const [deletingTxGuid, setDeletingTxGuid] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [ledgerForm, setLedgerForm] = useState({
     counterAccountId: "",
     date: todayIsoDate(),
@@ -283,6 +287,10 @@ export default function LedgerPage({
   }, [ledgerAccountId, accounts]);
 
   useEffect(() => {
+    setPage(1);
+  }, [ledgerAccountId]);
+
+  useEffect(() => {
     setEditingTxGuid("");
     setSavingTxGuid("");
   }, [ledgerAccountId, activeBookId]);
@@ -347,10 +355,21 @@ export default function LedgerPage({
     ? commoditiesById.get(selectedLedgerAccount.commodity_id) || null
     : null;
   const currentBalance = ledgerRows.length > 0 ? ledgerRows[ledgerRows.length - 1].balance : 0;
+  const totalItems = ledgerRows.length;
+  const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / pageSize);
+  const currentPage = totalItems === 0 ? 1 : Math.min(page, totalPages);
+  const pagedLedgerRows = useMemo(() => {
+    const offset = (currentPage - 1) * pageSize;
+    return ledgerRows.slice(offset, offset + pageSize);
+  }, [ledgerRows, currentPage, pageSize]);
   const enteredAmount = parseDecimal(ledgerForm.amount);
   const projectedBalance = Number.isFinite(enteredAmount)
     ? currentBalance + enteredAmount
     : currentBalance;
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   const visibleCounterTree = useMemo(
     () => filterTree(accountTree, counterSearch),
@@ -744,14 +763,14 @@ export default function LedgerPage({
             </tr>
           </thead>
           <tbody>
-            {ledgerRows.length === 0 ? (
+            {totalItems === 0 ? (
               <tr>
                 <td colSpan={8} className="small-muted">
                   Nenhum lancamento para a conta selecionada.
                 </td>
               </tr>
             ) : (
-              ledgerRows.map((row) => {
+              pagedLedgerRows.map((row) => {
                 const isRowEditing = editingTxGuid === row.txGuid;
                 const isRowSaving = savingTxGuid === row.txGuid;
                 const canEdit = Boolean(getEditableTransactionContext(row.txGuid));
@@ -813,6 +832,63 @@ export default function LedgerPage({
             )}
           </tbody>
         </table>
+      </div>
+      <div className="d-flex align-items-center justify-content-between mt-3 mb-3 flex-wrap gap-2">
+        <div className="small-muted">Mostrando {pagedLedgerRows.length} de {totalItems} lancamentos</div>
+        <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0 small-muted">Itens por página</label>
+          <select
+            className="form-select form-select-sm"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value) || 25);
+              setPage(1);
+            }}
+            disabled={!activeBookId}
+            style={{ width: "96px" }}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage(1)}
+            disabled={!activeBookId || currentPage <= 1}
+          >
+            Primeira
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={!activeBookId || currentPage <= 1}
+          >
+            Anterior
+          </button>
+          <span className="small-muted">
+            Página {totalItems === 0 ? 0 : currentPage} de {totalItems === 0 ? 0 : totalPages}
+          </span>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            disabled={!activeBookId || currentPage >= totalPages || totalItems === 0}
+          >
+            Próxima
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setPage(totalPages)}
+            disabled={!activeBookId || currentPage >= totalPages || totalItems === 0}
+          >
+            Última
+          </button>
+        </div>
       </div>
 
       {editingTxGuid ? (

@@ -219,7 +219,7 @@ body {
 }
 
 .counter-tree-panel {
-  max-height: 170px;
+  max-height: 340px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
