@@ -4,6 +4,7 @@ import CommoditiesPage from "./pages/CommoditiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import CustomersPage from "./pages/CustomersPage.jsx";
 import VendorsPage from "./pages/VendorsPage.jsx";
+import UsersPage from "./pages/UsersPage.jsx";
 import LedgerPage from "./pages/LedgerPage.jsx";
 import InvoicingListPage from "./pages/InvoicingListPage.jsx";
 import InvoicingPage from "./pages/InvoicingPage.jsx";
@@ -22,6 +23,7 @@ const baseTabs = [
   { id: "accounts", label: "Accounts", component: AccountsPage },
   { id: "customers", label: "Customers", component: CustomersPage },
   { id: "vendors", label: "Vendors", component: VendorsPage },
+  { id: "users", label: "Usuários", component: UsersPage },
   { id: "ledger", label: "Ledger", component: LedgerPage },
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
