@@ -192,7 +192,7 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
               className="dre-classic-name-link"
               style={{ paddingLeft: `${0.6 + row.depth * 1.2}rem` }}
               onClick={() => openLedgerForAccount(row.account_id)}
-              title="Abrir no Ledger desta conta"
+              title="Abrir no Razão desta conta"
             >
               {row.displayName}
             </button>
@@ -203,7 +203,7 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
                 type="button"
                 className="dre-classic-value-link"
                 onClick={() => openLedgerForAccount(row.account_id)}
-                title="Abrir no Ledger desta conta"
+                title="Abrir no Razão desta conta"
               >
                 {formatMoney(row.amounts[index], matrix.currency_mnemonic || "BRL")}
               </button>
@@ -214,7 +214,7 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
               type="button"
               className="dre-classic-value-link fw-semibold"
               onClick={() => openLedgerForAccount(row.account_id)}
-              title="Abrir no Ledger desta conta"
+              title="Abrir no Razão desta conta"
             >
               {formatMoney(row.total_amount, matrix.currency_mnemonic || "BRL")}
             </button>
@@ -255,9 +255,9 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
     return (
       <div>
         <h2 className="mb-1">DRE Mensal</h2>
-        <div className="small-muted mb-3">Selecione um book ativo para visualizar a matriz DRE.</div>
+        <div className="small-muted mb-3">Selecione um livro ativo para visualizar a matriz DRE.</div>
         <div className="alert alert-warning mb-0" role="alert">
-          Nenhum book ativo encontrado.
+          Nenhum livro ativo encontrado.
         </div>
       </div>
     );
@@ -269,7 +269,7 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
         <div>
           <h2 className="mb-1">DRE Mensal</h2>
           <div className="small-muted">
-            Book ativo: <span className="fw-semibold">{activeBook?.name || activeBook?.id}</span>
+            Livro ativo: <span className="fw-semibold">{activeBook?.name || activeBook?.id}</span>
           </div>
         </div>
         <button className="btn btn-outline-secondary" type="button" onClick={loadMatrix} disabled={matrixLoading}>

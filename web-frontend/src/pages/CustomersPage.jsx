@@ -172,22 +172,22 @@ export default function CustomersPage() {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Customers</h2>
+          <h2 className="mb-1">Clientes</h2>
           <div className="small-muted">Cadastro de clientes no estilo GnuCash.</div>
         </div>
       </div>
 
       {activeBook ? (
-        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+        <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
         <div className="alert alert-warning" role="alert">
-          Nenhum book ativo. Defina um em Books para continuar.
+          Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
 
       <form className="row g-2 align-items-end mb-4" onSubmit={submit}>
         <div className="col-md-3">
-          <label className="form-label">Name</label>
+          <label className="form-label">Nome</label>
           <input
             className="form-control"
             value={form.name}
@@ -205,7 +205,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Currency</label>
+          <label className="form-label">Moeda</label>
           <select
             className="form-select"
             value={form.currency_guid}
@@ -220,18 +220,18 @@ export default function CustomersPage() {
           </select>
         </div>
         <div className="col-md-2">
-          <label className="form-label">Active</label>
+          <label className="form-label">Ativo</label>
           <select
             className="form-select"
             value={form.active ? "true" : "false"}
             onChange={(event) => setForm({ ...form, active: event.target.value === "true" })}
           >
-            <option value="true">True</option>
-            <option value="false">False</option>
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
           </select>
         </div>
         <div className="col-md-3">
-          <label className="form-label">Notes</label>
+          <label className="form-label">Notas</label>
           <input
             className="form-control"
             value={form.notes}
@@ -240,7 +240,7 @@ export default function CustomersPage() {
         </div>
 
         <div className="col-md-2">
-          <label className="form-label">Discount Num</label>
+          <label className="form-label">Desconto Num</label>
           <input
             className="form-control"
             type="number"
@@ -249,7 +249,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Discount Denom</label>
+          <label className="form-label">Desconto Denom</label>
           <input
             className="form-control"
             type="number"
@@ -259,7 +259,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Credit Num</label>
+          <label className="form-label">Crédito Num</label>
           <input
             className="form-control"
             type="number"
@@ -268,7 +268,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Credit Denom</label>
+          <label className="form-label">Crédito Denom</label>
           <input
             className="form-control"
             type="number"
@@ -278,7 +278,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Billing Name</label>
+          <label className="form-label">Nome de cobrança</label>
           <input
             className="form-control"
             value={form.addr_name}
@@ -286,7 +286,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Billing Phone</label>
+          <label className="form-label">Telefone de cobrança</label>
           <input
             className="form-control"
             value={form.addr_phone}
@@ -294,7 +294,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Billing Email</label>
+          <label className="form-label">E-mail de cobrança</label>
           <input
             className="form-control"
             value={form.addr_email}
@@ -302,7 +302,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Shipping Name</label>
+          <label className="form-label">Nome de entrega</label>
           <input
             className="form-control"
             value={form.shipaddr_name}
@@ -310,7 +310,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Shipping Phone</label>
+          <label className="form-label">Telefone de entrega</label>
           <input
             className="form-control"
             value={form.shipaddr_phone}
@@ -318,7 +318,7 @@ export default function CustomersPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Shipping Email</label>
+          <label className="form-label">E-mail de entrega</label>
           <input
             className="form-control"
             value={form.shipaddr_email}
@@ -329,11 +329,11 @@ export default function CustomersPage() {
         <div className="col-md-12 d-flex justify-content-end gap-2 mt-2">
           {editingGuid ? (
             <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
-              Cancel
+              Cancelar
             </button>
           ) : null}
           <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
-            {editingGuid ? "Save Customer" : "Create Customer"}
+            {editingGuid ? "Salvar cliente" : "Criar cliente"}
           </button>
         </div>
       </form>
@@ -353,12 +353,12 @@ export default function CustomersPage() {
         <table className="table align-middle">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Nome</th>
               <th>ID</th>
-              <th>Currency</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Active</th>
+              <th>Moeda</th>
+              <th>E-mail</th>
+              <th>Telefone</th>
+              <th>Ativo</th>
               <th>GUID</th>
               <th></th>
             </tr>
@@ -367,7 +367,7 @@ export default function CustomersPage() {
             {customers.length === 0 ? (
               <tr>
                 <td colSpan={8} className="small-muted">
-                  No customers yet.
+                  Nenhum cliente cadastrado.
                 </td>
               </tr>
             ) : (
@@ -378,7 +378,7 @@ export default function CustomersPage() {
                   <td>{commoditiesById.get(customer.currency_guid)?.mnemonic || customer.currency_guid}</td>
                   <td>{customer.addr_email || "-"}</td>
                   <td>{customer.addr_phone || "-"}</td>
-                  <td>{customer.active ? "True" : "False"}</td>
+                  <td>{customer.active ? "Sim" : "Não"}</td>
                   <td className="small-muted">{customer.guid}</td>
                   <td className="text-end">
                     <button
@@ -386,14 +386,14 @@ export default function CustomersPage() {
                       type="button"
                       onClick={() => startEdit(customer)}
                     >
-                      Edit
+                      Editar
                     </button>
                     <button
                       className="btn btn-sm btn-outline-danger"
                       type="button"
                       onClick={() => remove(customer.guid)}
                     >
-                      Delete
+                      Excluir
                     </button>
                   </td>
                 </tr>

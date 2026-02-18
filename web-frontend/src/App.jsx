@@ -26,13 +26,13 @@ const NEW_BILL_TAB_GUID = "new";
 
 const baseTabs = [
   { id: "login", label: "Login", component: LoginPage },
-  { id: "books", label: "Books", component: BooksPage },
-  { id: "commodities", label: "Commodities", component: CommoditiesPage },
-  { id: "accounts", label: "Accounts", component: AccountsPage },
-  { id: "customers", label: "Customers", component: CustomersPage },
-  { id: "vendors", label: "Vendors", component: VendorsPage },
+  { id: "books", label: "Livros", component: BooksPage },
+  { id: "commodities", label: "Moedas", component: CommoditiesPage },
+  { id: "accounts", label: "Contas", component: AccountsPage },
+  { id: "customers", label: "Clientes", component: CustomersPage },
+  { id: "vendors", label: "Fornecedores", component: VendorsPage },
   { id: "users", label: "Usuários", component: UsersPage },
-  { id: "ledger", label: "Ledger", component: LedgerPage },
+  { id: "ledger", label: "Razão", component: LedgerPage },
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
   { id: "billing-list", label: "Compras", component: BillingListPage }

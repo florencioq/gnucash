@@ -95,8 +95,8 @@ export default function CommoditiesPage() {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Commodities</h2>
-          <div className="small-muted">Manage currencies and commodities.</div>
+          <h2 className="mb-1">Moedas e commodities</h2>
+          <div className="small-muted">Gerencie moedas e commodities.</div>
         </div>
       </div>
 
@@ -110,7 +110,7 @@ export default function CommoditiesPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Mnemonic</label>
+          <label className="form-label">Símbolo</label>
           <input
             className="form-control"
             value={form.mnemonic}
@@ -119,7 +119,7 @@ export default function CommoditiesPage() {
           />
         </div>
         <div className="col-md-3">
-          <label className="form-label">Full name</label>
+          <label className="form-label">Nome completo</label>
           <input
             className="form-control"
             value={form.fullname}
@@ -127,7 +127,7 @@ export default function CommoditiesPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Fraction</label>
+          <label className="form-label">Fração</label>
           <input
             type="number"
             min="1"
@@ -137,26 +137,26 @@ export default function CommoditiesPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Quote</label>
+          <label className="form-label">Cotação</label>
           <select
             className="form-select"
             value={form.quote ? "true" : "false"}
             onChange={(event) => setForm({ ...form, quote: event.target.value === "true" })}
           >
-            <option value="false">False</option>
-            <option value="true">True</option>
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
           </select>
         </div>
         <div className="col-md-3">
           <button className="btn btn-accent w-100" type="submit">
-            Create Commodity
+            Criar commodity
           </button>
         </div>
       </form>
 
       <div className="row g-2 align-items-end mb-3">
         <div className="col-md-3">
-          <label className="form-label">Filter namespace</label>
+          <label className="form-label">Filtrar namespace</label>
           <input
             className="form-control"
             value={namespaceFilter}
@@ -165,7 +165,7 @@ export default function CommoditiesPage() {
         </div>
         <div className="col-md-2">
           <button className="btn btn-outline-secondary w-100" type="button" onClick={() => load()}>
-            Apply
+            Aplicar
           </button>
         </div>
       </div>
@@ -181,10 +181,10 @@ export default function CommoditiesPage() {
           <thead>
             <tr>
               <th>Namespace</th>
-              <th>Mnemonic</th>
-              <th>Full name</th>
-              <th>Fraction</th>
-              <th>Quote</th>
+              <th>Símbolo</th>
+              <th>Nome completo</th>
+              <th>Fração</th>
+              <th>Cotação</th>
               <th>ID</th>
               <th></th>
             </tr>
@@ -285,14 +285,10 @@ export default function CommoditiesPage() {
                         })
                       }
                     >
-                      <option value="false">False</option>
-                      <option value="true">True</option>
+                      <option value="false">Não</option>
+                      <option value="true">Sim</option>
                     </select>
-                  ) : commodity.quote ? (
-                    "True"
-                  ) : (
-                    "False"
-                  )}
+                  ) : commodity.quote ? "Sim" : "Não"}
                 </td>
                 <td className="small-muted">{commodity.id}</td>
                 <td className="text-end">
@@ -302,7 +298,7 @@ export default function CommoditiesPage() {
                       onClick={() => saveEdit(commodity)}
                       type="button"
                     >
-                      Save
+                      Salvar
                     </button>
                   ) : (
                     <button
@@ -310,7 +306,7 @@ export default function CommoditiesPage() {
                       onClick={() => startEdit(commodity)}
                       type="button"
                     >
-                      Edit
+                      Editar
                     </button>
                   )}
                   <button
@@ -318,7 +314,7 @@ export default function CommoditiesPage() {
                     onClick={() => remove(commodity.id)}
                     type="button"
                   >
-                    Delete
+                    Excluir
                   </button>
                 </td>
               </tr>

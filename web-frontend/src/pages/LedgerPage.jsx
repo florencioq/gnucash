@@ -348,7 +348,7 @@ export default function LedgerPage({
   const selectedCounterAccount = accountsById.get(ledgerForm.counterAccountId) || null;
   const ledgerAccountLabel = selectedLedgerAccount
     ? `${accountFullNameById.get(selectedLedgerAccount.id) || selectedLedgerAccount.name} (${selectedLedgerAccount.type})`
-    : "Selecione a conta do razao";
+    : "Selecione a conta do razão";
   const counterAccountLabel = selectedCounterAccount
     ? `${accountFullNameById.get(selectedCounterAccount.id) || selectedCounterAccount.name} (${selectedCounterAccount.type})`
     : "Selecione a conta de contra-partida";
@@ -508,7 +508,7 @@ export default function LedgerPage({
     if (isTransactionLinkedToDocument(txGuid)) {
       setError({
         code: "VALIDATION_ERROR",
-        message: "lancamentos de faturamentos/compras devem ser alterados nas telas de Faturamentos/Compras",
+        message: "lançamentos de faturamentos/compras devem ser alterados nas telas de Faturamentos/Compras",
         details: {}
       });
       return;
@@ -518,7 +518,7 @@ export default function LedgerPage({
     if (!context) {
       setError({
         code: "VALIDATION_ERROR",
-        message: "edicao disponivel apenas para lancamentos com uma unica contra-partida",
+        message: "edição disponível apenas para lançamentos com uma única contra-partida",
         details: {}
       });
       return;
@@ -557,7 +557,7 @@ export default function LedgerPage({
     setError(null);
 
     if (!ledgerAccountId) {
-      setError({ code: "VALIDATION_ERROR", message: "selecione uma conta para o razao", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "selecione uma conta para o razão", details: {} });
       return;
     }
     if (!ledgerForm.counterAccountId) {
@@ -565,7 +565,7 @@ export default function LedgerPage({
       return;
     }
     if (!ledgerForm.date) {
-      setError({ code: "VALIDATION_ERROR", message: "informe a data do lancamento", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "informe a data do lançamento", details: {} });
       return;
     }
 
@@ -578,13 +578,13 @@ export default function LedgerPage({
     const account = accountsById.get(ledgerAccountId);
     const counterAccount = accountsById.get(ledgerForm.counterAccountId);
     if (!account || !counterAccount) {
-      setError({ code: "VALIDATION_ERROR", message: "conta invalida no lancamento", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "conta inválida no lançamento", details: {} });
       return;
     }
     if (account.commodity_id !== counterAccount.commodity_id) {
       setError({
         code: "VALIDATION_ERROR",
-        message: "contas do lancamento devem usar a mesma commodity",
+        message: "contas do lançamento devem usar a mesma commodity",
         details: {}
       });
       return;
@@ -636,7 +636,7 @@ export default function LedgerPage({
       setEditingTxGuid("");
       setError({
         code: "VALIDATION_ERROR",
-        message: "lancamentos de faturamentos/compras devem ser alterados nas telas de Faturamentos/Compras",
+        message: "lançamentos de faturamentos/compras devem ser alterados nas telas de Faturamentos/Compras",
         details: {}
       });
       return;
@@ -671,13 +671,13 @@ export default function LedgerPage({
     if (isTransactionLinkedToDocument(txGuid)) {
       setError({
         code: "VALIDATION_ERROR",
-        message: "lancamentos de faturamentos/compras devem ser excluidos nas telas de Faturamentos/Compras",
+        message: "lançamentos de faturamentos/compras devem ser excluídos nas telas de Faturamentos/Compras",
         details: {}
       });
       return;
     }
 
-    const confirmed = window.confirm("Deseja excluir este lancamento do razao?");
+    const confirmed = window.confirm("Deseja excluir este lançamento do razão?");
     if (!confirmed) return;
 
     setError(null);
@@ -717,8 +717,8 @@ export default function LedgerPage({
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Ledger</h2>
-          <div className="small-muted">Razao da conta com lancamento direto.</div>
+          <h2 className="mb-1">Razão</h2>
+          <div className="small-muted">Razão da conta com lançamento direto.</div>
         </div>
         {returnToInvoice || returnToBilling ? (
           <button
@@ -728,22 +728,22 @@ export default function LedgerPage({
           >
             {returnToInvoice
               ? "Voltar para Faturamento"
-              : "Voltar para Compras/Cobranca"}
+              : "Voltar para Compras/Cobrança"}
           </button>
         ) : null}
       </div>
 
       {activeBook ? (
-        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+        <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
         <div className="alert alert-warning" role="alert">
-          Nenhum book ativo. Defina um em Books para continuar.
+          Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
 
       <div className="row g-3 mb-4">
         <div className="col-md-12">
-          <label className="form-label">Conta do razao</label>
+          <label className="form-label">Conta do razão</label>
           <div className="tree-select">
             <button
               type="button"
@@ -759,7 +759,7 @@ export default function LedgerPage({
                   className="form-control mb-2"
                   value={ledgerSearch}
                   onChange={(event) => setLedgerSearch(event.target.value)}
-                  placeholder="Filtrar conta do razao"
+                  placeholder="Filtrar conta do razão"
                 />
                 <div className="counter-tree-panel">
                   {visibleLedgerTree.length > 0 ? (
@@ -790,20 +790,20 @@ export default function LedgerPage({
           <thead>
             <tr>
               <th>Data</th>
-              <th>Historico</th>
+              <th>Histórico</th>
               <th>Contra-partida</th>
-              <th className="text-end">Debito</th>
-              <th className="text-end">Credito</th>
+              <th className="text-end">Débito</th>
+              <th className="text-end">Crédito</th>
               <th className="text-end">Saldo</th>
               <th>Origem</th>
-              <th className="text-end">Acoes</th>
+              <th className="text-end">Ações</th>
             </tr>
           </thead>
           <tbody>
             {totalItems === 0 ? (
               <tr>
                 <td colSpan={8} className="small-muted">
-                  Nenhum lancamento para a conta selecionada.
+                  Nenhum lançamento para a conta selecionada.
                 </td>
               </tr>
             ) : (
@@ -818,7 +818,7 @@ export default function LedgerPage({
                 const sourceLabel = source
                   ? source.sourceType === "invoicing"
                     ? `Faturamento #${source.documentId}${source.relation === "payment" ? " (pagamento)" : ""}`
-                    : `Cobranca #${source.documentId}${source.relation === "payment" ? " (pagamento)" : ""}`
+                    : `Cobrança #${source.documentId}${source.relation === "payment" ? " (pagamento)" : ""}`
                   : "-";
                 return (
                   <tr key={row.key}>
@@ -850,10 +850,10 @@ export default function LedgerPage({
                           disabled={!canEdit || isRowSaving || deletingTxGuid === row.txGuid}
                           title={
                             isSourceLinked
-                              ? "Edite este lancamento em Faturamentos/Compras"
+                              ? "Edite este lançamento em Faturamentos/Compras"
                               : canEdit
-                              ? "Editar lancamento"
-                              : "Somente lancamentos com uma unica contra-partida podem ser editados"
+                              ? "Editar lançamento"
+                              : "Somente lançamentos com uma única contra-partida podem ser editados"
                           }
                         >
                           {isRowEditing ? "Editando" : "Editar"}
@@ -865,8 +865,8 @@ export default function LedgerPage({
                           disabled={!canDelete || deletingTxGuid === row.txGuid || isRowSaving}
                           title={
                             isSourceLinked
-                              ? "Exclua este lancamento em Faturamentos/Compras"
-                              : "Excluir lancamento"
+                              ? "Exclua este lançamento em Faturamentos/Compras"
+                              : "Excluir lançamento"
                           }
                         >
                           {deletingTxGuid === row.txGuid ? "Excluindo..." : "Excluir"}
@@ -881,7 +881,7 @@ export default function LedgerPage({
         </table>
       </div>
       <div className="d-flex align-items-center justify-content-between mt-3 mb-3 flex-wrap gap-2">
-        <div className="small-muted">Mostrando {pagedLedgerRows.length} de {totalItems} lancamentos</div>
+        <div className="small-muted">Mostrando {pagedLedgerRows.length} de {totalItems} lançamentos</div>
         <div className="d-flex align-items-center gap-2">
           <label className="form-label mb-0 small-muted">Ordem</label>
           <select
@@ -954,7 +954,7 @@ export default function LedgerPage({
 
       {editingTxGuid ? (
         <div className="alert alert-info py-2">
-          Modo de edicao ativo. Ajuste os campos abaixo e clique em salvar.
+          Modo de edição ativo. Ajuste os campos abaixo e clique em salvar.
         </div>
       ) : null}
 
@@ -970,12 +970,12 @@ export default function LedgerPage({
           />
         </div>
         <div className="col-md-3">
-          <label className="form-label">Historico</label>
+          <label className="form-label">Histórico</label>
           <input
             className="form-control"
             value={ledgerForm.description}
             onChange={(event) => setLedgerForm({ ...ledgerForm, description: event.target.value })}
-            placeholder="Descricao do lancamento"
+            placeholder="Descrição do lançamento"
           />
         </div>
         <div className="col-md-2">
@@ -989,7 +989,7 @@ export default function LedgerPage({
           />
         </div>
         <div className="col-md-5">
-          <label className="form-label">Conta de contra-partida (arvore)</label>
+          <label className="form-label">Conta de contra-partida (árvore)</label>
           <div className="tree-select">
             <button
               type="button"
@@ -1021,7 +1021,7 @@ export default function LedgerPage({
         <div className="col-md-12 mt-2 d-flex justify-content-end gap-2">
           {editingTxGuid ? (
             <button className="btn btn-outline-secondary" type="button" onClick={cancelEditingLedgerEntry}>
-              Cancelar edicao
+              Cancelar edição
             </button>
           ) : null}
           <button
@@ -1029,7 +1029,7 @@ export default function LedgerPage({
             type="submit"
             disabled={!activeBookId || (Boolean(editingTxGuid) && savingTxGuid === editingTxGuid)}
           >
-            {editingTxGuid ? (savingTxGuid === editingTxGuid ? "Salvando..." : "Salvar alteracoes") : "Lancar no Razao"}
+            {editingTxGuid ? (savingTxGuid === editingTxGuid ? "Salvando..." : "Salvar alterações") : "Lançar no Razão"}
           </button>
         </div>
       </form>

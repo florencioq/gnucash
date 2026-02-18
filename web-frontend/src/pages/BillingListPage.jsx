@@ -229,10 +229,10 @@ export default function BillingListPage({
       </div>
 
       {activeBook ? (
-        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+        <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
         <div className="alert alert-warning" role="alert">
-          Nenhum book ativo. Defina um em Books para continuar.
+          Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
 

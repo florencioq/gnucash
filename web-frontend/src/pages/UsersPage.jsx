@@ -265,7 +265,7 @@ export default function UsersPage() {
           />
         </div>
         <div className="col-md-4">
-          <label className="form-label">Email</label>
+          <label className="form-label">E-mail</label>
           <input
             className="form-control"
             type="email"
@@ -349,7 +349,7 @@ export default function UsersPage() {
           <thead>
             <tr>
               <th>Nome</th>
-              <th>Email</th>
+              <th>E-mail</th>
               <th>Ativo</th>
               <th>Perfil</th>
               <th>Acesso a livros</th>
@@ -375,10 +375,10 @@ export default function UsersPage() {
                       <span className="badge text-bg-secondary">Inativo</span>
                     )}
                   </td>
-                  <td>{user.is_superuser ? "Superuser" : "Padrão"}</td>
+                  <td>{user.is_superuser ? "Superusuário" : "Padrão"}</td>
                   <td style={{ minWidth: "360px" }}>
                     {user.is_superuser ? (
-                      <span className="small-muted">Acesso total (superuser).</span>
+                      <span className="small-muted">Acesso total (superusuário).</span>
                     ) : (
                       <div className="d-flex flex-column gap-2">
                         <div className="d-flex flex-column gap-1">

@@ -151,22 +151,22 @@ export default function VendorsPage() {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Vendors</h2>
+          <h2 className="mb-1">Fornecedores</h2>
           <div className="small-muted">Cadastro de fornecedores no estilo GnuCash.</div>
         </div>
       </div>
 
       {activeBook ? (
-        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+        <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
         <div className="alert alert-warning" role="alert">
-          Nenhum book ativo. Defina um em Books para continuar.
+          Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
 
       <form className="row g-2 align-items-end mb-4" onSubmit={submit}>
         <div className="col-md-3">
-          <label className="form-label">Name</label>
+          <label className="form-label">Nome</label>
           <input
             className="form-control"
             value={form.name}
@@ -184,7 +184,7 @@ export default function VendorsPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Currency</label>
+          <label className="form-label">Moeda</label>
           <select
             className="form-select"
             value={form.currency_guid}
@@ -199,18 +199,18 @@ export default function VendorsPage() {
           </select>
         </div>
         <div className="col-md-2">
-          <label className="form-label">Active</label>
+          <label className="form-label">Ativo</label>
           <select
             className="form-select"
             value={form.active ? "true" : "false"}
             onChange={(event) => setForm({ ...form, active: event.target.value === "true" })}
           >
-            <option value="true">True</option>
-            <option value="false">False</option>
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
           </select>
         </div>
         <div className="col-md-3">
-          <label className="form-label">Notes</label>
+          <label className="form-label">Notas</label>
           <input
             className="form-control"
             value={form.notes}
@@ -218,18 +218,18 @@ export default function VendorsPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Tax Override</label>
+          <label className="form-label">Sobrescrever imposto</label>
           <select
             className="form-select"
             value={form.tax_override ? "true" : "false"}
             onChange={(event) => setForm({ ...form, tax_override: event.target.value === "true" })}
           >
-            <option value="false">False</option>
-            <option value="true">True</option>
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
           </select>
         </div>
         <div className="col-md-3">
-          <label className="form-label">Address Name</label>
+          <label className="form-label">Nome do endereço</label>
           <input
             className="form-control"
             value={form.addr_name}
@@ -237,7 +237,7 @@ export default function VendorsPage() {
           />
         </div>
         <div className="col-md-3">
-          <label className="form-label">Address Phone</label>
+          <label className="form-label">Telefone do endereço</label>
           <input
             className="form-control"
             value={form.addr_phone}
@@ -245,7 +245,7 @@ export default function VendorsPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Address Email</label>
+          <label className="form-label">E-mail do endereço</label>
           <input
             className="form-control"
             value={form.addr_email}
@@ -253,7 +253,7 @@ export default function VendorsPage() {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Tax Inc</label>
+          <label className="form-label">Inclui imposto</label>
           <input
             className="form-control"
             value={form.tax_inc}
@@ -264,11 +264,11 @@ export default function VendorsPage() {
         <div className="col-md-12 d-flex justify-content-end gap-2 mt-2">
           {editingGuid ? (
             <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
-              Cancel
+              Cancelar
             </button>
           ) : null}
           <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
-            {editingGuid ? "Save Vendor" : "Create Vendor"}
+            {editingGuid ? "Salvar fornecedor" : "Criar fornecedor"}
           </button>
         </div>
       </form>
@@ -288,12 +288,12 @@ export default function VendorsPage() {
         <table className="table align-middle">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Nome</th>
               <th>ID</th>
-              <th>Currency</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Active</th>
+              <th>Moeda</th>
+              <th>E-mail</th>
+              <th>Telefone</th>
+              <th>Ativo</th>
               <th>GUID</th>
               <th></th>
             </tr>
@@ -302,7 +302,7 @@ export default function VendorsPage() {
             {vendors.length === 0 ? (
               <tr>
                 <td colSpan={8} className="small-muted">
-                  No vendors yet.
+                  Nenhum fornecedor cadastrado.
                 </td>
               </tr>
             ) : (
@@ -313,7 +313,7 @@ export default function VendorsPage() {
                   <td>{commoditiesById.get(vendor.currency_guid)?.mnemonic || vendor.currency_guid}</td>
                   <td>{vendor.addr_email || "-"}</td>
                   <td>{vendor.addr_phone || "-"}</td>
-                  <td>{vendor.active ? "True" : "False"}</td>
+                  <td>{vendor.active ? "Sim" : "Não"}</td>
                   <td className="small-muted">{vendor.guid}</td>
                   <td className="text-end">
                     <button
@@ -321,14 +321,14 @@ export default function VendorsPage() {
                       type="button"
                       onClick={() => startEdit(vendor)}
                     >
-                      Edit
+                      Editar
                     </button>
                     <button
                       className="btn btn-sm btn-outline-danger"
                       type="button"
                       onClick={() => remove(vendor.guid)}
                     >
-                      Delete
+                      Excluir
                     </button>
                   </td>
                 </tr>

@@ -65,7 +65,7 @@ export default function LoginPage({ currentUser = null, onLoginSuccess = null })
 
       <form className="row g-3 align-items-end" onSubmit={submit}>
         <div className="col-md-5">
-          <label className="form-label">Email</label>
+          <label className="form-label">E-mail</label>
           <input
             className="form-control"
             type="email"

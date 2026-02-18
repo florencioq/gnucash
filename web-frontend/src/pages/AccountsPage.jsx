@@ -80,10 +80,10 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   }, [accounts, accountsById]);
   const selectedParentAccount = accountsById.get(form.parent_id) || null;
   const parentAccountLabel = isRootType
-    ? "ROOT must not have a parent"
+    ? "ROOT não pode ter conta pai"
     : selectedParentAccount
       ? `${accountFullNameById.get(selectedParentAccount.id) || selectedParentAccount.name} (${selectedParentAccount.type})`
-      : "Select parent account";
+      : "Selecione a conta pai";
   const visibleParentTree = useMemo(
     () => filterTree(tree, parentSearch),
     [tree, parentSearch]
@@ -202,7 +202,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     if (!editing) return;
     const trimmed = editing.name.trim();
     if (!trimmed) {
-      setError({ code: "VALIDATION_ERROR", message: "name cannot be empty", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "nome não pode ser vazio", details: {} });
       return;
     }
     const isPlaceholder = editing.type === "ROOT" ? true : editing.is_placeholder;
@@ -286,22 +286,22 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Accounts</h2>
-          <div className="small-muted">Manage the account hierarchy per book.</div>
+          <h2 className="mb-1">Contas</h2>
+          <div className="small-muted">Gerencie a hierarquia de contas por livro.</div>
         </div>
       </div>
 
       {activeBook ? (
-        <div className="small-muted mb-4">Book ativo: {activeBook.name || activeBook.id}</div>
+        <div className="small-muted mb-4">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
         <div className="alert alert-warning" role="alert">
-          Nenhum book ativo. Defina um em Books para continuar.
+          Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
 
       <form className="row g-2 align-items-end mb-4" onSubmit={create}>
         <div className="col-md-3">
-          <label className="form-label">Name</label>
+          <label className="form-label">Nome</label>
           <input
             className="form-control"
             value={form.name}
@@ -310,7 +310,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           />
         </div>
         <div className="col-md-2">
-          <label className="form-label">Type</label>
+          <label className="form-label">Tipo</label>
           <select
             className="form-select"
             value={form.type}
@@ -339,7 +339,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           </select>
         </div>
         <div className="col-md-2">
-          <label className="form-label">Commodity</label>
+          <label className="form-label">Moeda</label>
           <select
             className="form-select"
             value={form.commodity_id}
@@ -353,7 +353,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           </select>
         </div>
         <div className="col-md-4">
-          <label className="form-label">Parent</label>
+          <label className="form-label">Conta pai</label>
           <div className="tree-select">
             <button
               type="button"
@@ -370,24 +370,24 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
                   className="form-control mb-2"
                   value={parentSearch}
                   onChange={(event) => setParentSearch(event.target.value)}
-                  placeholder="Filter parent account"
+                  placeholder="Filtrar conta pai"
                 />
                 <div className="counter-tree-panel">
                   {visibleParentTree.length > 0 ? (
                     renderParentTreeNodes(visibleParentTree)
                   ) : (
-                    <div className="small-muted">No account found for this filter.</div>
+                    <div className="small-muted">Nenhuma conta encontrada para este filtro.</div>
                   )}
                 </div>
               </div>
             ) : null}
           </div>
           {isRootType ? (
-            <div className="small-muted mt-1">ROOT must not have a parent.</div>
+            <div className="small-muted mt-1">ROOT não pode ter conta pai.</div>
           ) : null}
         </div>
         <div className="col-md-2">
-          <label className="form-label">Placeholder</label>
+          <label className="form-label">Marcador</label>
           <select
             className="form-select"
             value={form.is_placeholder ? "true" : "false"}
@@ -395,13 +395,13 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
               setForm({ ...form, is_placeholder: event.target.value === "true" })
             }
           >
-            <option value="false">False</option>
-            <option value="true">True</option>
+            <option value="false">Não</option>
+            <option value="true">Sim</option>
           </select>
         </div>
         <div className="col-md-3">
           <button className="btn btn-accent w-100" type="submit" disabled={!activeBookId}>
-            Create Account
+            Criar conta
           </button>
         </div>
       </form>
@@ -418,11 +418,11 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       ) : null}
 
       <div className="section-card">
-        <h5 className="mb-3">Account Tree</h5>
+        <h5 className="mb-3">Árvore de contas</h5>
         {editing ? (
           <form className="row g-2 align-items-end mb-3" onSubmit={submitEdit}>
             <div className="col-md-4">
-              <label className="form-label">Edit Name</label>
+              <label className="form-label">Editar nome</label>
               <input
                 className="form-control"
                 value={editing.name}
@@ -431,7 +431,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
               />
             </div>
             <div className="col-md-3">
-              <label className="form-label">Placeholder</label>
+              <label className="form-label">Marcador</label>
               <select
                 className="form-select"
                 value={editing.type === "ROOT" ? "true" : editing.is_placeholder ? "true" : "false"}
@@ -440,19 +440,19 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
                 }
                 disabled={editing.type === "ROOT"}
               >
-                <option value="false">False</option>
-                <option value="true">True</option>
+                <option value="false">Não</option>
+                <option value="true">Sim</option>
               </select>
               {editing.type === "ROOT" ? (
-                <div className="small-muted mt-1">ROOT must be placeholder.</div>
+                <div className="small-muted mt-1">ROOT deve ser marcador.</div>
               ) : null}
             </div>
             <div className="col-md-4 d-flex gap-2">
               <button className="btn btn-accent" type="submit">
-                Save Changes
+                Salvar alterações
               </button>
               <button className="btn btn-outline-secondary" type="button" onClick={() => setEditing(null)}>
-                Cancel
+                Cancelar
               </button>
             </div>
           </form>

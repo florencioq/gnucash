@@ -53,6 +53,15 @@ function formatMoney(num, denom, mnemonic) {
   return mnemonic ? `${mnemonic} ${formatted}` : formatted;
 }
 
+function invoiceStatusLabel(status) {
+  if (status === "PAID") return "Paga";
+  if (status === "PARTIAL") return "Parcial";
+  if (status === "UNPAID") return "Não paga";
+  if (status === "POSTED") return "Postada";
+  if (status === "VOID") return "Cancelada";
+  return status || "-";
+}
+
 function invoiceDateInput(value) {
   if (!value) return "";
   const ymd = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -612,7 +621,7 @@ export default function BillingPage({
           >
             <span className="counter-tree-name">{node.name}</span>
             <span className="badge badge-soft text-uppercase">{node.type}</span>
-            {node.is_placeholder ? <span className="small-muted">placeholder</span> : null}
+            {node.is_placeholder ? <span className="small-muted">marcador</span> : null}
           </button>
           {node.children && node.children.length > 0
             ? renderPaymentTreeNodes(node.children, depth + 1)
@@ -664,7 +673,7 @@ export default function BillingPage({
 
     const amount = decimalToRational(paymentForm.amount, 100);
     if (!amount || amount.num <= 0 || amount.denom <= 0) {
-      setError({ code: "VALIDATION_ERROR", message: "Valor de pagamento invalido", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "Valor de pagamento inválido", details: {} });
       return;
     }
 
@@ -937,13 +946,13 @@ export default function BillingPage({
     const quantity = decimalToRational(entryForm.quantity, 1000);
     const unitPrice = decimalToRational(entryForm.unit_price, 100);
     if (!quantity || !unitPrice || quantity.denom <= 0 || unitPrice.denom <= 0) {
-      setError({ code: "VALIDATION_ERROR", message: "Quantidade e preco devem ser numericos", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "Quantidade e preço devem ser numéricos", details: {} });
       return;
     }
 
     const discountValue = parseDecimal(entryForm.discount);
     if (!Number.isFinite(discountValue)) {
-      setError({ code: "VALIDATION_ERROR", message: "Desconto invalido", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "Desconto inválido", details: {} });
       return;
     }
 
@@ -955,7 +964,7 @@ export default function BillingPage({
             denom: 10000
           };
     if (!discount) {
-      setError({ code: "VALIDATION_ERROR", message: "Desconto invalido", details: {} });
+      setError({ code: "VALIDATION_ERROR", message: "Desconto inválido", details: {} });
       return;
     }
 
@@ -994,7 +1003,7 @@ export default function BillingPage({
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h2 className="mb-1">Compra</h2>
-          <div className="small-muted">Edicao de compra, postagem, pagamentos e itens.</div>
+          <div className="small-muted">Edição de compra, postagem, pagamentos e itens.</div>
         </div>
         <div className="d-flex gap-2">
           {typeof onOpenBillingList === "function" ? (
@@ -1011,10 +1020,10 @@ export default function BillingPage({
       </div>
 
       {activeBook ? (
-        <div className="small-muted mb-3">Book ativo: {activeBook.name || activeBook.id}</div>
+        <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
         <div className="alert alert-warning" role="alert">
-          Nenhum book ativo. Defina um em Books para continuar.
+          Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
 
@@ -1031,11 +1040,11 @@ export default function BillingPage({
 
       {createOpen ? (
         <div className="invoice-dialog mb-4">
-          <h5 className="mb-3">Nova Bill</h5>
+          <h5 className="mb-3">Nova Compra</h5>
           <form onSubmit={submitCreate} className="row g-3">
             <div className="col-md-12">
               <div className="invoice-fieldset">
-                <div className="invoice-fieldset-title">Informacao da bill</div>
+                <div className="invoice-fieldset-title">Informação da compra</div>
                 <div className="row g-2">
                   <div className="col-md-12 d-flex align-items-center gap-3">
                     <label className="form-label mb-0">Tipo</label>
@@ -1046,7 +1055,7 @@ export default function BillingPage({
                         checked={createForm.type === "INVOICE"}
                         onChange={() => setCreateForm((current) => ({ ...current, type: "INVOICE" }))}
                       />
-                      Bill
+                      Compra
                     </label>
                     <label className="d-flex align-items-center gap-1">
                       <input
@@ -1055,11 +1064,11 @@ export default function BillingPage({
                         checked={createForm.type === "CREDIT_NOTE"}
                         onChange={() => setCreateForm((current) => ({ ...current, type: "CREDIT_NOTE" }))}
                       />
-                      Nota de credito
+                      Nota de crédito
                     </label>
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Numero da bill</label>
+                    <label className="form-label">Número da compra</label>
                     <input
                       className="form-control"
                       value={createForm.id}
@@ -1084,7 +1093,7 @@ export default function BillingPage({
 
             <div className="col-md-12">
               <div className="invoice-fieldset">
-                <div className="invoice-fieldset-title">Informacoes da cobranca</div>
+                <div className="invoice-fieldset-title">Informações da cobrança</div>
                 <div className="row g-2">
                   <div className="col-md-6">
                     <label className="form-label">Fornecedor</label>
@@ -1109,7 +1118,7 @@ export default function BillingPage({
                     <input className="form-control" disabled value="" placeholder="" />
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">ID da cobranca</label>
+                    <label className="form-label">ID da cobrança</label>
                     <input
                       className="form-control"
                       value={createForm.billing_id}
@@ -1164,7 +1173,7 @@ export default function BillingPage({
           {selectedInvoice ? (
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <h5 className="mb-0">Edite a bill - {selectedInvoice.id}</h5>
+                <h5 className="mb-0">Edite a compra - {selectedInvoice.id}</h5>
                 <div className="d-flex gap-2">
                   <button
                     type="button"
@@ -1180,7 +1189,7 @@ export default function BillingPage({
                     onClick={() => removeInvoice(selectedInvoice.guid)}
                     disabled={isInvoicePosted}
                   >
-                    Excluir bill
+                    Excluir compra
                   </button>
                 </div>
               </div>
@@ -1202,12 +1211,12 @@ export default function BillingPage({
                       )
                     }
                   >
-                    <option value="INVOICE">Bill</option>
-                    <option value="CREDIT_NOTE">Nota de credito</option>
+                    <option value="INVOICE">Compra</option>
+                    <option value="CREDIT_NOTE">Nota de crédito</option>
                   </select>
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label">Numero da bill</label>
+                  <label className="form-label">Número da compra</label>
                   <input
                     className="form-control"
                     value={selectedInvoice.id}
@@ -1272,7 +1281,7 @@ export default function BillingPage({
                   </select>
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label">ID da cobranca</label>
+                  <label className="form-label">ID da cobrança</label>
                   <input
                     className="form-control"
                     value={selectedInvoice.billing_id || ""}
@@ -1304,7 +1313,7 @@ export default function BillingPage({
                       )
                     }
                   >
-                    <option value="None">None</option>
+                    <option value="None">Nenhum</option>
                   </select>
                 </div>
                 <div className="col-md-6">
@@ -1372,7 +1381,7 @@ export default function BillingPage({
                 </div>
                 <div className="col-md-2">
                   <label className="form-label">Status</label>
-                  <div className="invoice-status">{selectedInvoice.status}</div>
+                  <div className="invoice-status">{invoiceStatusLabel(selectedInvoice.status)}</div>
                 </div>
                 <div className="col-md-8 d-flex justify-content-end gap-2">
                   {isInvoicePosted ? (
@@ -1386,11 +1395,11 @@ export default function BillingPage({
                       onClick={postSelectedInvoice}
                       disabled={!postingAccountGuid || selectedInvoice.entries.length === 0}
                     >
-                      Postar bill
+                      Postar compra
                     </button>
                   )}
                   <button type="submit" className="btn btn-accent btn-sm">
-                    Salvar cabecalho
+                    Salvar cabeçalho
                   </button>
                 </div>
               </form>
@@ -1463,7 +1472,7 @@ export default function BillingPage({
                       />
                     </div>
                     <div className="col-md-3">
-                      <label className="form-label">Memo</label>
+                      <label className="form-label">Memória</label>
                       <input
                         className="form-control"
                         value={paymentForm.memo}
@@ -1489,7 +1498,7 @@ export default function BillingPage({
                         <tr>
                           <th>Data</th>
                           <th>Conta</th>
-                          <th>Memo</th>
+                          <th>Memória</th>
                           <th className="text-end">Valor</th>
                           <th />
                         </tr>
@@ -1524,7 +1533,7 @@ export default function BillingPage({
                         {(selectedInvoice.payments || []).length === 0 ? (
                           <tr>
                             <td colSpan={5} className="small-muted">
-                              Nenhum pagamento registrado para esta bill.
+                              Nenhum pagamento registrado para esta compra.
                             </td>
                           </tr>
                         ) : null}
@@ -1539,13 +1548,13 @@ export default function BillingPage({
                   <thead>
                     <tr>
                       <th>Data</th>
-                      <th>Descricao</th>
-                      <th>Acao</th>
+                      <th>Descrição</th>
+                      <th>Ação</th>
                       <th>Conta de Despesa</th>
                       <th>Quantidade</th>
-                      <th>Preco Unitario</th>
+                      <th>Preço Unitário</th>
                       <th>Desconto</th>
-                      <th>Tributavel</th>
+                      <th>Tributável</th>
                       <th>Subtotal</th>
                       <th>Imposto</th>
                       <th>Total</th>
@@ -1571,7 +1580,7 @@ export default function BillingPage({
                           <td>{decimalString(rationalToNumber(entry.quantity_num, entry.quantity_denom), 3)}</td>
                           <td>{formatMoney(entry.unit_price_num, entry.unit_price_denom, selectedInvoiceMnemonic)}</td>
                           <td>{discountLabel}</td>
-                          <td>{entry.taxable ? "Sim" : "Nao"}</td>
+                          <td>{entry.taxable ? "Sim" : "Não"}</td>
                           <td>{formatMoney(entry.subtotal_num, entry.subtotal_denom, selectedInvoiceMnemonic)}</td>
                           <td>{formatMoney(entry.tax_num, entry.tax_denom, selectedInvoiceMnemonic)}</td>
                           <td>{formatMoney(entry.total_num, entry.total_denom, selectedInvoiceMnemonic)}</td>
@@ -1601,7 +1610,7 @@ export default function BillingPage({
                     {selectedInvoice.entries.length === 0 ? (
                       <tr>
                         <td colSpan={12} className="small-muted">
-                          Nenhuma entrada. Adicione a primeira linha de billmento abaixo.
+                          Nenhuma entrada. Adicione a primeira linha de lançamento abaixo.
                         </td>
                       </tr>
                     ) : null}
@@ -1611,7 +1620,7 @@ export default function BillingPage({
 
               <form onSubmit={submitEntry} className="invoice-entry-form mb-3">
                 {isInvoicePosted ? (
-                  <div className="small-muted mb-2">Bill postada. Desfaca a postagem para editar linhas.</div>
+                  <div className="small-muted mb-2">Compra postada. Desfaça a postagem para editar linhas.</div>
                 ) : null}
                 <fieldset disabled={isInvoicePosted}>
                   <div className="row g-2">
@@ -1626,7 +1635,7 @@ export default function BillingPage({
                     />
                   </div>
                   <div className="col-md-2 billing-entry-description-col">
-                    <label className="form-label">Descricao</label>
+                    <label className="form-label">Descrição</label>
                     <input
                       className="form-control"
                       value={entryForm.description}
@@ -1636,7 +1645,7 @@ export default function BillingPage({
                     />
                   </div>
                   <div className="col-md-1">
-                    <label className="form-label">Acao</label>
+                    <label className="form-label">Ação</label>
                     <input
                       className="form-control"
                       value={entryForm.action}
@@ -1692,7 +1701,7 @@ export default function BillingPage({
                     />
                   </div>
                   <div className="col-md-1">
-                    <label className="form-label">Preco Unitario</label>
+                    <label className="form-label">Preço Unitário</label>
                     <input
                       className="form-control"
                       value={entryForm.unit_price}
@@ -1750,7 +1759,7 @@ export default function BillingPage({
                     <div className="col-md-8 d-flex justify-content-end align-items-end gap-2">
                       {editingEntryGuid ? (
                         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetEntryEditor}>
-                          Cancelar edicao
+                          Cancelar edição
                         </button>
                       ) : null}
                       <button type="submit" className="btn btn-accent btn-sm">
@@ -1796,7 +1805,7 @@ export default function BillingPage({
               </div>
             </div>
           ) : (
-            <div className="small-muted">Selecione uma bill para editar.</div>
+            <div className="small-muted">Selecione uma compra para editar.</div>
           )}
         </div>
       </div>

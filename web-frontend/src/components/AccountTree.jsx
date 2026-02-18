@@ -79,8 +79,8 @@ function Node({
             type="button"
             className="tree-node-toggle"
             onClick={() => onToggleCollapse(node.id)}
-            title={isCollapsed ? "Expand account" : "Collapse account"}
-            aria-label={isCollapsed ? "Expand account" : "Collapse account"}
+            title={isCollapsed ? "Expandir conta" : "Recolher conta"}
+            aria-label={isCollapsed ? "Expandir conta" : "Recolher conta"}
             aria-expanded={!isCollapsed}
           >
             <span className={`tree-node-caret ${isCollapsed ? "is-collapsed" : ""}`} aria-hidden="true">
@@ -93,20 +93,20 @@ function Node({
         <span className="fw-semibold">{node.name}</span>
         <span className="badge badge-soft text-uppercase">{node.type}</span>
         {node.is_placeholder ? (
-          <span className="badge text-bg-secondary">placeholder</span>
+          <span className="badge text-bg-secondary">marcador</span>
         ) : null}
         {node.code ? <span className="tree-node-code small-muted">Nº {node.code}</span> : null}
         <span className="tree-node-balance">{formatAmount(balanceValue, mnemonic)}</span>
         <div className="ms-auto d-flex gap-2">
           {onLedger && node.type !== "ROOT" ? (
-            <IconButton title="Open ledger" onClick={() => onLedger(node)}>
+            <IconButton title="Abrir razão" onClick={() => onLedger(node)}>
               <LedgerIcon />
             </IconButton>
           ) : null}
-          <IconButton title="Edit account" onClick={() => onEdit(node)}>
+          <IconButton title="Editar conta" onClick={() => onEdit(node)}>
             <EditIcon />
           </IconButton>
-          <IconButton title="Delete account" onClick={() => onDelete(node)}>
+          <IconButton title="Excluir conta" onClick={() => onDelete(node)}>
             <DeleteIcon />
           </IconButton>
         </div>
@@ -171,7 +171,7 @@ export default function AccountTree({
   };
 
   if (!nodes || nodes.length === 0) {
-    return <div className="small-muted">No accounts yet.</div>;
+    return <div className="small-muted">Nenhuma conta cadastrada.</div>;
   }
 
   return (

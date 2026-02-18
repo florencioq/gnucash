@@ -75,19 +75,19 @@ export default function BooksPage() {
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Books</h2>
-          <div className="small-muted">Create and manage your books.</div>
+          <h2 className="mb-1">Livros</h2>
+          <div className="small-muted">Crie e gerencie seus livros.</div>
         </div>
       </div>
 
       <form className="row g-2 align-items-end mb-4" onSubmit={create}>
         <div className="col-md-6">
-          <label className="form-label">Name</label>
+          <label className="form-label">Nome</label>
           <input
             className="form-control"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Demo"
+            placeholder="Exemplo"
           />
         </div>
         <div className="col-md-3">
@@ -107,7 +107,7 @@ export default function BooksPage() {
         </div>
         <div className="col-md-3">
           <button className="btn btn-accent w-100" type="submit">
-            Create Book
+            Criar livro
           </button>
         </div>
       </form>
@@ -122,9 +122,9 @@ export default function BooksPage() {
         <table className="table align-middle">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Nome</th>
               <th>Ativo</th>
-              <th>Created</th>
+              <th>Criado em</th>
               <th>ID</th>
               <th></th>
             </tr>
@@ -142,7 +142,7 @@ export default function BooksPage() {
                       }
                     />
                   ) : (
-                    <span className="fw-semibold">{book.name || "(unnamed)"}</span>
+                    <span className="fw-semibold">{book.name || "(sem nome)"}</span>
                   )}
                 </td>
                 <td>
@@ -161,7 +161,7 @@ export default function BooksPage() {
                       onClick={() => saveEdit(book)}
                       type="button"
                     >
-                      Save
+                      Salvar
                     </button>
                   ) : (
                     <button
@@ -169,7 +169,7 @@ export default function BooksPage() {
                       onClick={() => startEdit(book)}
                       type="button"
                     >
-                      Edit
+                      Editar
                     </button>
                   )}
                   {!book.is_active ? (
@@ -186,7 +186,7 @@ export default function BooksPage() {
                     onClick={() => remove(book.id)}
                     type="button"
                   >
-                    Delete
+                    Excluir
                   </button>
                 </td>
               </tr>
