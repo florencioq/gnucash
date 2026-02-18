@@ -98,7 +98,7 @@ export default function LedgerPage({
   const [savingTxGuid, setSavingTxGuid] = useState("");
   const [deletingTxGuid, setDeletingTxGuid] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [chronologicalOrder, setChronologicalOrder] = useState("desc");
   const [ledgerForm, setLedgerForm] = useState({
     counterAccountId: "",
