@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.5 - 2026-02-18
+
+Purchasing expense-account initialization sync:
+- updated implementation profile to require empty initial selection for bill entry expense account (`income_account_guid`) until user chooses an account
+
 ## v0.4.4 - 2026-02-18
 
 Ledger interaction rules synchronization:

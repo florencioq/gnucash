@@ -216,10 +216,6 @@ export default function BillingPage({
 
     return cache;
   }, [accounts, accountsById]);
-  const incomeAccounts = useMemo(
-    () => accounts.filter((account) => account.type === "EXPENSE"),
-    [accounts]
-  );
   const postingAccounts = useMemo(
     () => accounts.filter((account) => account.type === "LIABILITY"),
     [accounts]
@@ -340,7 +336,6 @@ export default function BillingPage({
       loadAccountTree(bookId)
     ]);
     const defaultVendor = loadedVendors[0]?.guid || "";
-    const defaultIncome = loadedAccounts.find((account) => account.type === "EXPENSE")?.id || "";
     const defaultPosting = loadedAccounts.find((account) => account.type === "LIABILITY")?.id || "";
     setCreateForm((current) => ({
       ...current,
@@ -355,7 +350,7 @@ export default function BillingPage({
         current.income_account_guid &&
         loadedAccounts.some((account) => account.id === current.income_account_guid)
           ? current.income_account_guid
-          : defaultIncome
+          : ""
     }));
     setPostingAccountGuid((current) =>
       current && loadedAccounts.some((account) => account.id === current && account.type === "LIABILITY")
@@ -377,10 +372,9 @@ export default function BillingPage({
   useEffect(() => {
     if (!selectedInvoiceGuid) {
       setEditingEntryGuid("");
-      const defaultIncome = incomeAccounts[0]?.id || "";
-      setEntryForm(defaultEntryForm(defaultIncome));
+      setEntryForm(defaultEntryForm());
     }
-  }, [selectedInvoiceGuid, incomeAccounts]);
+  }, [selectedInvoiceGuid]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
@@ -771,7 +765,7 @@ export default function BillingPage({
     }
 
     setEditingEntryGuid("");
-    setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
+    setEntryForm(defaultEntryForm());
     await loadBookData(activeBookId);
   };
 
@@ -858,7 +852,7 @@ export default function BillingPage({
 
   const resetEntryEditor = () => {
     setEditingEntryGuid("");
-    setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
+    setEntryForm(defaultEntryForm());
   };
 
   const startEditEntry = (entry) => {

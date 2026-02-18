@@ -52,6 +52,7 @@ This document is a reference implementation profile and does not override normat
 - Invoicing and purchasing pages should use wider layout for dense editing.
 - Invoicing must expose explicit post/unpost and payment undo actions.
 - Posted invoice/bill should lock line mutations until unposted.
+- Purchasing entry editor should start with no expense account selected; user must choose `income_account_guid` explicitly.
 - Payment account selection should use hierarchical account pickers.
 - Hierarchical account pickers should provide a tall viewport to improve deep-tree navigation.
 - Invoicing navigation should be split into list (`Faturamentos`) and detail (`Fatura`).
