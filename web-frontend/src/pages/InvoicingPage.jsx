@@ -297,6 +297,26 @@ export default function InvoicingPage({
     [paymentTree, paymentSearch]
   );
 
+  const resolveBookDefaultPostingAccountGuid = (accountList = accounts) => {
+    const defaultGuid = activeBook?.default_receivables_account_guid || "";
+    if (!defaultGuid) return "";
+    const account = accountList.find((item) => item.id === defaultGuid);
+    if (!account || account.type !== "ASSET" || account.is_placeholder) return "";
+    return account.id;
+  };
+
+  const resolveBookDefaultRetainedTaxAccountGuid = (
+    accountList = accounts,
+    postingGuid = postingAccountGuid
+  ) => {
+    const defaultGuid = activeBook?.default_iss_recoverable_account_guid || "";
+    if (!defaultGuid) return "";
+    const account = accountList.find((item) => item.id === defaultGuid);
+    if (!account || account.type !== "ASSET" || account.is_placeholder) return "";
+    if (postingGuid && account.id === postingGuid) return "";
+    return account.id;
+  };
+
   const resolveCustomerDefaultIncomeAccountGuid = (customerGuid, accountList = accounts) => {
     if (!customerGuid) return "";
     const customer = customersById.get(customerGuid);
@@ -385,7 +405,10 @@ export default function InvoicingPage({
       loadAccountTree(bookId)
     ]);
     const defaultCustomer = loadedCustomers[0]?.guid || "";
-    const defaultPosting = loadedAccounts.find((account) => account.type === "ASSET")?.id || "";
+    const defaultPosting =
+      resolveBookDefaultPostingAccountGuid(loadedAccounts) ||
+      loadedAccounts.find((account) => account.type === "ASSET" && !account.is_placeholder)?.id ||
+      "";
     setCreateForm((current) => ({
       ...current,
       customer_guid: current.customer_guid && loadedCustomers.some((customer) => customer.guid === current.customer_guid)
@@ -402,7 +425,10 @@ export default function InvoicingPage({
           : ""
     }));
     setPostingAccountGuid((current) =>
-      current && loadedAccounts.some((account) => account.id === current && account.type === "ASSET")
+      current &&
+      loadedAccounts.some(
+        (account) => account.id === current && account.type === "ASSET" && !account.is_placeholder
+      )
         ? current
         : defaultPosting
     );
@@ -453,16 +479,23 @@ export default function InvoicingPage({
     if (!selectedInvoice) return;
     if (
       selectedInvoice.post_account_guid &&
-      postingAccounts.some((account) => account.id === selectedInvoice.post_account_guid)
+      postingAccounts.some(
+        (account) => account.id === selectedInvoice.post_account_guid && !account.is_placeholder
+      )
     ) {
       setPostingAccountGuid(selectedInvoice.post_account_guid);
       return;
     }
     if (
       initialPostingAccountGuid &&
-      postingAccounts.some((account) => account.id === initialPostingAccountGuid)
+      postingAccounts.some((account) => account.id === initialPostingAccountGuid && !account.is_placeholder)
     ) {
       setPostingAccountGuid(initialPostingAccountGuid);
+      return;
+    }
+    const defaultPosting = resolveBookDefaultPostingAccountGuid(postingAccounts);
+    if (defaultPosting) {
+      setPostingAccountGuid(defaultPosting);
     }
   }, [selectedInvoice, postingAccounts, initialPostingAccountGuid]);
 
@@ -499,8 +532,18 @@ export default function InvoicingPage({
       setRetainedTaxAccountGuid("");
       return;
     }
-    setRetainedTaxAccountGuid("");
-  }, [selectedInvoiceGuid]);
+    setRetainedTaxAccountGuid((current) => {
+      const isCurrentValid = accounts.some(
+        (account) =>
+          account.id === current &&
+          account.type === "ASSET" &&
+          !account.is_placeholder &&
+          account.id !== postingAccountGuid
+      );
+      if (isCurrentValid) return current;
+      return resolveBookDefaultRetainedTaxAccountGuid(accounts, postingAccountGuid);
+    });
+  }, [selectedInvoiceGuid, activeBook, accounts, postingAccountGuid]);
 
   useEffect(() => {
     if (!postingAccountGuid) return;
@@ -596,7 +639,7 @@ export default function InvoicingPage({
       }
 
       const selected = postingAccountGuid === node.id;
-      const selectable = node.type === "ASSET";
+      const selectable = node.type === "ASSET" && !node.is_placeholder;
 
       return (
         <div key={node.id}>

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Book, Customer, Invoice, UserBookAccess, Vendor
+from app.models import Account, AccountType, Book, Customer, Invoice, UserBookAccess, Vendor
 from app.schemas import BookCreate, BookOut, BookPatch
 from app.services.authorization import accessible_book_ids, ensure_book_read_access, require_superuser
 
@@ -28,6 +28,121 @@ def _unset_other_active_books(db: Session, *, active_book_id: str) -> None:
     )
 
 
+def _resolve_setup_account_guid(
+    db: Session,
+    *,
+    book_id: str,
+    account_guid: str | None,
+    expected_type: AccountType,
+    field_name: str,
+) -> str | None:
+    if account_guid is None:
+        return None
+
+    account = db.get(Account, account_guid)
+    if account is None:
+        raise api_error(
+            400,
+            "INVALID_ACCOUNT",
+            f"{field_name} must reference an existing account",
+            {field_name: account_guid},
+        )
+    if account.book_id != book_id:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_BOOK",
+            f"{field_name} must belong to the same book",
+            {
+                field_name: account_guid,
+                "book_id": book_id,
+                "account_book_id": account.book_id,
+            },
+        )
+    if account.type != expected_type:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT_TYPE",
+            f"{field_name} must use type {expected_type.value}",
+            {
+                field_name: account_guid,
+                "account_type": account.type.value,
+                "expected_type": expected_type.value,
+            },
+        )
+    if account.is_placeholder:
+        raise api_error(
+            409,
+            "INVALID_ACCOUNT",
+            f"{field_name} cannot use a placeholder account",
+            {field_name: account_guid},
+        )
+    return account.id
+
+
+def _apply_book_setup_fields(
+    db: Session,
+    *,
+    book: Book,
+    payload_data: dict,
+) -> None:
+    if "default_payables_account_guid" in payload_data:
+        payables_guid = (
+            str(payload_data["default_payables_account_guid"])
+            if payload_data["default_payables_account_guid"]
+            else None
+        )
+        book.default_payables_account_guid = _resolve_setup_account_guid(
+            db,
+            book_id=book.id,
+            account_guid=payables_guid,
+            expected_type=AccountType.LIABILITY,
+            field_name="default_payables_account_guid",
+        )
+
+    if "default_receivables_account_guid" in payload_data:
+        receivables_guid = (
+            str(payload_data["default_receivables_account_guid"])
+            if payload_data["default_receivables_account_guid"]
+            else None
+        )
+        book.default_receivables_account_guid = _resolve_setup_account_guid(
+            db,
+            book_id=book.id,
+            account_guid=receivables_guid,
+            expected_type=AccountType.ASSET,
+            field_name="default_receivables_account_guid",
+        )
+
+    if "default_iss_recoverable_account_guid" in payload_data:
+        iss_guid = (
+            str(payload_data["default_iss_recoverable_account_guid"])
+            if payload_data["default_iss_recoverable_account_guid"]
+            else None
+        )
+        book.default_iss_recoverable_account_guid = _resolve_setup_account_guid(
+            db,
+            book_id=book.id,
+            account_guid=iss_guid,
+            expected_type=AccountType.ASSET,
+            field_name="default_iss_recoverable_account_guid",
+        )
+
+    if (
+        book.default_iss_recoverable_account_guid
+        and book.default_receivables_account_guid
+        and book.default_iss_recoverable_account_guid == book.default_receivables_account_guid
+    ):
+        raise api_error(
+            409,
+            "INVALID_BOOK_SETUP",
+            "default_iss_recoverable_account_guid must be different from default_receivables_account_guid",
+            {
+                "default_receivables_account_guid": book.default_receivables_account_guid,
+                "default_iss_recoverable_account_guid": book.default_iss_recoverable_account_guid,
+            },
+        )
+
+
 @router.post("", response_model=BookOut, status_code=201)
 def create_book(payload: BookCreate, db: Session = Depends(get_db)) -> Book:
     require_superuser(db)
@@ -40,6 +155,8 @@ def create_book(payload: BookCreate, db: Session = Depends(get_db)) -> Book:
     book = Book(id=str(payload.id or uuid4()), name=payload.name, is_active=is_active)
     db.add(book)
     db.flush()
+    create_data = payload.model_dump(exclude_unset=True)
+    _apply_book_setup_fields(db, book=book, payload_data=create_data)
     if book.is_active:
         _unset_other_active_books(db, active_book_id=book.id)
     db.commit()
@@ -109,6 +226,8 @@ def patch_book(book_id: UUID, payload: BookPatch, db: Session = Depends(get_db))
                     "at least one book must remain active",
                 )
             book.is_active = False
+
+    _apply_book_setup_fields(db, book=book, payload_data=data)
 
     db.commit()
     db.refresh(book)

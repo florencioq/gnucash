@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tests.helpers import create_account, create_commodity
+
 
 def test_create_and_get_book(client):
     created = client.post('/books', json={'name': 'Demo'})
@@ -76,3 +78,127 @@ def test_patch_book_invalid_is_active_type(client):
     
     resp = client.patch(f"/books/{book_id}", json={"is_active": "not_a_boolean"})
     assert resp.status_code in (400, 422)
+
+
+def test_patch_book_setup_accounts(client):
+    created = client.post("/books", json={"name": "Setup Book"})
+    assert created.status_code == 201
+    book_id = created.json()["id"]
+
+    currency = create_commodity(client, "BRL")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    receivables_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    iss_recoverable_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="ISS a Recuperar",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    payables_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Contas a Pagar",
+        account_type="LIABILITY",
+        parent_id=root_id,
+    )
+
+    patched = client.patch(
+        f"/books/{book_id}",
+        json={
+            "default_payables_account_guid": payables_id,
+            "default_receivables_account_guid": receivables_id,
+            "default_iss_recoverable_account_guid": iss_recoverable_id,
+        },
+    )
+    assert patched.status_code == 200
+    payload = patched.json()
+    assert payload["default_payables_account_guid"] == payables_id
+    assert payload["default_receivables_account_guid"] == receivables_id
+    assert payload["default_iss_recoverable_account_guid"] == iss_recoverable_id
+
+
+def test_patch_book_setup_accounts_validation(client):
+    created = client.post("/books", json={"name": "Setup Book"})
+    assert created.status_code == 201
+    book_id = created.json()["id"]
+
+    other = client.post("/books", json={"name": "Other Book"})
+    assert other.status_code == 201
+    other_book_id = other.json()["id"]
+
+    currency = create_commodity(client, "USD")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    other_root_id = create_account(
+        client,
+        book_id=other_book_id,
+        commodity_id=currency,
+        name="Root Other",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+
+    wrong_type_asset = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Asset Wrong Type",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    foreign_liability = create_account(
+        client,
+        book_id=other_book_id,
+        commodity_id=currency,
+        name="Foreign Liability",
+        account_type="LIABILITY",
+        parent_id=other_root_id,
+    )
+
+    invalid_type = client.patch(
+        f"/books/{book_id}",
+        json={"default_payables_account_guid": wrong_type_asset},
+    )
+    assert invalid_type.status_code == 409
+    assert invalid_type.json()["code"] == "INVALID_ACCOUNT_TYPE"
+
+    invalid_book = client.patch(
+        f"/books/{book_id}",
+        json={"default_payables_account_guid": foreign_liability},
+    )
+    assert invalid_book.status_code == 409
+    assert invalid_book.json()["code"] == "INVALID_ACCOUNT_BOOK"
+
+    invalid_duplicate = client.patch(
+        f"/books/{book_id}",
+        json={
+            "default_receivables_account_guid": wrong_type_asset,
+            "default_iss_recoverable_account_guid": wrong_type_asset,
+        },
+    )
+    assert invalid_duplicate.status_code == 409
+    assert invalid_duplicate.json()["code"] == "INVALID_BOOK_SETUP"

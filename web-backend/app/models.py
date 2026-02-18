@@ -56,9 +56,27 @@ class Book(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    default_payables_account_guid: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    default_receivables_account_guid: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    default_iss_recoverable_account_guid: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    accounts: Mapped[List[Account]] = relationship(back_populates="book")
+    accounts: Mapped[List[Account]] = relationship(
+        back_populates="book",
+        foreign_keys="Account.book_id",
+    )
     customers: Mapped[List[Customer]] = relationship(back_populates="book")
     vendors: Mapped[List[Vendor]] = relationship(back_populates="book")
     invoices: Mapped[List[Invoice]] = relationship(back_populates="book")
@@ -139,7 +157,10 @@ class Account(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
-    book: Mapped[Book] = relationship(back_populates="accounts")
+    book: Mapped[Book] = relationship(
+        back_populates="accounts",
+        foreign_keys=[book_id],
+    )
     commodity: Mapped[Commodity] = relationship(back_populates="accounts")
 
     parent: Mapped[Optional[Account]] = relationship(remote_side="Account.id", back_populates="children")

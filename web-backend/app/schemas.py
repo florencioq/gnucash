@@ -50,17 +50,26 @@ class BookCreate(BaseModel):
     id: UUID | None = None
     name: str | None = Field(default=None, max_length=120)
     is_active: bool | None = None
+    default_payables_account_guid: UUID | None = None
+    default_receivables_account_guid: UUID | None = None
+    default_iss_recoverable_account_guid: UUID | None = None
 
 
 class BookPatch(BaseModel):
     name: str | None = Field(default=None, max_length=120)
     is_active: bool | None = None
+    default_payables_account_guid: UUID | None = None
+    default_receivables_account_guid: UUID | None = None
+    default_iss_recoverable_account_guid: UUID | None = None
 
 
 class BookOut(BaseOut):
     id: str
     name: str | None
     is_active: bool
+    default_payables_account_guid: str | None
+    default_receivables_account_guid: str | None
+    default_iss_recoverable_account_guid: str | None
     created_at: datetime
 
 

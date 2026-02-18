@@ -289,6 +289,14 @@ export default function BillingPage({
     [paymentTree, paymentSearch]
   );
 
+  const resolveBookDefaultPostingAccountGuid = (accountList = accounts) => {
+    const defaultGuid = activeBook?.default_payables_account_guid || "";
+    if (!defaultGuid) return "";
+    const account = accountList.find((item) => item.id === defaultGuid);
+    if (!account || account.type !== "LIABILITY" || account.is_placeholder) return "";
+    return account.id;
+  };
+
   const resolveVendorDefaultExpenseAccountGuid = (vendorGuid, accountList = accounts) => {
     if (!vendorGuid) return "";
     const vendor = vendorsById.get(vendorGuid);
@@ -377,7 +385,10 @@ export default function BillingPage({
       loadAccountTree(bookId)
     ]);
     const defaultVendor = loadedVendors[0]?.guid || "";
-    const defaultPosting = loadedAccounts.find((account) => account.type === "LIABILITY")?.id || "";
+    const defaultPosting =
+      resolveBookDefaultPostingAccountGuid(loadedAccounts) ||
+      loadedAccounts.find((account) => account.type === "LIABILITY" && !account.is_placeholder)?.id ||
+      "";
     setCreateForm((current) => ({
       ...current,
       vendor_guid: current.vendor_guid && loadedVendors.some((vendor) => vendor.guid === current.vendor_guid)
@@ -394,7 +405,10 @@ export default function BillingPage({
           : ""
     }));
     setPostingAccountGuid((current) =>
-      current && loadedAccounts.some((account) => account.id === current && account.type === "LIABILITY")
+      current &&
+      loadedAccounts.some(
+        (account) => account.id === current && account.type === "LIABILITY" && !account.is_placeholder
+      )
         ? current
         : defaultPosting
     );
@@ -445,16 +459,23 @@ export default function BillingPage({
     if (!selectedInvoice) return;
     if (
       selectedInvoice.post_account_guid &&
-      postingAccounts.some((account) => account.id === selectedInvoice.post_account_guid)
+      postingAccounts.some(
+        (account) => account.id === selectedInvoice.post_account_guid && !account.is_placeholder
+      )
     ) {
       setPostingAccountGuid(selectedInvoice.post_account_guid);
       return;
     }
     if (
       initialPostingAccountGuid &&
-      postingAccounts.some((account) => account.id === initialPostingAccountGuid)
+      postingAccounts.some((account) => account.id === initialPostingAccountGuid && !account.is_placeholder)
     ) {
       setPostingAccountGuid(initialPostingAccountGuid);
+      return;
+    }
+    const defaultPosting = resolveBookDefaultPostingAccountGuid(postingAccounts);
+    if (defaultPosting) {
+      setPostingAccountGuid(defaultPosting);
     }
   }, [selectedInvoice, postingAccounts, initialPostingAccountGuid]);
 
@@ -573,7 +594,7 @@ export default function BillingPage({
       }
 
       const selected = postingAccountGuid === node.id;
-      const selectable = node.type === "LIABILITY";
+      const selectable = node.type === "LIABILITY" && !node.is_placeholder;
 
       return (
         <div key={node.id}>
