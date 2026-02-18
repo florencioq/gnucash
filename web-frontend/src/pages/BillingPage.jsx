@@ -308,7 +308,14 @@ export default function BillingPage({
     return response.data;
   };
 
-  const loadInvoices = async (bookId, preferredGuid = "") => {
+  const loadInvoices = async (
+    bookId,
+    preferredGuid = "",
+    {
+      preserveCurrentSelection = true,
+      fallbackToFirstSelection = true
+    } = {}
+  ) => {
     const response = await api.get(`/bills?book_id=${bookId}`);
     if (!response.ok) {
       setError(response.error);
@@ -321,18 +328,21 @@ export default function BillingPage({
         ? preferredGuid
         : "";
       if (preferred) return preferred;
-      if (current && response.data.some((item) => item.guid === current)) return current;
-      return response.data.length > 0 ? response.data[0].guid : "";
+      if (preserveCurrentSelection && current && response.data.some((item) => item.guid === current)) return current;
+      if (fallbackToFirstSelection) {
+        return response.data.length > 0 ? response.data[0].guid : "";
+      }
+      return "";
     });
     return response.data;
   };
 
-  const loadBookData = async (bookId, preferredGuid = "") => {
+  const loadBookData = async (bookId, preferredGuid = "", invoiceSelectionOptions) => {
     if (!bookId) return;
     const [loadedVendors, loadedAccounts, loadedInvoices] = await Promise.all([
       loadVendors(bookId),
       loadAccounts(bookId),
-      loadInvoices(bookId, preferredGuid),
+      loadInvoices(bookId, preferredGuid, invoiceSelectionOptions),
       loadAccountTree(bookId)
     ]);
     const defaultVendor = loadedVendors[0]?.guid || "";
@@ -365,7 +375,21 @@ export default function BillingPage({
 
   useEffect(() => {
     if (!activeBookId) return;
-    loadBookData(activeBookId, initialBillGuid || "");
+    const createMode = !initialBillGuid;
+    if (createMode) {
+      setSelectedInvoiceGuid("");
+      setEntryForm(defaultEntryForm());
+    }
+    loadBookData(
+      activeBookId,
+      initialBillGuid || "",
+      createMode
+        ? {
+            preserveCurrentSelection: false,
+            fallbackToFirstSelection: false
+          }
+        : undefined
+    );
     setEditingEntryGuid("");
   }, [activeBookId, initialBillGuid]);
 
