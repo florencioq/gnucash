@@ -1,8 +1,14 @@
 # 06 - Security
 
-## Scope boundary
+## Authentication baseline
 
-This spec does not define authentication/authorization product policy.
+1. API provides JWT-based authentication endpoints at `/auth/*`.
+2. Passwords MUST be stored as salted, iterated hashes (no plaintext storage).
+3. Access and refresh tokens MUST be signed server-side and validated on protected routes.
+4. Token payload must include expiration and token type (`access` / `refresh`).
+5. Global route protection is controlled by `AUTH_REQUIRED`:
+   - `false`: business endpoints are public (current backward-compatible default).
+   - `true`: business endpoints require valid bearer access token.
 
 ## Current requirements
 

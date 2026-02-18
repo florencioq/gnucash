@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +11,7 @@ from app.config import settings
 from app.db import SessionLocal, engine
 from app.models import Base
 from app.routes.accounts import router as accounts_router
+from app.routes.auth import router as auth_router
 from app.routes.books import router as books_router
 from app.routes.commodities import router as commodities_router
 from app.routes.transactions import router as transactions_router
@@ -19,6 +20,7 @@ from app.routes.vendors import router as vendors_router
 from app.routes.invoices import router as invoices_router
 from app.routes.bills import router as bills_router
 from app.routes.reports import router as reports_router
+from app.services.auth import require_api_auth
 from app.services.seeds import seed_minimum_data
 
 @asynccontextmanager
@@ -67,12 +69,15 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(books_router)
-app.include_router(commodities_router)
-app.include_router(accounts_router)
-app.include_router(transactions_router)
-app.include_router(customers_router)
-app.include_router(vendors_router)
-app.include_router(invoices_router)
-app.include_router(bills_router)
-app.include_router(reports_router)
+protected_router_dependencies = [Depends(require_api_auth)]
+
+app.include_router(auth_router)
+app.include_router(books_router, dependencies=protected_router_dependencies)
+app.include_router(commodities_router, dependencies=protected_router_dependencies)
+app.include_router(accounts_router, dependencies=protected_router_dependencies)
+app.include_router(transactions_router, dependencies=protected_router_dependencies)
+app.include_router(customers_router, dependencies=protected_router_dependencies)
+app.include_router(vendors_router, dependencies=protected_router_dependencies)
+app.include_router(invoices_router, dependencies=protected_router_dependencies)
+app.include_router(bills_router, dependencies=protected_router_dependencies)
+app.include_router(reports_router, dependencies=protected_router_dependencies)

@@ -745,3 +745,35 @@ class IncomeStatementMatrixOut(BaseModel):
     revenue_totals: list[float]
     expense_totals: list[float]
     net_income_totals: list[float]
+
+
+class AuthRegisterRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=8, max_length=256)
+    full_name: str | None = Field(default=None, max_length=120)
+
+
+class AuthLoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class AuthRefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class AuthTokenOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int
+
+
+class AuthUserOut(BaseOut):
+    id: str
+    email: str
+    full_name: str | None
+    is_active: bool
+    is_superuser: bool
+    created_at: datetime
+    updated_at: datetime

@@ -7,10 +7,18 @@
 - Error payload format: `code`, `message`, `details`.
 - Validation/invariant failures are returned as `400` or `409` by application handlers.
 - Runtime-generated OpenAPI may still list `422` defaults from FastAPI metadata.
+- When `AUTH_REQUIRED=true`, all business routers (`/books`, `/commodities`, `/accounts`, `/transactions`, `/customers`, `/vendors`, `/invoices`, `/bills`, `/reports`) require `Authorization: Bearer <access_token>`.
 
 ## Health
 
 - `GET /health`: service liveness (`{"status":"ok"}`).
+
+## Authentication
+
+- `POST /auth/register`: create user with `email`, `password`, optional `full_name`.
+- `POST /auth/login`: returns `access_token`, `refresh_token`, `token_type`, `expires_in`.
+- `POST /auth/refresh`: exchange valid refresh token for a new token pair.
+- `GET /auth/me`: returns current authenticated user (requires valid bearer access token).
 
 ## Books
 

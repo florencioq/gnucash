@@ -26,6 +26,16 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value.strip())
+    except (TypeError, ValueError):
+        return default
+
+
 _load_dotenv()
 
 
@@ -39,6 +49,11 @@ class Settings:
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
         if origin.strip()
     ]
+    auth_required: bool = _env_bool("AUTH_REQUIRED", default=False)
+    auth_jwt_secret: str = os.getenv("AUTH_JWT_SECRET", "change-this-secret-in-production")
+    auth_access_token_ttl_minutes: int = max(1, _env_int("AUTH_ACCESS_TOKEN_TTL_MINUTES", default=30))
+    auth_refresh_token_ttl_minutes: int = max(1, _env_int("AUTH_REFRESH_TOKEN_TTL_MINUTES", default=60 * 24 * 7))
+    auth_password_iterations: int = max(100_000, _env_int("AUTH_PASSWORD_ITERATIONS", default=210_000))
 
 
 settings = Settings()

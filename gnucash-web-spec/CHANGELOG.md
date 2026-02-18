@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.8 - 2026-02-18
+
+Simple JWT authentication baseline:
+- added `users` persistence model and migration for credentialed access
+- added auth API endpoints (`/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/me`)
+- documented optional global API protection via `AUTH_REQUIRED` (all business routers require bearer token when enabled)
+
 ## v0.4.7 - 2026-02-18
 
 Robust document auto-numbering synchronization:

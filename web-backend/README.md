@@ -6,6 +6,7 @@ FastAPI backend implementation for the `gnucash-web-spec` scope, including:
 - Account CRUD and account tree
 - Customer CRUD
 - Vendor CRUD
+- Authentication (`/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/me`)
 - Transaction posting with split validation (balanced entries)
 - Monthly income statement report (DRE) with comparisons, account drill-down and matrix by year-month
 
@@ -54,6 +55,21 @@ Optional: allow frontend origin(s) for CORS:
 
 ```bash
 export CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
+
+Authentication settings:
+
+```bash
+# default: false (keeps backward compatibility, no auth required on business endpoints)
+export AUTH_REQUIRED=true
+
+# set in production
+export AUTH_JWT_SECRET=change-me
+
+# optional tuning
+export AUTH_ACCESS_TOKEN_TTL_MINUTES=30
+export AUTH_REFRESH_TOKEN_TTL_MINUTES=10080
+export AUTH_PASSWORD_ITERATIONS=210000
 ```
 
 ## Run
