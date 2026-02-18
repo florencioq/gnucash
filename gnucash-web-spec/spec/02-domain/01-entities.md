@@ -8,6 +8,14 @@ Fields:
 - `is_active: boolean`
 - `created_at: timestamp UTC`
 
+## Document Number Counter
+
+Fields:
+- `book_id: string(36)` (composite key part)
+- `owner_type: CUSTOMER | VENDOR` (composite key part)
+- `next_value: integer >= 1`
+- `width: integer >= 1`
+
 ## Commodity
 
 Fields:

@@ -27,6 +27,7 @@ This document is a reference implementation profile and does not override normat
 4. Runtime and migrations SHOULD read `DATABASE_URL`.
 5. PostgreSQL SHOULD be the default runtime database for this profile.
 6. SQLite MAY be used for lightweight local tests.
+7. Invoice/bill auto-number generation for blank IDs SHOULD use atomic server-side reservation per `(book_id, owner_type)` (counter row lock or equivalent `upsert-returning` strategy).
 
 ## Suggested backend folder shape
 

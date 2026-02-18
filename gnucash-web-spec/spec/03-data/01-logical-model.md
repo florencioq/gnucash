@@ -4,6 +4,7 @@
 
 Current logical model includes:
 - `Book`
+- `DocumentNumberCounter`
 - `Commodity`
 - `Account`
 - `Customer`
@@ -20,6 +21,7 @@ Current logical model includes:
 - `Book` 1:N `Customer`
 - `Book` 1:N `Vendor`
 - `Book` 1:N `Invoice`
+- `Book` 1:N `DocumentNumberCounter`
 - `Commodity` 1:N `Account`
 - `Commodity` 1:N `Transaction`
 - `Commodity` 1:N `Customer`/`Vendor`/`Invoice`
@@ -33,6 +35,7 @@ Current logical model includes:
 ## Business modeling notes
 
 - Bills and invoices share one persistence model (`invoices`) distinguished by `owner_type` (`VENDOR` vs `CUSTOMER`).
+- Invoice/bill business-number sequencing uses per-book/per-owner-type counters (`DocumentNumberCounter`) for collision-safe auto-number reservation.
 - Open-balance control for invoice/bill posting uses lots (`post_lot`) and linked splits.
 - Income statement APIs are read models derived from `transactions` + `splits` + account types.
 

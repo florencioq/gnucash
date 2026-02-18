@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.7 - 2026-02-18
+
+Robust document auto-numbering synchronization:
+- documented invoice/bill auto-numbering invariant as collision-safe under concurrent create flows per `(book_id, owner_type)`
+- updated logical/data model docs with persistent `document_number_counters` table for per-book/per-owner-type sequencing
+- updated acceptance coverage notes to include manual-high-id synchronization behavior for subsequent auto-numbered invoices/bills
+- updated implementation profile to recommend atomic server-side number reservation (counter row lock / upsert-returning pattern)
+
 ## v0.4.6 - 2026-02-18
 
 Invoicing/purchasing entry-editor UX synchronization:

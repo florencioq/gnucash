@@ -73,3 +73,4 @@
 45. Deleting a book MUST be rejected while accounts, invoices/bills, customers, or vendors exist in that book.
 46. Deleting a commodity MUST be rejected while referenced by accounts, transactions, customers, vendors, or invoices/bills.
 47. Deleting an account MUST be rejected while it has children, splits, or invoice/bill entries.
+48. When invoice/bill `id` is omitted or blank, server-side auto-numbering MUST reserve the next value atomically and avoid collisions under concurrent requests per `(book_id, owner_type)`.

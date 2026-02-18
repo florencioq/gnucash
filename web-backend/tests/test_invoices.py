@@ -266,6 +266,54 @@ def test_invoice_create_autonumbers_when_id_is_blank(client):
     assert third.json()["id"] == "000011"
 
 
+def test_invoice_autonumber_tracks_manual_high_id_after_counter_exists(client):
+    book_id = create_book(client, "Invoices Auto Number Manual Sync")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid)
+
+    first_auto = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "",
+            "date_opened": "2026-02-15T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert first_auto.status_code == 201
+    assert first_auto.json()["id"] == "000001"
+
+    manual = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "000099",
+            "date_opened": "2026-02-16T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert manual.status_code == 201
+    assert manual.json()["id"] == "000099"
+
+    second_auto = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "type": "INVOICE",
+            "id": "",
+            "date_opened": "2026-02-17T00:00:00Z",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert second_auto.status_code == 201
+    assert second_auto.json()["id"] == "000100"
+
+
 def test_invoice_list_paginated_summary(client):
     book_id = create_book(client, "Invoices Paginated")
     currency_guid = create_currency(client, "BRL")

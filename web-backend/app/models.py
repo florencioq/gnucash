@@ -34,6 +34,26 @@ class Book(Base):
     customers: Mapped[List[Customer]] = relationship(back_populates="book")
     vendors: Mapped[List[Vendor]] = relationship(back_populates="book")
     invoices: Mapped[List[Invoice]] = relationship(back_populates="book")
+    document_number_counters: Mapped[List[DocumentNumberCounter]] = relationship(
+        back_populates="book",
+        cascade="all, delete-orphan",
+    )
+
+
+class DocumentNumberCounter(Base):
+    __tablename__ = "document_number_counters"
+
+    book_id: Mapped[str] = mapped_column(ForeignKey("books.id", ondelete="CASCADE"), primary_key=True)
+    owner_type: Mapped[str] = mapped_column(String(32), primary_key=True)
+    next_value: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    width: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
+
+    book: Mapped[Book] = relationship(back_populates="document_number_counters")
+
+    __table_args__ = (
+        CheckConstraint("next_value >= 1", name="ck_document_number_counters_next_value_positive"),
+        CheckConstraint("width >= 1", name="ck_document_number_counters_width_positive"),
+    )
 
 
 class Commodity(Base):

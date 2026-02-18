@@ -76,3 +76,8 @@ Primary suites:
 
 40. Seed minimum data creates required entities.
 41. Seed minimum data is idempotent.
+
+## Document numbering scenarios
+
+42. Invoice auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
+43. Bill auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
