@@ -57,17 +57,32 @@ class Book(Base):
     name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     default_payables_account_guid: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("accounts.id", ondelete="SET NULL"),
+        ForeignKey(
+            "accounts.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_books_default_payables_account_guid",
+        ),
         nullable=True,
         index=True,
     )
     default_receivables_account_guid: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("accounts.id", ondelete="SET NULL"),
+        ForeignKey(
+            "accounts.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_books_default_receivables_account_guid",
+        ),
         nullable=True,
         index=True,
     )
     default_iss_recoverable_account_guid: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("accounts.id", ondelete="SET NULL"),
+        ForeignKey(
+            "accounts.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_books_default_iss_recoverable_account_guid",
+        ),
         nullable=True,
         index=True,
     )
