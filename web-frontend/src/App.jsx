@@ -13,6 +13,7 @@ import BillingListPage from "./pages/BillingListPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import ReceivablesPage from "./pages/ReceivablesPage.jsx";
+import PayablesPage from "./pages/PayablesPage.jsx";
 import {
   api,
   apiBase,
@@ -36,6 +37,7 @@ const baseTabs = [
   { id: "ledger", label: "Razão", component: LedgerPage },
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   { id: "receivables", label: "Contas a Receber", component: ReceivablesPage },
+  { id: "payables", label: "Contas a Pagar", component: PayablesPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
   { id: "billing-list", label: "Compras", component: BillingListPage }
 ];
@@ -172,6 +174,7 @@ export default function App() {
   const tabIds = useMemo(() => new Set(tabs.map((tab) => tab.id)), [tabs]);
   const isInvoicingTab =
     activeTab === "receivables" ||
+    activeTab === "payables" ||
     activeTab === "invoicing-list" ||
     activeTab === "billing-list" ||
     isInvoiceTab(activeTab) ||
@@ -424,7 +427,8 @@ export default function App() {
   };
 
   const ledgerReturnTab =
-    (lastNonLedgerTab === "invoicing-list" ||
+    (lastNonLedgerTab === "payables" ||
+      lastNonLedgerTab === "invoicing-list" ||
       lastNonLedgerTab === "billing-list" ||
       isInvoiceTab(lastNonLedgerTab) ||
       isBillTab(lastNonLedgerTab)) &&
@@ -445,6 +449,13 @@ export default function App() {
             onCreateInvoicing: handleCreateInvoicing,
             onOpenBilling: ({ billGuid, billId }) =>
               handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
+          }
+      : activeTab === "payables"
+        ? {
+            onOpenBilling: handleOpenBilling,
+            onCreateBilling: handleCreateBilling,
+            onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
+              handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
           }
       : activeTab === "ledger"
         ? {

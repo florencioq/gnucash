@@ -655,7 +655,7 @@ def list_bills_paginated(
     book_id: UUID = Query(...),
     vendor_guid: UUID | None = Query(default=None),
     posted_filter: Literal["ALL", "POSTED", "UNPOSTED"] = Query(default="ALL"),
-    payment_filter: Literal["ALL", "PAID", "UNPAID", "PARTIAL"] = Query(default="ALL"),
+    payment_filter: Literal["ALL", "PAID", "UNPAID", "PARTIAL", "OPEN"] = Query(default="ALL"),
     posted_start_date: date | None = Query(default=None),
     posted_end_date: date | None = Query(default=None),
     sort_key: Literal["id", "vendor", "date_opened", "date_posted", "posted_status", "payment_status", "total", "open"] = Query(default="date_opened"),
@@ -736,7 +736,13 @@ def list_bills_paginated(
         _bill_to_list_item(db, invoice, vendor_name=vendors_by_guid.get(invoice.owner_guid))
         for invoice in invoices
     ]
-    if payment_filter != "ALL":
+    if payment_filter == "OPEN":
+        items = [
+            item
+            for item in items
+            if Fraction(item["open_amount_num"], item["open_amount_denom"]) != 0
+        ]
+    elif payment_filter != "ALL":
         items = [item for item in items if item["payment_status"] == payment_filter]
 
     reverse = sort_direction == "desc"

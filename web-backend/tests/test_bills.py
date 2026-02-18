@@ -395,6 +395,102 @@ def test_bill_list_paginated_summary(client):
     assert filtered_payload["items"][0]["vendor_guid"] == vendor_b_guid
 
 
+def test_bill_list_open_payment_filter(client):
+    book_id = create_book(client, "Bills Open Filter")
+    currency_guid = create_currency(client, "BRL")
+    vendor_guid = create_vendor(client, book_id=book_id, currency_guid=currency_guid, vendor_id="VOPEN")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    expense_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Despesa",
+        account_type="EXPENSE",
+        parent_id=root_id,
+    )
+    payable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Pagar",
+        account_type="LIABILITY",
+        parent_id=root_id,
+    )
+    bank_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Banco",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    bill_open_guid = create_bill_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        vendor_guid=vendor_guid,
+        expense_account_guid=expense_account_guid,
+        bill_id="B00020",
+        date_opened="2026-01-10T00:00:00Z",
+        unit_price_num=10000,
+    )
+    bill_paid_guid = create_bill_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        vendor_guid=vendor_guid,
+        expense_account_guid=expense_account_guid,
+        bill_id="B00021",
+        date_opened="2026-01-11T00:00:00Z",
+        unit_price_num=20000,
+    )
+
+    post_open = client.post(
+        f"/bills/{bill_open_guid}/post",
+        json={"post_account_guid": payable_account_guid},
+    )
+    assert post_open.status_code == 200
+    assert post_open.json()["status"] == "POSTED"
+
+    post_paid = client.post(
+        f"/bills/{bill_paid_guid}/post",
+        json={"post_account_guid": payable_account_guid},
+    )
+    assert post_paid.status_code == 200
+    assert post_paid.json()["status"] == "POSTED"
+
+    pay_full = client.post(
+        f"/bills/{bill_paid_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": 20000,
+            "amount_denom": 100,
+            "payment_date": "2026-01-12T00:00:00Z",
+        },
+    )
+    assert pay_full.status_code == 200
+    assert pay_full.json()["status"] == "PAID"
+
+    open_only = client.get(
+        f"/bills/list?book_id={book_id}&payment_filter=OPEN&sort_key=id&sort_direction=asc&page=1&page_size=25"
+    )
+    assert open_only.status_code == 200
+    payload = open_only.json()
+    assert payload["total_items"] == 1
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["guid"] == bill_open_guid
+    assert payload["items"][0]["payment_status"] == "UNPAID"
+
+
 def test_bill_post_payment_and_undo_flow(client):
     book_id = create_book(client, "Bills Post")
     currency_guid = create_currency(client, "BRL")
