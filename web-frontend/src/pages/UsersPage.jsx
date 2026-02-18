@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../api/client.js";
 
 const INITIAL_FORM = {
@@ -9,10 +9,27 @@ const INITIAL_FORM = {
 };
 
 export default function UsersPage() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(INITIAL_FORM);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    const res = await api.get("/auth/users");
+    setLoading(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setUsers(Array.isArray(res.data) ? res.data : []);
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -52,6 +69,7 @@ export default function UsersPage() {
 
     setForm(INITIAL_FORM);
     setSuccess(res.data);
+    await loadUsers();
   };
 
   return (
@@ -123,10 +141,56 @@ export default function UsersPage() {
       ) : null}
 
       {success ? (
-        <div className="alert alert-success mb-0" role="alert">
+        <div className="alert alert-success" role="alert">
           Usuário <strong>{success.email}</strong> cadastrado com sucesso.
         </div>
       ) : null}
+
+      <div className="d-flex align-items-center justify-content-between mb-2">
+        <h5 className="mb-0">Usuários cadastrados</h5>
+        <button className="btn btn-sm btn-outline-secondary" type="button" onClick={loadUsers} disabled={loading}>
+          {loading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </div>
+
+      <div className="table-responsive">
+        <table className="table align-middle">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Ativo</th>
+              <th>Perfil</th>
+              <th>Criado em</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.length === 0 ? (
+              <tr>
+                <td className="small-muted" colSpan={5}>
+                  {loading ? "Carregando usuários..." : "Nenhum usuário cadastrado."}
+                </td>
+              </tr>
+            ) : (
+              users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.full_name || "-"}</td>
+                  <td>{user.email}</td>
+                  <td>
+                    {user.is_active ? (
+                      <span className="badge text-bg-success">Ativo</span>
+                    ) : (
+                      <span className="badge text-bg-secondary">Inativo</span>
+                    )}
+                  </td>
+                  <td>{user.is_superuser ? "Superuser" : "Padrão"}</td>
+                  <td>{user.created_at ? new Date(user.created_at).toLocaleString() : "-"}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

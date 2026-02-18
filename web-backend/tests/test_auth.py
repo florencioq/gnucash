@@ -52,6 +52,12 @@ def test_auth_register_login_me_refresh_flow(client):
     assert me_payload["id"] == user["id"]
     assert me_payload["email"] == "user@example.com"
 
+    users_listing = client.get("/auth/users", headers=_bearer(tokens["access_token"]))
+    assert users_listing.status_code == 200, users_listing.text
+    users = users_listing.json()
+    assert len(users) == 1
+    assert users[0]["email"] == "user@example.com"
+
     refreshed = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert refreshed.status_code == 200, refreshed.text
     refreshed_payload = refreshed.json()
@@ -90,3 +96,9 @@ def test_auth_required_blocks_protected_routes_without_token(client, monkeypatch
     invalid = client.get("/books", headers=_bearer("invalid-token"))
     assert invalid.status_code == 401, invalid.text
     assert invalid.json()["code"] == "INVALID_TOKEN"
+
+
+def test_list_users_requires_access_token(client):
+    no_auth = client.get("/auth/users")
+    assert no_auth.status_code == 401, no_auth.text
+    assert no_auth.json()["code"] == "AUTH_REQUIRED"

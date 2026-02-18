@@ -73,3 +73,11 @@ def refresh_tokens(payload: AuthRefreshRequest, db: Session = Depends(get_db)) -
 @router.get("/me", response_model=AuthUserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.get("/users", response_model=list[AuthUserOut])
+def list_users(
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[User]:
+    return db.execute(select(User).order_by(User.created_at.asc(), User.email.asc())).scalars().all()
