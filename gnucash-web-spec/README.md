@@ -14,6 +14,7 @@ Includes:
 - Account hierarchy and account tree balances
 - Customer and Vendor masters
 - Invoice and Bill workflows (entries, posting, unposting, payments, payment undo)
+- Paginated invoice/bill summary listing contracts (`/invoices/list`, `/bills/list`)
 - Transaction/Split posting and editing restrictions when linked to invoice/bill flows
 - Income statement reporting endpoints
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.2 - 2026-02-17
+
+Invoicing pagination and dynamic-tab UX synchronization:
+- documented paginated invoice summary endpoint `GET /invoices/list` with filter/sort/page contract in endpoint guide
+- updated OpenAPI contract with `/invoices/list` plus `InvoiceListPageOut`/`InvoiceListItemOut` schemas
+- updated acceptance coverage notes to include invoice paginated listing behavior
+- updated implementation profile to require list-side create actions (`Nova Fatura` / `Nova Compra`)
+- updated implementation profile to require dynamic, closable detail tabs (`Fatura` / `Compra`) persisted after browser refresh in-session
+- generalized non-functional/release/README references to pagination baseline across both invoicing and purchasing flows
+
 ## v0.4.1 - 2026-02-17
 
 Purchasing list pagination and UX stability sync:

@@ -56,10 +56,13 @@ This document is a reference implementation profile and does not override normat
 - Invoicing navigation should be split into list (`Faturamentos`) and detail (`Fatura`).
 - Purchasing navigation should be split into list (`Compras`) and detail (`Compra`).
 - List views should support filtering, sortable columns, and open-to-detail actions.
+- "Novo" actions (`Nova Fatura` / `Nova Compra`) should be initiated from list views, not from detail views.
 - List fallback labels should be explicit for missing owner references (`cliente não encontrado` / `fornecedor não encontrado`).
-- Purchasing list (`Compras`) should use server-side pagination (`/bills/list`) with filtering and sorting parameters.
-- Purchasing list should persist filter/sort/page state when user switches tabs during the same browser session.
-- Purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
+- Invoicing and purchasing lists should use server-side pagination (`/invoices/list`, `/bills/list`) with filtering and sorting parameters.
+- Invoicing and purchasing lists should persist filter/sort/page state when user switches tabs and after browser refresh within the same session.
+- Invoicing and purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
+- Detail screens should open as dynamic, closable tabs when launched from list actions.
+- Dynamic detail tabs should persist after browser refresh within the same session.
 
 ## Compliance note
 

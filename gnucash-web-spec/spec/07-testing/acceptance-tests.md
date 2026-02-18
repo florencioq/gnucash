@@ -62,16 +62,17 @@ Primary suites:
 31. Bill posting and unposting flow.
 32. Bill payment partial/full flow and payment undo.
 33. Reject deleting vendor with existing bills.
-34. Bill paginated summary listing (`/bills/list`) with filters/sort/page metadata.
+34. Invoice paginated summary listing (`/invoices/list`) with filters/sort/page metadata.
+35. Bill paginated summary listing (`/bills/list`) with filters/sort/page metadata.
 
 ## Reporting scenarios
 
-35. Income statement monthly summary.
-36. Income statement account drill-down.
-37. Income statement matrix by month and account.
-38. Reject invalid month ranges and invalid drill-down account type.
+36. Income statement monthly summary.
+37. Income statement account drill-down.
+38. Income statement matrix by month and account.
+39. Reject invalid month ranges and invalid drill-down account type.
 
 ## Seed scenarios
 
-39. Seed minimum data creates required entities.
-40. Seed minimum data is idempotent.
+40. Seed minimum data creates required entities.
+41. Seed minimum data is idempotent.
