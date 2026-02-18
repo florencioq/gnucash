@@ -10,6 +10,7 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Book, Commodity, Invoice, Vendor
 from app.schemas import VendorCreate, VendorOut, VendorPatch
+from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
 
@@ -32,6 +33,8 @@ def create_vendor(payload: VendorCreate, db: Session = Depends(get_db)) -> Vendo
     currency_guid = str(payload.currency_guid)
     terms_guid = str(payload.terms_guid) if payload.terms_guid else None
     tax_table_guid = str(payload.tax_table_guid) if payload.tax_table_guid else None
+
+    ensure_book_write_access(db, book_id=book_id)
 
     _ensure_book_and_currency_exist(db, book_id=book_id, currency_guid=currency_guid)
 
@@ -64,7 +67,9 @@ def create_vendor(payload: VendorCreate, db: Session = Depends(get_db)) -> Vendo
 
 @router.get("", response_model=list[VendorOut])
 def list_vendors(book_id: UUID = Query(...), db: Session = Depends(get_db)) -> list[Vendor]:
-    return db.execute(select(Vendor).where(Vendor.book_id == str(book_id)).order_by(Vendor.name.asc())).scalars().all()
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    return db.execute(select(Vendor).where(Vendor.book_id == book_id_str).order_by(Vendor.name.asc())).scalars().all()
 
 
 @router.get("/{vendor_guid}", response_model=VendorOut)
@@ -72,6 +77,7 @@ def get_vendor(vendor_guid: UUID, db: Session = Depends(get_db)) -> Vendor:
     vendor = db.get(Vendor, str(vendor_guid))
     if not vendor:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_read_access(db, book_id=vendor.book_id)
     return vendor
 
 
@@ -80,6 +86,7 @@ def patch_vendor(vendor_guid: UUID, payload: VendorPatch, db: Session = Depends(
     vendor = db.get(Vendor, str(vendor_guid))
     if not vendor:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_write_access(db, book_id=vendor.book_id)
 
     data = payload.model_dump(exclude_unset=True)
 
@@ -112,6 +119,7 @@ def delete_vendor(vendor_guid: UUID, db: Session = Depends(get_db)) -> None:
     vendor = db.get(Vendor, str(vendor_guid))
     if not vendor:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_write_access(db, book_id=vendor.book_id)
     has_bills = db.execute(
         select(Invoice.guid)
         .where(Invoice.owner_type == "VENDOR", Invoice.owner_guid == vendor.guid)

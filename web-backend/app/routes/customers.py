@@ -10,6 +10,7 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Book, Commodity, Customer, Invoice
 from app.schemas import CustomerCreate, CustomerOut, CustomerPatch
+from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -32,6 +33,8 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
     currency_guid = str(payload.currency_guid)
     terms_guid = str(payload.terms_guid) if payload.terms_guid else None
     taxtable_guid = str(payload.taxtable_guid) if payload.taxtable_guid else None
+
+    ensure_book_write_access(db, book_id=book_id)
 
     _ensure_book_and_currency_exist(db, book_id=book_id, currency_guid=currency_guid)
 
@@ -76,8 +79,10 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
 
 @router.get("", response_model=list[CustomerOut])
 def list_customers(book_id: UUID = Query(...), db: Session = Depends(get_db)) -> list[Customer]:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
     return (
-        db.execute(select(Customer).where(Customer.book_id == str(book_id)).order_by(Customer.name.asc()))
+        db.execute(select(Customer).where(Customer.book_id == book_id_str).order_by(Customer.name.asc()))
         .scalars()
         .all()
     )
@@ -88,6 +93,7 @@ def get_customer(customer_guid: UUID, db: Session = Depends(get_db)) -> Customer
     customer = db.get(Customer, str(customer_guid))
     if not customer:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_read_access(db, book_id=customer.book_id)
     return customer
 
 
@@ -96,6 +102,7 @@ def patch_customer(customer_guid: UUID, payload: CustomerPatch, db: Session = De
     customer = db.get(Customer, str(customer_guid))
     if not customer:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_write_access(db, book_id=customer.book_id)
 
     data = payload.model_dump(exclude_unset=True)
 
@@ -128,6 +135,7 @@ def delete_customer(customer_guid: UUID, db: Session = Depends(get_db)) -> None:
     customer = db.get(Customer, str(customer_guid))
     if not customer:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_write_access(db, book_id=customer.book_id)
 
     has_invoices = db.execute(
         select(Invoice.guid)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from contextvars import ContextVar
 import hashlib
 import hmac
 import secrets
@@ -24,6 +25,7 @@ TOKEN_TYPE_ACCESS = "access"
 TOKEN_TYPE_REFRESH = "refresh"
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+_request_user_var: ContextVar[User | None] = ContextVar("request_user", default=None)
 
 
 def normalize_email(email: str) -> str:
@@ -118,6 +120,19 @@ def authenticate_refresh_token(token: str, db: Session) -> User:
     return _resolve_user_from_token(token=token, expected_type=TOKEN_TYPE_REFRESH, db=db)
 
 
+def get_request_user() -> User | None:
+    return _request_user_var.get()
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if credentials is None or not credentials.credentials:
+        return None
+    return authenticate_access_token(credentials.credentials, db)
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
@@ -131,8 +146,13 @@ def require_api_auth(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User | None:
+    user: User | None = None
     if credentials is None or not credentials.credentials:
         if settings.auth_required:
             raise api_error(401, "AUTH_REQUIRED", "authentication required")
-        return None
-    return authenticate_access_token(credentials.credentials, db)
+    else:
+        user = authenticate_access_token(credentials.credentials, db)
+
+    _request_user_var.set(user)
+    db.info["request_user"] = user
+    return user

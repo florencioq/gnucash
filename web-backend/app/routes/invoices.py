@@ -29,6 +29,7 @@ from app.schemas import (
     InvoiceOut,
     InvoicePatch,
 )
+from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 from app.services.document_numbers import observe_manual_document_number, reserve_next_document_number
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
@@ -566,6 +567,7 @@ def _load_invoice(db: Session, *, invoice_guid: str) -> Invoice:
     ).scalar_one_or_none()
     if invoice is None:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_read_access(db, book_id=invoice.book_id)
     return invoice
 
 
@@ -584,6 +586,7 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> dic
     book_id = str(payload.book_id)
     currency_guid = str(payload.currency_guid)
     customer_guid = str(payload.customer_guid)
+    ensure_book_write_access(db, book_id=book_id)
     _ensure_book_currency_customer(
         db,
         book_id=book_id,
@@ -624,9 +627,11 @@ def list_invoices(
     customer_guid: UUID | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
     stmt = (
         select(Invoice)
-        .where(Invoice.book_id == str(book_id), Invoice.owner_type == "CUSTOMER")
+        .where(Invoice.book_id == book_id_str, Invoice.owner_type == "CUSTOMER")
         .options(selectinload(Invoice.entries))
         .order_by(Invoice.date_opened.asc(), Invoice.id.asc(), Invoice.guid.asc())
     )
@@ -650,7 +655,9 @@ def list_invoices_paginated(
     page_size: int = Query(default=25, ge=1, le=200),
     db: Session = Depends(get_db),
 ) -> dict:
-    base_stmt = select(Invoice).where(Invoice.book_id == str(book_id), Invoice.owner_type == "CUSTOMER")
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    base_stmt = select(Invoice).where(Invoice.book_id == book_id_str, Invoice.owner_type == "CUSTOMER")
     if customer_guid is not None:
         base_stmt = base_stmt.where(Invoice.owner_guid == str(customer_guid))
     base_stmt = _apply_posted_filters(
@@ -753,6 +760,7 @@ def get_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
 @router.patch("/{invoice_guid}", response_model=InvoiceOut)
 def patch_invoice(invoice_guid: UUID, payload: InvoicePatch, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     data = payload.model_dump(exclude_unset=True)
 
     if "date_posted" in data:
@@ -830,6 +838,7 @@ def patch_invoice(invoice_guid: UUID, payload: InvoicePatch, db: Session = Depen
 @router.post("/{invoice_guid}/post", response_model=InvoiceOut)
 def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_unposted(invoice)
 
     if not invoice.entries:
@@ -978,6 +987,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
 @router.post("/{invoice_guid}/unpost", response_model=InvoiceOut)
 def unpost_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     if not invoice.post_txn and invoice.date_posted is None:
         raise api_error(
             409,
@@ -1036,6 +1046,7 @@ def unpost_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> dict:
 @router.post("/{invoice_guid}/payments", response_model=InvoiceOut)
 def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_posted(invoice)
 
     lot = db.get(Lot, invoice.post_lot)
@@ -1175,6 +1186,7 @@ def create_invoice_payment(invoice_guid: UUID, payload: InvoicePaymentCreate, db
 @router.post("/{invoice_guid}/payments/{payment_tx_guid}/undo", response_model=InvoiceOut)
 def undo_invoice_payment(invoice_guid: UUID, payment_tx_guid: UUID, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_posted(invoice)
 
     payment_tx_guid_str = str(payment_tx_guid)
@@ -1224,6 +1236,7 @@ def undo_invoice_payment(invoice_guid: UUID, payment_tx_guid: UUID, db: Session 
 @router.delete("/{invoice_guid}", status_code=204)
 def delete_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> None:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_unposted(invoice)
     db.delete(invoice)
     db.commit()
@@ -1232,6 +1245,7 @@ def delete_invoice(invoice_guid: UUID, db: Session = Depends(get_db)) -> None:
 @router.post("/{invoice_guid}/entries", response_model=InvoiceEntryOut, status_code=201)
 def create_invoice_entry(invoice_guid: UUID, payload: InvoiceEntryCreate, db: Session = Depends(get_db)) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_unposted(invoice)
 
     income_account_guid = str(payload.income_account_guid)
@@ -1272,6 +1286,7 @@ def patch_invoice_entry(
     db: Session = Depends(get_db),
 ) -> dict:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_unposted(invoice)
 
     entry = _load_invoice_entry(db, invoice_guid=invoice.guid, entry_guid=str(entry_guid))
@@ -1337,6 +1352,7 @@ def patch_invoice_entry(
 @router.delete("/{invoice_guid}/entries/{entry_guid}", status_code=204)
 def delete_invoice_entry(invoice_guid: UUID, entry_guid: UUID, db: Session = Depends(get_db)) -> None:
     invoice = _load_invoice(db, invoice_guid=str(invoice_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_invoice_unposted(invoice)
 
     entry = _load_invoice_entry(db, invoice_guid=invoice.guid, entry_guid=str(entry_guid))

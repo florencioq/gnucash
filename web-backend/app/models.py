@@ -22,6 +22,11 @@ class AccountType(PyEnum):
     EQUITY = "EQUITY"
 
 
+class BookAccessRole(PyEnum):
+    VIEWER = "VIEWER"
+    EDITOR = "EDITOR"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -38,6 +43,10 @@ class User(Base):
 
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
+    )
+    book_accesses: Mapped[List["UserBookAccess"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
 
@@ -57,6 +66,22 @@ class Book(Base):
         back_populates="book",
         cascade="all, delete-orphan",
     )
+    user_accesses: Mapped[List["UserBookAccess"]] = relationship(
+        back_populates="book",
+        cascade="all, delete-orphan",
+    )
+
+
+class UserBookAccess(Base):
+    __tablename__ = "user_book_access"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    book_id: Mapped[str] = mapped_column(ForeignKey("books.id", ondelete="CASCADE"), primary_key=True)
+    role: Mapped[BookAccessRole] = mapped_column(Enum(BookAccessRole), nullable=False, default=BookAccessRole.EDITOR)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    user: Mapped[User] = relationship(back_populates="book_accesses")
+    book: Mapped[Book] = relationship(back_populates="user_accesses")
 
 
 class DocumentNumberCounter(Base):

@@ -9,6 +9,7 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Account, AccountType, Book
 from app.schemas import IncomeStatementAccountEntriesOut, IncomeStatementMatrixOut, IncomeStatementOut
+from app.services.authorization import ensure_book_read_access
 from app.services.reports import (
     build_income_statement,
     build_income_statement_matrix,
@@ -45,6 +46,7 @@ def get_income_statement(
     db: Session = Depends(get_db),
 ) -> dict:
     book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
     if db.get(Book, book_id_str) is None:
         raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id_str})
 
@@ -60,6 +62,7 @@ def get_income_statement_matrix(
     db: Session = Depends(get_db),
 ) -> dict:
     book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
     if db.get(Book, book_id_str) is None:
         raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id_str})
 
@@ -103,6 +106,7 @@ def get_income_statement_account_entries(
     db: Session = Depends(get_db),
 ) -> dict:
     book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
     account_id_str = str(account_id)
     account = db.get(Account, account_id_str)
     if account is None:

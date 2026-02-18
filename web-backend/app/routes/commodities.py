@@ -11,12 +11,14 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Account, Commodity, Customer, Invoice, Transaction, Vendor
 from app.schemas import CommodityCreate, CommodityOut, CommodityPatch
+from app.services.authorization import require_superuser
 
 router = APIRouter(prefix="/commodities", tags=["Commodities"])
 
 
 @router.post("", response_model=CommodityOut, status_code=201)
 def create_commodity(payload: CommodityCreate, db: Session = Depends(get_db)) -> Commodity:
+    require_superuser(db)
     commodity = Commodity(
         id=str(payload.id or uuid4()),
         namespace=payload.namespace,
@@ -53,6 +55,7 @@ def get_commodity(commodity_id: UUID, db: Session = Depends(get_db)) -> Commodit
 
 @router.patch("/{commodity_id}", response_model=CommodityOut)
 def patch_commodity(commodity_id: UUID, payload: CommodityPatch, db: Session = Depends(get_db)) -> Commodity:
+    require_superuser(db)
     commodity = db.get(Commodity, str(commodity_id))
     if not commodity:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
@@ -72,6 +75,7 @@ def patch_commodity(commodity_id: UUID, payload: CommodityPatch, db: Session = D
 
 @router.delete("/{commodity_id}", status_code=204)
 def delete_commodity(commodity_id: UUID, db: Session = Depends(get_db)) -> None:
+    require_superuser(db)
     commodity = db.get(Commodity, str(commodity_id))
     if not commodity:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")

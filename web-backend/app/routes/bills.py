@@ -29,6 +29,7 @@ from app.schemas import (
     BillOut,
     BillPatch,
 )
+from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 from app.services.document_numbers import observe_manual_document_number, reserve_next_document_number
 
 router = APIRouter(prefix="/bills", tags=["Bills"])
@@ -575,6 +576,7 @@ def _load_bill(db: Session, *, bill_guid: str) -> Invoice:
     ).scalar_one_or_none()
     if invoice is None:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_read_access(db, book_id=invoice.book_id)
     return invoice
 
 
@@ -593,6 +595,7 @@ def create_bill(payload: BillCreate, db: Session = Depends(get_db)) -> dict:
     book_id = str(payload.book_id)
     currency_guid = str(payload.currency_guid)
     vendor_guid = str(payload.vendor_guid)
+    ensure_book_write_access(db, book_id=book_id)
     _ensure_book_currency_vendor(
         db,
         book_id=book_id,
@@ -633,9 +636,11 @@ def list_bills(
     vendor_guid: UUID | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
     stmt = (
         select(Invoice)
-        .where(Invoice.book_id == str(book_id), Invoice.owner_type == "VENDOR")
+        .where(Invoice.book_id == book_id_str, Invoice.owner_type == "VENDOR")
         .options(selectinload(Invoice.entries))
         .order_by(Invoice.date_opened.asc(), Invoice.id.asc(), Invoice.guid.asc())
     )
@@ -659,7 +664,9 @@ def list_bills_paginated(
     page_size: int = Query(default=25, ge=1, le=200),
     db: Session = Depends(get_db),
 ) -> dict:
-    base_stmt = select(Invoice).where(Invoice.book_id == str(book_id), Invoice.owner_type == "VENDOR")
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    base_stmt = select(Invoice).where(Invoice.book_id == book_id_str, Invoice.owner_type == "VENDOR")
     if vendor_guid is not None:
         base_stmt = base_stmt.where(Invoice.owner_guid == str(vendor_guid))
     base_stmt = _apply_posted_filters(
@@ -762,6 +769,7 @@ def get_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> dict:
 @router.patch("/{bill_guid}", response_model=BillOut)
 def patch_bill(bill_guid: UUID, payload: BillPatch, db: Session = Depends(get_db)) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     data = payload.model_dump(exclude_unset=True)
 
     if "date_posted" in data:
@@ -839,6 +847,7 @@ def patch_bill(bill_guid: UUID, payload: BillPatch, db: Session = Depends(get_db
 @router.post("/{bill_guid}/post", response_model=BillOut)
 def post_bill(bill_guid: UUID, payload: BillPostRequest, db: Session = Depends(get_db)) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_unposted(invoice)
 
     if not invoice.entries:
@@ -987,6 +996,7 @@ def post_bill(bill_guid: UUID, payload: BillPostRequest, db: Session = Depends(g
 @router.post("/{bill_guid}/unpost", response_model=BillOut)
 def unpost_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     if not invoice.post_txn and invoice.date_posted is None:
         raise api_error(
             409,
@@ -1045,6 +1055,7 @@ def unpost_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> dict:
 @router.post("/{bill_guid}/payments", response_model=BillOut)
 def create_bill_payment(bill_guid: UUID, payload: InvoicePaymentCreate, db: Session = Depends(get_db)) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_posted(invoice)
 
     lot = db.get(Lot, invoice.post_lot)
@@ -1184,6 +1195,7 @@ def create_bill_payment(bill_guid: UUID, payload: InvoicePaymentCreate, db: Sess
 @router.post("/{bill_guid}/payments/{payment_tx_guid}/undo", response_model=BillOut)
 def undo_bill_payment(bill_guid: UUID, payment_tx_guid: UUID, db: Session = Depends(get_db)) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_posted(invoice)
 
     payment_tx_guid_str = str(payment_tx_guid)
@@ -1233,6 +1245,7 @@ def undo_bill_payment(bill_guid: UUID, payment_tx_guid: UUID, db: Session = Depe
 @router.delete("/{bill_guid}", status_code=204)
 def delete_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> None:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_unposted(invoice)
     db.delete(invoice)
     db.commit()
@@ -1241,6 +1254,7 @@ def delete_bill(bill_guid: UUID, db: Session = Depends(get_db)) -> None:
 @router.post("/{bill_guid}/entries", response_model=InvoiceEntryOut, status_code=201)
 def create_bill_entry(bill_guid: UUID, payload: InvoiceEntryCreate, db: Session = Depends(get_db)) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_unposted(invoice)
 
     income_account_guid = str(payload.income_account_guid)
@@ -1281,6 +1295,7 @@ def patch_bill_entry(
     db: Session = Depends(get_db),
 ) -> dict:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_unposted(invoice)
 
     entry = _load_bill_entry(db, bill_guid=invoice.guid, entry_guid=str(entry_guid))
@@ -1346,6 +1361,7 @@ def patch_bill_entry(
 @router.delete("/{bill_guid}/entries/{entry_guid}", status_code=204)
 def delete_bill_entry(bill_guid: UUID, entry_guid: UUID, db: Session = Depends(get_db)) -> None:
     invoice = _load_bill(db, bill_guid=str(bill_guid))
+    ensure_book_write_access(db, book_id=invoice.book_id)
     _ensure_bill_unposted(invoice)
 
     entry = _load_bill_entry(db, bill_guid=invoice.guid, entry_guid=str(entry_guid))

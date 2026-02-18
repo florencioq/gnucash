@@ -11,6 +11,7 @@ from app.errors import api_error
 from app.models import Account, Book, Commodity, InvoiceEntry, Split
 from app.schemas import AccountCreate, AccountOut, AccountPatch, AccountTreeNode
 from app.services.accounts import build_account_tree, validate_parent_constraints
+from app.services.authorization import ensure_book_read_access, ensure_book_write_access
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
@@ -22,6 +23,8 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)) -> Acc
     parent_id = str(payload.parent_id) if payload.parent_id else None
     account_id = str(payload.id or uuid4())
     account_type = payload.type.value
+
+    ensure_book_write_access(db, book_id=book_id)
 
     if db.get(Book, book_id) is None:
         raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id})
@@ -54,12 +57,16 @@ def create_account(payload: AccountCreate, db: Session = Depends(get_db)) -> Acc
 
 @router.get("", response_model=list[AccountOut])
 def list_accounts(book_id: UUID = Query(...), db: Session = Depends(get_db)) -> list[Account]:
-    return db.execute(select(Account).where(Account.book_id == str(book_id)).order_by(Account.name.asc())).scalars().all()
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    return db.execute(select(Account).where(Account.book_id == book_id_str).order_by(Account.name.asc())).scalars().all()
 
 
 @router.get("/tree", response_model=list[AccountTreeNode])
 def get_account_tree(book_id: UUID = Query(...), db: Session = Depends(get_db)) -> list[AccountTreeNode]:
-    return build_account_tree(db, book_id=str(book_id))
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    return build_account_tree(db, book_id=book_id_str)
 
 
 @router.get("/{account_id}", response_model=AccountOut)
@@ -67,6 +74,7 @@ def get_account(account_id: UUID, db: Session = Depends(get_db)) -> Account:
     account = db.get(Account, str(account_id))
     if not account:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_read_access(db, book_id=account.book_id)
     return account
 
 
@@ -75,6 +83,7 @@ def patch_account(account_id: UUID, payload: AccountPatch, db: Session = Depends
     account = db.get(Account, str(account_id))
     if not account:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_write_access(db, book_id=account.book_id)
 
     data = payload.model_dump(exclude_unset=True)
 
@@ -114,6 +123,7 @@ def delete_account(account_id: UUID, db: Session = Depends(get_db)) -> None:
     account = db.get(Account, str(account_id))
     if not account:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_write_access(db, book_id=account.book_id)
 
     has_children = db.execute(select(Account.id).where(Account.parent_id == account.id).limit(1)).scalar_one_or_none()
     if has_children:

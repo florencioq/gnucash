@@ -751,6 +751,7 @@ class AuthRegisterRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=256)
     full_name: str | None = Field(default=None, max_length=120)
+    is_superuser: bool = False
 
 
 class AuthLoginRequest(BaseModel):
@@ -777,3 +778,19 @@ class AuthUserOut(BaseOut):
     is_superuser: bool
     created_at: datetime
     updated_at: datetime
+
+
+class BookAccessRoleSchema(str, Enum):
+    VIEWER = "VIEWER"
+    EDITOR = "EDITOR"
+
+
+class UserBookAccessUpsertRequest(BaseModel):
+    role: BookAccessRoleSchema = BookAccessRoleSchema.EDITOR
+
+
+class UserBookAccessOut(BaseOut):
+    user_id: str
+    book_id: str
+    role: BookAccessRoleSchema
+    created_at: datetime

@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import api_error
-from app.models import Account, Book, Customer, Invoice, Vendor
+from app.models import Account, Book, Customer, Invoice, UserBookAccess, Vendor
 from app.schemas import BookCreate, BookOut, BookPatch
+from app.services.authorization import accessible_book_ids, ensure_book_read_access, require_superuser
 
 router = APIRouter(prefix="/books", tags=["Books"])
 
@@ -29,6 +30,7 @@ def _unset_other_active_books(db: Session, *, active_book_id: str) -> None:
 
 @router.post("", response_model=BookOut, status_code=201)
 def create_book(payload: BookCreate, db: Session = Depends(get_db)) -> Book:
+    require_superuser(db)
     current_active = db.execute(_active_book_query().limit(1)).scalar_one_or_none()
     requested_active = payload.is_active
     is_active = bool(requested_active)
@@ -47,12 +49,24 @@ def create_book(payload: BookCreate, db: Session = Depends(get_db)) -> Book:
 
 @router.get("", response_model=list[BookOut])
 def list_books(db: Session = Depends(get_db)) -> list[Book]:
-    return db.execute(select(Book).order_by(Book.is_active.desc(), Book.created_at.asc())).scalars().all()
+    allowed_book_ids = accessible_book_ids(db)
+    stmt = select(Book)
+    if allowed_book_ids is not None:
+        if not allowed_book_ids:
+            return []
+        stmt = stmt.where(Book.id.in_(allowed_book_ids))
+    return db.execute(stmt.order_by(Book.is_active.desc(), Book.created_at.asc())).scalars().all()
 
 
 @router.get("/active", response_model=BookOut)
 def get_active_book(db: Session = Depends(get_db)) -> Book:
-    active = db.execute(_active_book_query().limit(1)).scalar_one_or_none()
+    stmt = _active_book_query()
+    allowed_book_ids = accessible_book_ids(db)
+    if allowed_book_ids is not None:
+        if not allowed_book_ids:
+            raise api_error(404, "ACTIVE_BOOK_NOT_FOUND", "no active book is configured")
+        stmt = stmt.where(Book.id.in_(allowed_book_ids))
+    active = db.execute(stmt.limit(1)).scalar_one_or_none()
     if not active:
         raise api_error(404, "ACTIVE_BOOK_NOT_FOUND", "no active book is configured")
     return active
@@ -63,11 +77,13 @@ def get_book(book_id: UUID, db: Session = Depends(get_db)) -> Book:
     book = db.get(Book, str(book_id))
     if not book:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    ensure_book_read_access(db, book_id=book.id)
     return book
 
 
 @router.patch("/{book_id}", response_model=BookOut)
 def patch_book(book_id: UUID, payload: BookPatch, db: Session = Depends(get_db)) -> Book:
+    require_superuser(db)
     book = db.get(Book, str(book_id))
     if not book:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
@@ -101,6 +117,7 @@ def patch_book(book_id: UUID, payload: BookPatch, db: Session = Depends(get_db))
 
 @router.delete("/{book_id}", status_code=204)
 def delete_book(book_id: UUID, db: Session = Depends(get_db)) -> None:
+    require_superuser(db)
     book = db.get(Book, str(book_id))
     if not book:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
@@ -120,6 +137,17 @@ def delete_book(book_id: UUID, db: Session = Depends(get_db)) -> None:
     has_vendors = db.execute(select(Vendor.guid).where(Vendor.book_id == book.id).limit(1)).scalar_one_or_none()
     if has_vendors:
         raise api_error(409, "BOOK_HAS_VENDORS", "book cannot be deleted while vendors exist", {"book_id": book.id})
+
+    has_access_assignments = db.execute(
+        select(UserBookAccess.user_id).where(UserBookAccess.book_id == book.id).limit(1)
+    ).scalar_one_or_none()
+    if has_access_assignments:
+        raise api_error(
+            409,
+            "BOOK_HAS_USER_ACCESS",
+            "book cannot be deleted while user access assignments exist",
+            {"book_id": book.id},
+        )
 
     removed_active = bool(book.is_active)
     db.delete(book)

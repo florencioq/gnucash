@@ -25,8 +25,8 @@ def test_auth_register_login_me_refresh_flow(client):
         "/auth/register",
         json={"email": "user@example.com", "password": "12345678"},
     )
-    assert duplicate.status_code == 409, duplicate.text
-    assert duplicate.json()["code"] == "USER_EMAIL_EXISTS"
+    assert duplicate.status_code == 401, duplicate.text
+    assert duplicate.json()["code"] == "AUTH_REQUIRED"
 
     invalid_login = client.post(
         "/auth/login",
@@ -45,6 +45,14 @@ def test_auth_register_login_me_refresh_flow(client):
     assert tokens["expires_in"] > 0
     assert tokens["access_token"]
     assert tokens["refresh_token"]
+
+    duplicate_with_superuser = client.post(
+        "/auth/register",
+        json={"email": "user@example.com", "password": "12345678"},
+        headers=_bearer(tokens["access_token"]),
+    )
+    assert duplicate_with_superuser.status_code == 409, duplicate_with_superuser.text
+    assert duplicate_with_superuser.json()["code"] == "USER_EMAIL_EXISTS"
 
     me = client.get("/auth/me", headers=_bearer(tokens["access_token"]))
     assert me.status_code == 200, me.text
@@ -102,3 +110,166 @@ def test_list_users_requires_access_token(client):
     no_auth = client.get("/auth/users")
     assert no_auth.status_code == 401, no_auth.text
     assert no_auth.json()["code"] == "AUTH_REQUIRED"
+
+
+def test_register_requires_superuser_after_bootstrap(client):
+    bootstrap = client.post(
+        "/auth/register",
+        json={"email": "admin@example.com", "password": "12345678", "full_name": "Admin"},
+    )
+    assert bootstrap.status_code == 201, bootstrap.text
+    assert bootstrap.json()["is_superuser"] is True
+
+    no_auth = client.post(
+        "/auth/register",
+        json={"email": "user@example.com", "password": "12345678", "full_name": "User"},
+    )
+    assert no_auth.status_code == 401, no_auth.text
+    assert no_auth.json()["code"] == "AUTH_REQUIRED"
+
+    admin_login = client.post(
+        "/auth/login",
+        json={"email": "admin@example.com", "password": "12345678"},
+    )
+    assert admin_login.status_code == 200, admin_login.text
+    admin_token = admin_login.json()["access_token"]
+
+    created_by_admin = client.post(
+        "/auth/register",
+        json={"email": "user@example.com", "password": "12345678", "full_name": "User"},
+        headers=_bearer(admin_token),
+    )
+    assert created_by_admin.status_code == 201, created_by_admin.text
+    assert created_by_admin.json()["is_superuser"] is False
+
+
+def test_book_access_roles_and_superuser_rules(client, monkeypatch):
+    monkeypatch.setattr(settings, "auth_required", True)
+
+    admin = client.post(
+        "/auth/register",
+        json={"email": "admin@example.com", "password": "12345678", "full_name": "Admin"},
+    )
+    assert admin.status_code == 201, admin.text
+    admin_user = admin.json()
+    assert admin_user["is_superuser"] is True
+
+    admin_login = client.post("/auth/login", json={"email": "admin@example.com", "password": "12345678"})
+    assert admin_login.status_code == 200, admin_login.text
+    admin_token = admin_login.json()["access_token"]
+
+    created_book_a = client.post("/books", json={"name": "Book A"}, headers=_bearer(admin_token))
+    assert created_book_a.status_code == 201, created_book_a.text
+    book_a = created_book_a.json()["id"]
+
+    created_book_b = client.post("/books", json={"name": "Book B"}, headers=_bearer(admin_token))
+    assert created_book_b.status_code == 201, created_book_b.text
+    book_b = created_book_b.json()["id"]
+
+    created_commodity = client.post(
+        "/commodities",
+        json={"namespace": "CURRENCY", "mnemonic": "USD", "fullname": "US Dollar", "fraction": 100, "quote": False},
+        headers=_bearer(admin_token),
+    )
+    assert created_commodity.status_code == 201, created_commodity.text
+    commodity_id = created_commodity.json()["id"]
+
+    root_a = client.post(
+        "/accounts",
+        json={
+            "book_id": book_a,
+            "name": "Root A",
+            "type": "ROOT",
+            "commodity_id": commodity_id,
+            "is_placeholder": True,
+        },
+        headers=_bearer(admin_token),
+    )
+    assert root_a.status_code == 201, root_a.text
+
+    root_b = client.post(
+        "/accounts",
+        json={
+            "book_id": book_b,
+            "name": "Root B",
+            "type": "ROOT",
+            "commodity_id": commodity_id,
+            "is_placeholder": True,
+        },
+        headers=_bearer(admin_token),
+    )
+    assert root_b.status_code == 201, root_b.text
+
+    regular = client.post(
+        "/auth/register",
+        json={"email": "user@example.com", "password": "12345678", "full_name": "User"},
+        headers=_bearer(admin_token),
+    )
+    assert regular.status_code == 201, regular.text
+    regular_user = regular.json()
+
+    regular_login = client.post("/auth/login", json={"email": "user@example.com", "password": "12345678"})
+    assert regular_login.status_code == 200, regular_login.text
+    regular_token = regular_login.json()["access_token"]
+
+    superuser_only = client.get("/auth/users", headers=_bearer(regular_token))
+    assert superuser_only.status_code == 403, superuser_only.text
+    assert superuser_only.json()["code"] == "FORBIDDEN"
+
+    no_access = client.get(f"/accounts?book_id={book_a}", headers=_bearer(regular_token))
+    assert no_access.status_code == 403, no_access.text
+    assert no_access.json()["code"] == "FORBIDDEN_BOOK"
+
+    grant_viewer = client.put(
+        f"/auth/users/{regular_user['id']}/books/{book_a}",
+        json={"role": "VIEWER"},
+        headers=_bearer(admin_token),
+    )
+    assert grant_viewer.status_code == 200, grant_viewer.text
+    assert grant_viewer.json()["role"] == "VIEWER"
+
+    read_allowed = client.get(f"/accounts?book_id={book_a}", headers=_bearer(regular_token))
+    assert read_allowed.status_code == 200, read_allowed.text
+
+    write_blocked = client.post(
+        "/accounts",
+        json={
+            "book_id": book_a,
+            "parent_id": root_a.json()["id"],
+            "name": "Cash",
+            "type": "ASSET",
+            "commodity_id": commodity_id,
+            "is_placeholder": False,
+        },
+        headers=_bearer(regular_token),
+    )
+    assert write_blocked.status_code == 403, write_blocked.text
+    assert write_blocked.json()["code"] == "FORBIDDEN_BOOK"
+
+    grant_editor = client.put(
+        f"/auth/users/{regular_user['id']}/books/{book_a}",
+        json={"role": "EDITOR"},
+        headers=_bearer(admin_token),
+    )
+    assert grant_editor.status_code == 200, grant_editor.text
+    assert grant_editor.json()["role"] == "EDITOR"
+
+    write_allowed = client.post(
+        "/accounts",
+        json={
+            "book_id": book_a,
+            "parent_id": root_a.json()["id"],
+            "name": "Cash",
+            "type": "ASSET",
+            "commodity_id": commodity_id,
+            "is_placeholder": False,
+        },
+        headers=_bearer(regular_token),
+    )
+    assert write_allowed.status_code == 201, write_allowed.text
+
+    wrong_book = client.get(f"/accounts?book_id={book_b}", headers=_bearer(regular_token))
+    assert wrong_book.status_code == 403, wrong_book.text
+
+    cannot_create_book = client.post("/books", json={"name": "Not Allowed"}, headers=_bearer(regular_token))
+    assert cannot_create_book.status_code == 403, cannot_create_book.text
