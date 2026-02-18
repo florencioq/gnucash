@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.10 - 2026-02-18
+
+User-access administration UI synchronization:
+- updated implementation profile to require superuser-facing user management UI with per-book grant assignment (`VIEWER`/`EDITOR`)
+- documented expected UI behavior for listing current grants and allowing grant update/revocation per user/book pair
+
 ## v0.4.9 - 2026-02-18
 
 User/authz specification synchronization:

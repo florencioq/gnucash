@@ -52,6 +52,9 @@ This document is a reference implementation profile and does not override normat
 - Books UI should expose active-book selection.
 - Frontend should include login screen and protected navigation guard for business routes.
 - Frontend should include user administration screen for superusers (create users and manage per-book access roles).
+- User administration screen should list existing per-book grants for each non-superuser and allow:
+  - create/update a grant with role `VIEWER` or `EDITOR`
+  - revoke a grant for a selected `(user, book)` pair
 - Operational forms should consume active book context.
 - Invoicing and purchasing pages should use wider layout for dense editing.
 - Invoicing must expose explicit post/unpost and payment undo actions.
