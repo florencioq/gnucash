@@ -47,6 +47,28 @@ This document is a reference implementation profile and does not override normat
 
 ## UX guidance
 
+- Primary application navigation SHOULD prefer grouped sections over a flat list of many same-level tabs.
+- Suggested primary navigation layout is a left sidebar with section headers and nested items.
+- Suggested section and icon mapping (Bootstrap Icons names):
+  - `Operações` (`bi-receipt-cutoff`)
+    - `Faturamentos` (`bi-file-earmark-text`)
+    - `Compras` (`bi-file-earmark-ruled`)
+    - `Contas a Receber` (`bi-cash-stack`)
+    - `Contas a Pagar` (`bi-wallet2`)
+  - `Contábil` (`bi-journal-text`)
+    - `Razão` (`bi-journal-bookmark`)
+  - `Relatórios` (`bi-bar-chart-line`)
+    - `DRE Mensal` (`bi-graph-up-arrow`)
+  - `Cadastros` (`bi-collection`)
+    - `Livros` (`bi-book`)
+    - `Moedas` (`bi-currency-exchange`)
+    - `Contas` (`bi-diagram-3`)
+    - `Clientes` (`bi-people`)
+    - `Fornecedores` (`bi-truck`)
+  - `Administração` (`bi-gear`)
+    - `Usuários` (`bi-person-badge`) (superuser only)
+- Suggested section ordering SHOULD be: `Operações`, `Contábil`, `Relatórios`, `Cadastros`, `Administração`.
+- Dynamic document tabs (`Fatura <id>`, `Compra <id>`) SHOULD remain closable and SHOULD render in a secondary row/panel, separate from primary sidebar navigation.
 - Account tree should be primary for account navigation.
 - Tree selectors should hide synthetic `ROOT` where user must choose actionable accounts.
 - Books UI should expose active-book selection.
