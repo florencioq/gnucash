@@ -99,6 +99,7 @@ export default function LedgerPage({
   const [deletingTxGuid, setDeletingTxGuid] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [chronologicalOrder, setChronologicalOrder] = useState("desc");
   const [ledgerForm, setLedgerForm] = useState({
     counterAccountId: "",
     date: todayIsoDate(),
@@ -355,13 +356,17 @@ export default function LedgerPage({
     ? commoditiesById.get(selectedLedgerAccount.commodity_id) || null
     : null;
   const currentBalance = ledgerRows.length > 0 ? ledgerRows[ledgerRows.length - 1].balance : 0;
-  const totalItems = ledgerRows.length;
+  const orderedLedgerRows = useMemo(
+    () => (chronologicalOrder === "asc" ? ledgerRows : [...ledgerRows].reverse()),
+    [ledgerRows, chronologicalOrder]
+  );
+  const totalItems = orderedLedgerRows.length;
   const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / pageSize);
   const currentPage = totalItems === 0 ? 1 : Math.min(page, totalPages);
   const pagedLedgerRows = useMemo(() => {
     const offset = (currentPage - 1) * pageSize;
-    return ledgerRows.slice(offset, offset + pageSize);
-  }, [ledgerRows, currentPage, pageSize]);
+    return orderedLedgerRows.slice(offset, offset + pageSize);
+  }, [orderedLedgerRows, currentPage, pageSize]);
   const enteredAmount = parseDecimal(ledgerForm.amount);
   const projectedBalance = Number.isFinite(enteredAmount)
     ? currentBalance + enteredAmount
@@ -836,6 +841,20 @@ export default function LedgerPage({
       <div className="d-flex align-items-center justify-content-between mt-3 mb-3 flex-wrap gap-2">
         <div className="small-muted">Mostrando {pagedLedgerRows.length} de {totalItems} lancamentos</div>
         <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0 small-muted">Ordem</label>
+          <select
+            className="form-select form-select-sm"
+            value={chronologicalOrder}
+            onChange={(event) => {
+              setChronologicalOrder(event.target.value);
+              setPage(1);
+            }}
+            disabled={!activeBookId}
+            style={{ width: "180px" }}
+          >
+            <option value="desc">Mais recentes primeiro</option>
+            <option value="asc">Mais antigos primeiro</option>
+          </select>
           <label className="form-label mb-0 small-muted">Itens por página</label>
           <select
             className="form-select form-select-sm"
