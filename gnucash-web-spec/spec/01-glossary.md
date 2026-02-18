@@ -72,6 +72,20 @@ One leg of a transaction posted to a specific account.
 - `quantity_num/quantity_denom` is quantity rational.
 - `lot_guid` may link split to a lot.
 
+## User
+
+Authenticated API principal.
+
+- `is_superuser` indicates platform-level administrative privileges.
+- Non-superusers are authorized through per-book grants.
+
+## User Book Access
+
+Permission grant linking one user to one book.
+
+- `VIEWER`: read-only access for book-scoped resources.
+- `EDITOR`: read/write access for book-scoped resources.
+
 ## Invoice/Bill Status
 
 Computed status values returned by API:

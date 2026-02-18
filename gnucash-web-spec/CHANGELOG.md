@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.9 - 2026-02-18
+
+User/authz specification synchronization:
+- regenerated OpenAPI contract from backend runtime, including `/auth/users` and user-book access management endpoints
+- documented bootstrap superuser rule, post-bootstrap registration restrictions, and role model (`is_superuser`, `VIEWER`, `EDITOR`)
+- updated domain/data specs with `User` and `UserBookAccess` entities, identifiers, relationships, and invariants
+- updated endpoint guide and security requirements with superuser-only operations and per-book read/write authorization behavior
+- expanded acceptance-testing document to include auth and user access-control scenarios
+
 ## v0.4.8 - 2026-02-18
 
 Simple JWT authentication baseline:

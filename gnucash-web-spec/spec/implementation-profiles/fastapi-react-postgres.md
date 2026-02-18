@@ -28,6 +28,7 @@ This document is a reference implementation profile and does not override normat
 5. PostgreSQL SHOULD be the default runtime database for this profile.
 6. SQLite MAY be used for lightweight local tests.
 7. Invoice/bill auto-number generation for blank IDs SHOULD use atomic server-side reservation per `(book_id, owner_type)` (counter row lock or equivalent `upsert-returning` strategy).
+8. Authenticated clients SHOULD centralize bearer-token storage/refresh and automatic `Authorization` header injection in `src/api/client.js`.
 
 ## Suggested backend folder shape
 
@@ -49,6 +50,8 @@ This document is a reference implementation profile and does not override normat
 - Account tree should be primary for account navigation.
 - Tree selectors should hide synthetic `ROOT` where user must choose actionable accounts.
 - Books UI should expose active-book selection.
+- Frontend should include login screen and protected navigation guard for business routes.
+- Frontend should include user administration screen for superusers (create users and manage per-book access roles).
 - Operational forms should consume active book context.
 - Invoicing and purchasing pages should use wider layout for dense editing.
 - Invoicing must expose explicit post/unpost and payment undo actions.

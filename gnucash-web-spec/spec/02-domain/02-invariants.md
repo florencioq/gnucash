@@ -74,3 +74,14 @@
 46. Deleting a commodity MUST be rejected while referenced by accounts, transactions, customers, vendors, or invoices/bills.
 47. Deleting an account MUST be rejected while it has children, splits, or invoice/bill entries.
 48. When invoice/bill `id` is omitted or blank, server-side auto-numbering MUST reserve the next value atomically and avoid collisions under concurrent requests per `(book_id, owner_type)`.
+
+## Authentication and authorization
+
+49. User `email` MUST be unique after normalization (trim + lowercase).
+50. Passwords MUST be persisted only as salted iterative hashes (plaintext storage is forbidden).
+51. Bootstrap registration rule: when no users exist, the first registered user MUST be created as superuser.
+52. After bootstrap, user registration MUST require an authenticated superuser.
+53. `GET /auth/users` and user-book access management endpoints MUST require authenticated superuser.
+54. For authenticated non-superusers, book-scoped reads MUST be rejected when there is no `UserBookAccess` for the target book.
+55. For authenticated non-superusers, book-scoped writes MUST require `UserBookAccess.role = EDITOR`.
+56. Superusers MUST bypass per-book access checks.

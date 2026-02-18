@@ -9,6 +9,20 @@
 5. Global route protection is controlled by `AUTH_REQUIRED`:
    - `false`: business endpoints are public (current backward-compatible default).
    - `true`: business endpoints require valid bearer access token.
+6. First-user bootstrap registration is allowed only when user table is empty and must create a superuser.
+7. After bootstrap, user registration requires authenticated superuser.
+
+## Authorization baseline
+
+1. User model includes:
+   - `is_superuser` global privilege flag.
+   - optional per-book grants in `user_book_access` with role `VIEWER|EDITOR`.
+2. Superuser bypasses book-level authorization checks.
+3. Non-superuser access policy:
+   - read endpoints for a target book require grant `VIEWER` or `EDITOR`.
+   - write endpoints for a target book require grant `EDITOR`.
+4. User-management endpoints (`/auth/users` and `/auth/users/{user_id}/books*`) require superuser.
+5. Book and commodity mutations require superuser.
 
 ## Current requirements
 

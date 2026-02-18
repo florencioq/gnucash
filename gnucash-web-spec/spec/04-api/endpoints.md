@@ -8,6 +8,9 @@
 - Validation/invariant failures are returned as `400` or `409` by application handlers.
 - Runtime-generated OpenAPI may still list `422` defaults from FastAPI metadata.
 - When `AUTH_REQUIRED=true`, all business routers (`/books`, `/commodities`, `/accounts`, `/transactions`, `/customers`, `/vendors`, `/invoices`, `/bills`, `/reports`) require `Authorization: Bearer <access_token>`.
+- Authorization model combines:
+  - global privilege: `is_superuser`
+  - per-book grant: `VIEWER` or `EDITOR` via `user_book_access`
 
 ## Health
 
@@ -15,27 +18,43 @@
 
 ## Authentication
 
-- `POST /auth/register`: create user with `email`, `password`, optional `full_name`.
+- `POST /auth/register`: create user with `email`, `password`, optional `full_name`, optional `is_superuser`.
+  - bootstrap behavior: if no user exists yet, request may be unauthenticated and created user is forced to superuser.
+  - after bootstrap: requires authenticated superuser.
 - `POST /auth/login`: returns `access_token`, `refresh_token`, `token_type`, `expires_in`.
 - `POST /auth/refresh`: exchange valid refresh token for a new token pair.
 - `GET /auth/me`: returns current authenticated user (requires valid bearer access token).
+- `GET /auth/users`: list users (superuser only).
+- `GET /auth/users/{user_id}/books`: list user book grants (superuser only).
+- `PUT /auth/users/{user_id}/books/{book_id}`: create/update book grant with role `VIEWER|EDITOR` (superuser only).
+- `DELETE /auth/users/{user_id}/books/{book_id}`: remove book grant (superuser only).
+
+## Authorization behavior by resource
+
+- Superuser:
+  - full read/write across books.
+  - required for book/commodity mutations and user management endpoints.
+- Non-superuser:
+  - read operations for a target `book_id` require grant `VIEWER` or `EDITOR`.
+  - write operations for a target `book_id` require grant `EDITOR`.
+  - operations against unauthorized books return `403 FORBIDDEN_BOOK`.
 
 ## Books
 
-- `POST /books`: create book (`is_active` optional).
-- `GET /books`: list books (active first).
-- `GET /books/active`: get active book.
-- `GET /books/{book_id}`: get by id.
-- `PATCH /books/{book_id}`: patch `name`/`is_active`.
-- `DELETE /books/{book_id}`: delete when no linked accounts, invoices/bills, customers, vendors.
+- `POST /books`: create book (`is_active` optional, superuser only).
+- `GET /books`: list books (active first; filtered to accessible books for non-superusers).
+- `GET /books/active`: get active book within caller visibility.
+- `GET /books/{book_id}`: get by id (requires book read access for non-superusers).
+- `PATCH /books/{book_id}`: patch `name`/`is_active` (superuser only).
+- `DELETE /books/{book_id}`: delete when no linked accounts, invoices/bills, customers, vendors, or user access grants (superuser only).
 
 ## Commodities
 
-- `POST /commodities`
+- `POST /commodities` (superuser only)
 - `GET /commodities?namespace=`
 - `GET /commodities/{commodity_id}`
-- `PATCH /commodities/{commodity_id}`
-- `DELETE /commodities/{commodity_id}` (blocked while referenced by accounts, customers, vendors, invoices/bills, transactions).
+- `PATCH /commodities/{commodity_id}` (superuser only)
+- `DELETE /commodities/{commodity_id}` (superuser only; blocked while referenced by accounts, customers, vendors, invoices/bills, transactions).
 
 ## Accounts
 

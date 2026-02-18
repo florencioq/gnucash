@@ -17,6 +17,216 @@ paths:
                   type: string
                 type: object
                 title: Response Health Health Get
+  /auth/register:
+    post:
+      tags:
+      - Auth
+      summary: Register User
+      operationId: register_user_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Login
+      operationId: login_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Refresh Tokens
+      operationId: refresh_tokens_auth_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefreshRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Me
+      operationId: me_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserOut'
+      security:
+      - HTTPBearer: []
+  /auth/users:
+    get:
+      tags:
+      - Auth
+      summary: List Users
+      operationId: list_users_auth_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AuthUserOut'
+                type: array
+                title: Response List Users Auth Users Get
+      security:
+      - HTTPBearer: []
+  /auth/users/{user_id}/books:
+    get:
+      tags:
+      - Auth
+      summary: List User Book Access
+      operationId: list_user_book_access_auth_users__user_id__books_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBookAccessOut'
+                title: Response List User Book Access Auth Users  User Id  Books Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /auth/users/{user_id}/books/{book_id}:
+    put:
+      tags:
+      - Auth
+      summary: Upsert User Book Access
+      operationId: upsert_user_book_access_auth_users__user_id__books__book_id__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserBookAccessUpsertRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBookAccessOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Auth
+      summary: Delete User Book Access
+      operationId: delete_user_book_access_auth_users__user_id__books__book_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /books:
     get:
       tags:
@@ -33,6 +243,8 @@ paths:
                   $ref: '#/components/schemas/BookOut'
                 type: array
                 title: Response List Books Books Get
+      security:
+      - HTTPBearer: []
     post:
       tags:
       - Books
@@ -57,6 +269,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /books/active:
     get:
       tags:
@@ -70,12 +284,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BookOut'
+      security:
+      - HTTPBearer: []
   /books/{book_id}:
     get:
       tags:
       - Books
       summary: Get Book
       operationId: get_book_books__book_id__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: path
@@ -102,6 +320,8 @@ paths:
       - Books
       summary: Patch Book
       operationId: patch_book_books__book_id__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: path
@@ -134,6 +354,8 @@ paths:
       - Books
       summary: Delete Book
       operationId: delete_book_books__book_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: path
@@ -157,6 +379,8 @@ paths:
       - Commodities
       summary: Create Commodity
       operationId: create_commodity_commodities_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -181,6 +405,8 @@ paths:
       - Commodities
       summary: List Commodities
       operationId: list_commodities_commodities_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: namespace
         in: query
@@ -212,6 +438,8 @@ paths:
       - Commodities
       summary: Get Commodity
       operationId: get_commodity_commodities__commodity_id__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: commodity_id
         in: path
@@ -238,6 +466,8 @@ paths:
       - Commodities
       summary: Patch Commodity
       operationId: patch_commodity_commodities__commodity_id__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: commodity_id
         in: path
@@ -270,6 +500,8 @@ paths:
       - Commodities
       summary: Delete Commodity
       operationId: delete_commodity_commodities__commodity_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: commodity_id
         in: path
@@ -293,6 +525,8 @@ paths:
       - Accounts
       summary: Create Account
       operationId: create_account_accounts_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -317,6 +551,8 @@ paths:
       - Accounts
       summary: List Accounts
       operationId: list_accounts_accounts_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -347,6 +583,8 @@ paths:
       - Accounts
       summary: Get Account Tree
       operationId: get_account_tree_accounts_tree_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -377,6 +615,8 @@ paths:
       - Accounts
       summary: Get Account
       operationId: get_account_accounts__account_id__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: account_id
         in: path
@@ -403,6 +643,8 @@ paths:
       - Accounts
       summary: Patch Account
       operationId: patch_account_accounts__account_id__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: account_id
         in: path
@@ -435,6 +677,8 @@ paths:
       - Accounts
       summary: Delete Account
       operationId: delete_account_accounts__account_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: account_id
         in: path
@@ -458,6 +702,8 @@ paths:
       - Transactions
       summary: Create Transaction
       operationId: create_transaction_transactions_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -482,6 +728,8 @@ paths:
       - Transactions
       summary: List Transactions
       operationId: list_transactions_transactions_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -512,6 +760,8 @@ paths:
       - Transactions
       summary: Get Transaction
       operationId: get_transaction_transactions__tx_guid__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: tx_guid
         in: path
@@ -538,6 +788,8 @@ paths:
       - Transactions
       summary: Patch Transaction
       operationId: patch_transaction_transactions__tx_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: tx_guid
         in: path
@@ -570,6 +822,8 @@ paths:
       - Transactions
       summary: Delete Transaction
       operationId: delete_transaction_transactions__tx_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: tx_guid
         in: path
@@ -593,6 +847,8 @@ paths:
       - Customers
       summary: Create Customer
       operationId: create_customer_customers_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -617,6 +873,8 @@ paths:
       - Customers
       summary: List Customers
       operationId: list_customers_customers_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -647,6 +905,8 @@ paths:
       - Customers
       summary: Get Customer
       operationId: get_customer_customers__customer_guid__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: customer_guid
         in: path
@@ -673,6 +933,8 @@ paths:
       - Customers
       summary: Patch Customer
       operationId: patch_customer_customers__customer_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: customer_guid
         in: path
@@ -705,6 +967,8 @@ paths:
       - Customers
       summary: Delete Customer
       operationId: delete_customer_customers__customer_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: customer_guid
         in: path
@@ -728,6 +992,8 @@ paths:
       - Vendors
       summary: Create Vendor
       operationId: create_vendor_vendors_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -752,6 +1018,8 @@ paths:
       - Vendors
       summary: List Vendors
       operationId: list_vendors_vendors_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -782,6 +1050,8 @@ paths:
       - Vendors
       summary: Get Vendor
       operationId: get_vendor_vendors__vendor_guid__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: vendor_guid
         in: path
@@ -808,6 +1078,8 @@ paths:
       - Vendors
       summary: Patch Vendor
       operationId: patch_vendor_vendors__vendor_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: vendor_guid
         in: path
@@ -840,6 +1112,8 @@ paths:
       - Vendors
       summary: Delete Vendor
       operationId: delete_vendor_vendors__vendor_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: vendor_guid
         in: path
@@ -863,6 +1137,8 @@ paths:
       - Invoices
       summary: Create Invoice
       operationId: create_invoice_invoices_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -887,6 +1163,8 @@ paths:
       - Invoices
       summary: List Invoices
       operationId: list_invoices_invoices_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -926,6 +1204,8 @@ paths:
       - Invoices
       summary: List Invoices Paginated
       operationId: list_invoices_paginated_invoices_list_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -947,23 +1227,23 @@ paths:
         in: query
         required: false
         schema:
-          type: string
           enum:
           - ALL
           - POSTED
           - UNPOSTED
+          type: string
           default: ALL
           title: Posted Filter
       - name: payment_filter
         in: query
         required: false
         schema:
-          type: string
           enum:
           - ALL
           - PAID
           - UNPAID
           - PARTIAL
+          type: string
           default: ALL
           title: Payment Filter
       - name: posted_start_date
@@ -988,7 +1268,6 @@ paths:
         in: query
         required: false
         schema:
-          type: string
           enum:
           - id
           - customer
@@ -998,16 +1277,17 @@ paths:
           - payment_status
           - total
           - open
+          type: string
           default: date_opened
           title: Sort Key
       - name: sort_direction
         in: query
         required: false
         schema:
-          type: string
           enum:
           - asc
           - desc
+          type: string
           default: desc
           title: Sort Direction
       - name: page
@@ -1015,7 +1295,7 @@ paths:
         required: false
         schema:
           type: integer
-          minimum: 1.0
+          minimum: 1
           default: 1
           title: Page
       - name: page_size
@@ -1023,8 +1303,8 @@ paths:
         required: false
         schema:
           type: integer
-          minimum: 1.0
-          maximum: 200.0
+          maximum: 200
+          minimum: 1
           default: 25
           title: Page Size
       responses:
@@ -1046,6 +1326,8 @@ paths:
       - Invoices
       summary: Get Invoice
       operationId: get_invoice_invoices__invoice_guid__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1072,6 +1354,8 @@ paths:
       - Invoices
       summary: Patch Invoice
       operationId: patch_invoice_invoices__invoice_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1104,6 +1388,8 @@ paths:
       - Invoices
       summary: Delete Invoice
       operationId: delete_invoice_invoices__invoice_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1127,6 +1413,8 @@ paths:
       - Invoices
       summary: Post Invoice
       operationId: post_invoice_invoices__invoice_guid__post_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1160,6 +1448,8 @@ paths:
       - Invoices
       summary: Unpost Invoice
       operationId: unpost_invoice_invoices__invoice_guid__unpost_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1187,6 +1477,8 @@ paths:
       - Invoices
       summary: Create Invoice Payment
       operationId: create_invoice_payment_invoices__invoice_guid__payments_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1220,6 +1512,8 @@ paths:
       - Invoices
       summary: Undo Invoice Payment
       operationId: undo_invoice_payment_invoices__invoice_guid__payments__payment_tx_guid__undo_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1254,6 +1548,8 @@ paths:
       - Invoices
       summary: Create Invoice Entry
       operationId: create_invoice_entry_invoices__invoice_guid__entries_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1287,6 +1583,8 @@ paths:
       - Invoices
       summary: Patch Invoice Entry
       operationId: patch_invoice_entry_invoices__invoice_guid__entries__entry_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1326,6 +1624,8 @@ paths:
       - Invoices
       summary: Delete Invoice Entry
       operationId: delete_invoice_entry_invoices__invoice_guid__entries__entry_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: invoice_guid
         in: path
@@ -1356,6 +1656,8 @@ paths:
       - Bills
       summary: Create Bill
       operationId: create_bill_bills_post
+      security:
+      - HTTPBearer: []
       requestBody:
         required: true
         content:
@@ -1380,6 +1682,8 @@ paths:
       - Bills
       summary: List Bills
       operationId: list_bills_bills_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -1419,6 +1723,8 @@ paths:
       - Bills
       summary: List Bills Paginated
       operationId: list_bills_paginated_bills_list_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -1440,23 +1746,23 @@ paths:
         in: query
         required: false
         schema:
-          type: string
           enum:
           - ALL
           - POSTED
           - UNPOSTED
+          type: string
           default: ALL
           title: Posted Filter
       - name: payment_filter
         in: query
         required: false
         schema:
-          type: string
           enum:
           - ALL
           - PAID
           - UNPAID
           - PARTIAL
+          type: string
           default: ALL
           title: Payment Filter
       - name: posted_start_date
@@ -1481,7 +1787,6 @@ paths:
         in: query
         required: false
         schema:
-          type: string
           enum:
           - id
           - vendor
@@ -1491,16 +1796,17 @@ paths:
           - payment_status
           - total
           - open
+          type: string
           default: date_opened
           title: Sort Key
       - name: sort_direction
         in: query
         required: false
         schema:
-          type: string
           enum:
           - asc
           - desc
+          type: string
           default: desc
           title: Sort Direction
       - name: page
@@ -1508,7 +1814,7 @@ paths:
         required: false
         schema:
           type: integer
-          minimum: 1.0
+          minimum: 1
           default: 1
           title: Page
       - name: page_size
@@ -1516,8 +1822,8 @@ paths:
         required: false
         schema:
           type: integer
-          minimum: 1.0
-          maximum: 200.0
+          maximum: 200
+          minimum: 1
           default: 25
           title: Page Size
       responses:
@@ -1539,6 +1845,8 @@ paths:
       - Bills
       summary: Get Bill
       operationId: get_bill_bills__bill_guid__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1565,6 +1873,8 @@ paths:
       - Bills
       summary: Patch Bill
       operationId: patch_bill_bills__bill_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1597,6 +1907,8 @@ paths:
       - Bills
       summary: Delete Bill
       operationId: delete_bill_bills__bill_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1620,6 +1932,8 @@ paths:
       - Bills
       summary: Post Bill
       operationId: post_bill_bills__bill_guid__post_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1653,6 +1967,8 @@ paths:
       - Bills
       summary: Unpost Bill
       operationId: unpost_bill_bills__bill_guid__unpost_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1680,6 +1996,8 @@ paths:
       - Bills
       summary: Create Bill Payment
       operationId: create_bill_payment_bills__bill_guid__payments_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1713,6 +2031,8 @@ paths:
       - Bills
       summary: Undo Bill Payment
       operationId: undo_bill_payment_bills__bill_guid__payments__payment_tx_guid__undo_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1747,6 +2067,8 @@ paths:
       - Bills
       summary: Create Bill Entry
       operationId: create_bill_entry_bills__bill_guid__entries_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1780,6 +2102,8 @@ paths:
       - Bills
       summary: Patch Bill Entry
       operationId: patch_bill_entry_bills__bill_guid__entries__entry_guid__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1819,6 +2143,8 @@ paths:
       - Bills
       summary: Delete Bill Entry
       operationId: delete_bill_entry_bills__bill_guid__entries__entry_guid__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: bill_guid
         in: path
@@ -1849,6 +2175,8 @@ paths:
       - Reports
       summary: Get Income Statement
       operationId: get_income_statement_reports_income_statement_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -1883,6 +2211,8 @@ paths:
       - Reports
       summary: Get Income Statement Matrix
       operationId: get_income_statement_matrix_reports_income_statement_matrix_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: book_id
         in: query
@@ -1924,6 +2254,8 @@ paths:
       - Reports
       summary: Get Income Statement Account Entries
       operationId: get_income_statement_account_entries_reports_income_statement_accounts__account_id__entries_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: account_id
         in: path
@@ -2175,6 +2507,120 @@ components:
       - EXPENSE
       - EQUITY
       title: AccountTypeSchema
+    AuthLoginRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Email
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+      type: object
+      required:
+      - email
+      - password
+      title: AuthLoginRequest
+    AuthRefreshRequest:
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+          title: Refresh Token
+      type: object
+      required:
+      - refresh_token
+      title: AuthRefreshRequest
+    AuthRegisterRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Email
+        password:
+          type: string
+          maxLength: 256
+          minLength: 8
+          title: Password
+        full_name:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Full Name
+        is_superuser:
+          type: boolean
+          title: Is Superuser
+          default: false
+      type: object
+      required:
+      - email
+      - password
+      title: AuthRegisterRequest
+    AuthTokenOut:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
+        token_type:
+          type: string
+          title: Token Type
+        expires_in:
+          type: integer
+          title: Expires In
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      - expires_in
+      title: AuthTokenOut
+    AuthUserOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        email:
+          type: string
+          title: Email
+        full_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Full Name
+        is_active:
+          type: boolean
+          title: Is Active
+        is_superuser:
+          type: boolean
+          title: Is Superuser
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updated At
+      type: object
+      required:
+      - id
+      - email
+      - full_name
+      - is_active
+      - is_superuser
+      - created_at
+      - updated_at
+      title: AuthUserOut
     BillCreate:
       properties:
         guid:
@@ -2250,11 +2696,13 @@ components:
         date_opened:
           anyOf:
           - type: string
+            format: date-time
           - type: 'null'
           title: Date Opened
         date_posted:
           anyOf:
           - type: string
+            format: date-time
           - type: 'null'
           title: Date Posted
         currency_guid:
@@ -2559,6 +3007,12 @@ components:
       required:
       - post_account_guid
       title: BillPostRequest
+    BookAccessRoleSchema:
+      type: string
+      enum:
+      - VIEWER
+      - EDITOR
+      title: BookAccessRoleSchema
     BookCreate:
       properties:
         id:
@@ -3977,11 +4431,13 @@ components:
         date_opened:
           anyOf:
           - type: string
+            format: date-time
           - type: 'null'
           title: Date Opened
         date_posted:
           anyOf:
           - type: string
+            format: date-time
           - type: 'null'
           title: Date Posted
         currency_guid:
@@ -4609,6 +5065,35 @@ components:
           title: Splits
       type: object
       title: TransactionPatch
+    UserBookAccessOut:
+      properties:
+        user_id:
+          type: string
+          title: User Id
+        book_id:
+          type: string
+          title: Book Id
+        role:
+          $ref: '#/components/schemas/BookAccessRoleSchema'
+        created_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Created At
+      type: object
+      required:
+      - user_id
+      - book_id
+      - role
+      - created_at
+      title: UserBookAccessOut
+    UserBookAccessUpsertRequest:
+      properties:
+        role:
+          $ref: '#/components/schemas/BookAccessRoleSchema'
+          default: EDITOR
+      type: object
+      title: UserBookAccessUpsertRequest
     ValidationError:
       properties:
         loc:
@@ -4959,3 +5444,7 @@ components:
           title: Tax Table Guid
       type: object
       title: VendorPatch
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

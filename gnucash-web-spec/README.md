@@ -11,6 +11,8 @@ This repository defines stable contracts to guide implementations while keeping 
 Includes:
 - Book and active-book workflow
 - Commodity
+- User authentication (`/auth/*`) with access/refresh tokens
+- User authorization with `is_superuser` and per-book access grants
 - Account hierarchy and account tree balances
 - Customer and Vendor masters
 - Invoice and Bill workflows (entries, posting, unposting, payments, payment undo)
@@ -19,7 +21,6 @@ Includes:
 - Income statement reporting endpoints
 
 Out of scope:
-- authentication/authorization policy definition
 - tax engine and taxtable behavior
 - inventory costing rules
 - closing process and period lock semantics

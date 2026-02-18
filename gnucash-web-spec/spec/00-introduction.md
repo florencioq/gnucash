@@ -12,13 +12,13 @@ The specification:
 ## Scope
 
 Includes:
+- User authentication and authorization baseline
 - Book, Commodity, Account, Customer, Vendor
 - Invoice/Bill lifecycle operations
 - Transaction/Split posting operations
 - Account-tree balances and income statement reporting APIs
 
 Does not include:
-- authn/authz product policy
 - tax-table calculation rules
 - inventory and stock valuation models
 - accounting close and period lock workflows

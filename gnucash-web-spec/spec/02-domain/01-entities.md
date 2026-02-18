@@ -16,6 +16,26 @@ Fields:
 - `next_value: integer >= 1`
 - `width: integer >= 1`
 
+## User
+
+Fields:
+- `id: string(36)` UUID
+- `email: string(320)` normalized lowercase
+- `password_hash: string(255)` salted iterative hash
+- `full_name: string(255) | null`
+- `is_active: boolean`
+- `is_superuser: boolean`
+- `created_at: timestamp UTC`
+- `updated_at: timestamp UTC`
+
+## User Book Access
+
+Fields:
+- `user_id: string(36)` (composite key part)
+- `book_id: string(36)` (composite key part)
+- `role: VIEWER | EDITOR`
+- `created_at: timestamp UTC`
+
 ## Commodity
 
 Fields:

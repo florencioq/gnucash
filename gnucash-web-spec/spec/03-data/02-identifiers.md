@@ -4,6 +4,7 @@
 
 The API uses UUID textual format (36-char canonical form) for primary identifiers, including:
 - `Book.id`
+- `User.id`
 - `Commodity.id`
 - `Account.id`
 - `Customer.guid`
@@ -13,6 +14,7 @@ The API uses UUID textual format (36-char canonical form) for primary identifier
 - `Lot.guid`
 - `Transaction.guid`
 - `Split.guid`
+- `UserBookAccess.user_id + UserBookAccess.book_id` (composite key)
 
 ## Polymorphic owner identifier
 
