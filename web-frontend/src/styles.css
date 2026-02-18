@@ -305,6 +305,18 @@ body {
   background: #fffefb;
 }
 
+@media (min-width: 768px) {
+  .invoice-entry-form .billing-entry-description-col {
+    flex: 0 0 13%;
+    max-width: 13%;
+  }
+
+  .invoice-entry-form .billing-entry-expense-col {
+    flex: 0 0 20%;
+    max-width: 20%;
+  }
+}
+
 .invoice-payment-panel {
   border: 1px solid #d7cfbf;
   border-radius: 10px;

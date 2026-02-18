@@ -129,6 +129,15 @@ function keepTypeBranches(nodes, allowedTypes) {
   return nodes.map(visit).filter(Boolean);
 }
 
+function reverseAccountPath(path) {
+  const parts = String(path || "")
+    .split(" / ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return String(path || "");
+  return parts.reverse().join(" / ");
+}
+
 export default function BillingPage({
   initialBillGuid = "",
   onOpenBillingList = null,
@@ -237,8 +246,11 @@ export default function BillingPage({
   const selectedIncomeAccount = accountsById.get(entryForm.income_account_guid) || null;
   const selectedPostingAccount = accountsById.get(postingAccountGuid) || null;
   const selectedPaymentAccount = accountsById.get(paymentForm.transfer_account_guid) || null;
+  const selectedIncomeAccountPath = selectedIncomeAccount
+    ? accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name
+    : "";
   const incomeAccountLabel = selectedIncomeAccount
-    ? `${accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name} (${selectedIncomeAccount.type})`
+    ? `${reverseAccountPath(selectedIncomeAccountPath)} (${selectedIncomeAccount.type})`
     : "Selecione a conta de despesa";
   const postingAccountLabel = selectedPostingAccount
     ? `${accountFullNameById.get(selectedPostingAccount.id) || selectedPostingAccount.name} (${selectedPostingAccount.type})`
@@ -1613,7 +1625,7 @@ export default function BillingPage({
                       required
                     />
                   </div>
-                  <div className="col-md-2">
+                  <div className="col-md-2 billing-entry-description-col">
                     <label className="form-label">Descricao</label>
                     <input
                       className="form-control"
@@ -1631,7 +1643,7 @@ export default function BillingPage({
                       onChange={(event) => setEntryForm((current) => ({ ...current, action: event.target.value }))}
                     />
                   </div>
-                  <div className="col-md-2">
+                  <div className="col-md-2 billing-entry-expense-col">
                     <label className="form-label">Conta de Despesa</label>
                     <div className="tree-select">
                       <button
@@ -1639,7 +1651,16 @@ export default function BillingPage({
                         className="form-select tree-select-toggle"
                         onClick={toggleIncomePicker}
                       >
-                        <span className="tree-select-label">{incomeAccountLabel}</span>
+                        <span
+                          className="tree-select-label"
+                          title={
+                            selectedIncomeAccount
+                              ? `${selectedIncomeAccountPath} (${selectedIncomeAccount.type})`
+                              : incomeAccountLabel
+                          }
+                        >
+                          {incomeAccountLabel}
+                        </span>
                         <span className="tree-select-caret">{incomePickerOpen ? "▲" : "▼"}</span>
                       </button>
                       {incomePickerOpen ? (
