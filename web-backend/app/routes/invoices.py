@@ -164,6 +164,71 @@ def _ensure_post_account(
     return account
 
 
+def _ensure_retained_tax_account(
+    db: Session,
+    *,
+    retained_tax_account_guid: str,
+    book_id: str,
+    currency_guid: str,
+    post_account_guid: str,
+) -> Account:
+    account = db.get(Account, retained_tax_account_guid)
+    if account is None:
+        raise api_error(
+            400,
+            "INVALID_RETAINED_TAX_ACCOUNT",
+            "retained tax account must reference an existing account",
+            {"retained_tax_account_guid": retained_tax_account_guid},
+        )
+    if account.book_id != book_id:
+        raise api_error(
+            409,
+            "INVALID_RETAINED_TAX_ACCOUNT_BOOK",
+            "retained tax account must belong to the same book as the invoice",
+            {
+                "retained_tax_account_guid": retained_tax_account_guid,
+                "book_id": book_id,
+                "account_book_id": account.book_id,
+            },
+        )
+    if account.type != AccountType.ASSET:
+        raise api_error(
+            409,
+            "INVALID_RETAINED_TAX_ACCOUNT_TYPE",
+            "retained tax account must use type ASSET",
+            {"retained_tax_account_guid": retained_tax_account_guid, "account_type": account.type.value},
+        )
+    if account.is_placeholder:
+        raise api_error(
+            409,
+            "INVALID_RETAINED_TAX_ACCOUNT",
+            "retained tax account cannot be a placeholder account",
+            {"retained_tax_account_guid": retained_tax_account_guid},
+        )
+    if account.commodity_id != currency_guid:
+        raise api_error(
+            409,
+            "INVALID_RETAINED_TAX_ACCOUNT_COMMODITY",
+            "retained tax account commodity must match invoice currency",
+            {
+                "retained_tax_account_guid": retained_tax_account_guid,
+                "retained_tax_account_commodity_id": account.commodity_id,
+                "invoice_currency_guid": currency_guid,
+            },
+        )
+    if account.id == post_account_guid:
+        raise api_error(
+            409,
+            "INVALID_RETAINED_TAX_ACCOUNT",
+            "retained tax account must be different from post account",
+            {
+                "retained_tax_account_guid": retained_tax_account_guid,
+                "post_account_guid": post_account_guid,
+            },
+        )
+    return account
+
+
 def _ensure_payment_transfer_account(
     db: Session,
     *,
@@ -301,7 +366,7 @@ def _entry_totals(entry: InvoiceEntry) -> tuple[Fraction, Fraction, Fraction]:
 
     subtotal = base - discount_amount
     tax = Fraction(entry.i_tax_num, entry.i_tax_denom or 1)
-    total = subtotal + tax
+    total = subtotal
     return subtotal, tax, total
 
 
@@ -882,20 +947,51 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     invoice_type = (invoice.invoice_type or "INVOICE").strip().upper()
     sign = Fraction(-1, 1) if invoice_type == "CREDIT_NOTE" else Fraction(1, 1)
 
-    receivable_total = Fraction(0, 1)
+    receivable_gross_total = Fraction(0, 1)
+    retained_tax_total = Fraction(0, 1)
     income_totals: dict[str, Fraction] = defaultdict(lambda: Fraction(0, 1))
     for entry in invoice.entries:
-        _, _, total = _entry_totals(entry)
+        _, tax, total = _entry_totals(entry)
         signed_total = total * sign
-        receivable_total += signed_total
+        signed_tax = tax * sign
+        receivable_gross_total += signed_total
+        retained_tax_total += signed_tax
         income_totals[entry.i_acct] += -signed_total
 
-    if receivable_total == 0:
+    receivable_net_total = receivable_gross_total - retained_tax_total
+    if receivable_net_total == 0:
         raise api_error(
             409,
-            "INVOICE_TOTAL_ZERO",
-            "invoice total must be non-zero to post",
-            {"invoice_guid": invoice.guid},
+            "INVOICE_NET_TOTAL_ZERO",
+            "invoice receivable net amount must be non-zero to post",
+            {
+                "invoice_guid": invoice.guid,
+                "gross_amount_num": receivable_gross_total.numerator,
+                "gross_amount_denom": receivable_gross_total.denominator,
+                "retained_tax_num": retained_tax_total.numerator,
+                "retained_tax_denom": retained_tax_total.denominator,
+            },
+        )
+
+    retained_tax_account_guid = str(payload.retained_tax_account_guid) if payload.retained_tax_account_guid else ""
+    if retained_tax_total != 0 and not retained_tax_account_guid:
+        raise api_error(
+            409,
+            "MISSING_RETAINED_TAX_ACCOUNT",
+            "retained_tax_account_guid is required when invoice has retained tax amount",
+            {
+                "invoice_guid": invoice.guid,
+                "retained_tax_num": retained_tax_total.numerator,
+                "retained_tax_denom": retained_tax_total.denominator,
+            },
+        )
+    if retained_tax_account_guid:
+        _ensure_retained_tax_account(
+            db,
+            retained_tax_account_guid=retained_tax_account_guid,
+            book_id=invoice.book_id,
+            currency_guid=invoice.currency_guid,
+            post_account_guid=post_account_guid,
         )
 
     post_date = payload.post_date or datetime.now(UTC)
@@ -917,7 +1013,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     )
 
     split_payloads: list[Split] = []
-    receivable_num, receivable_denom = _fraction_to_split_parts(amount=receivable_total, fraction=currency.fraction)
+    receivable_num, receivable_denom = _fraction_to_split_parts(amount=receivable_net_total, fraction=currency.fraction)
     split_payloads.append(
         Split(
             guid=str(uuid4()),
@@ -934,6 +1030,25 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
             lot_guid=lot_guid,
         )
     )
+
+    if retained_tax_total != 0:
+        retained_tax_num, retained_tax_denom = _fraction_to_split_parts(amount=retained_tax_total, fraction=currency.fraction)
+        split_payloads.append(
+            Split(
+                guid=str(uuid4()),
+                tx_guid=tx_guid,
+                account_guid=retained_tax_account_guid,
+                memo=invoice.id or "",
+                action="",
+                reconcile_state="n",
+                reconcile_date=None,
+                value_num=retained_tax_num,
+                value_denom=retained_tax_denom,
+                quantity_num=retained_tax_num,
+                quantity_denom=retained_tax_denom,
+                lot_guid=None,
+            )
+        )
 
     for income_account_guid in sorted(income_totals):
         amount = income_totals[income_account_guid]

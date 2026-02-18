@@ -167,6 +167,7 @@ export default function InvoicingPage({
   const [incomePickerOpen, setIncomePickerOpen] = useState(false);
   const [incomeSearch, setIncomeSearch] = useState("");
   const [postingAccountGuid, setPostingAccountGuid] = useState("");
+  const [retainedTaxAccountGuid, setRetainedTaxAccountGuid] = useState("");
   const [postingPickerOpen, setPostingPickerOpen] = useState(false);
   const [postingSearch, setPostingSearch] = useState("");
   const [paymentForm, setPaymentForm] = useState(defaultPaymentForm());
@@ -252,8 +253,12 @@ export default function InvoicingPage({
   const selectedInvoiceOpenAmount = selectedInvoice
     ? Math.abs(rationalToNumber(selectedInvoice.open_amount_num, selectedInvoice.open_amount_denom))
     : 0;
+  const selectedInvoiceTaxAmount = selectedInvoice
+    ? Math.abs(rationalToNumber(selectedInvoice.tax_num, selectedInvoice.tax_denom))
+    : 0;
   const selectedIncomeAccount = accountsById.get(entryForm.income_account_guid) || null;
   const selectedPostingAccount = accountsById.get(postingAccountGuid) || null;
+  const selectedRetainedTaxAccount = accountsById.get(retainedTaxAccountGuid) || null;
   const selectedPaymentAccount = accountsById.get(paymentForm.transfer_account_guid) || null;
   const selectedIncomeAccountPath = selectedIncomeAccount
     ? accountFullNameById.get(selectedIncomeAccount.id) || selectedIncomeAccount.name
@@ -264,6 +269,9 @@ export default function InvoicingPage({
   const postingAccountLabel = selectedPostingAccount
     ? `${accountFullNameById.get(selectedPostingAccount.id) || selectedPostingAccount.name} (${selectedPostingAccount.type})`
     : "Selecione a conta de postagem";
+  const retainedTaxAccountLabel = selectedRetainedTaxAccount
+    ? `${accountFullNameById.get(selectedRetainedTaxAccount.id) || selectedRetainedTaxAccount.name} (${selectedRetainedTaxAccount.type})`
+    : "Selecione a conta de ISS retido";
   const paymentAccountLabel = selectedPaymentAccount
     ? `${accountFullNameById.get(selectedPaymentAccount.id) || selectedPaymentAccount.name} (${selectedPaymentAccount.type})`
     : "Selecione a conta de pagamento";
@@ -467,6 +475,21 @@ export default function InvoicingPage({
   ]);
 
   useEffect(() => {
+    if (!selectedInvoiceGuid) {
+      setRetainedTaxAccountGuid("");
+      return;
+    }
+    setRetainedTaxAccountGuid("");
+  }, [selectedInvoiceGuid]);
+
+  useEffect(() => {
+    if (!postingAccountGuid) return;
+    if (retainedTaxAccountGuid === postingAccountGuid) {
+      setRetainedTaxAccountGuid("");
+    }
+  }, [postingAccountGuid, retainedTaxAccountGuid]);
+
+  useEffect(() => {
     setIncomePickerOpen(false);
     setIncomeSearch("");
     setPostingPickerOpen(false);
@@ -637,12 +660,29 @@ export default function InvoicingPage({
       setError({ code: "VALIDATION_ERROR", message: "Selecione a conta de postagem", details: {} });
       return;
     }
+    if (selectedInvoiceTaxAmount > 0 && !retainedTaxAccountGuid) {
+      setError({ code: "VALIDATION_ERROR", message: "Selecione a conta de ISS retido", details: {} });
+      return;
+    }
+    if (retainedTaxAccountGuid && retainedTaxAccountGuid === postingAccountGuid) {
+      setError({
+        code: "VALIDATION_ERROR",
+        message: "Conta de ISS retido deve ser diferente da conta de postagem",
+        details: {}
+      });
+      return;
+    }
     const postingDate = invoiceDateInput(selectedInvoice.date_opened) || todayIsoDate();
 
-    const response = await api.post(`/invoices/${selectedInvoice.guid}/post`, {
+    const payload = {
       post_account_guid: postingAccountGuid,
       post_date: `${postingDate}T00:00:00Z`
-    });
+    };
+    if (selectedInvoiceTaxAmount > 0 && retainedTaxAccountGuid) {
+      payload.retained_tax_account_guid = retainedTaxAccountGuid;
+    }
+
+    const response = await api.post(`/invoices/${selectedInvoice.guid}/post`, payload);
     if (!response.ok) {
       setError(response.error);
       return;
@@ -1372,6 +1412,30 @@ export default function InvoicingPage({
                     ) : null}
                   </div>
                 </div>
+                {selectedInvoiceTaxAmount > 0 ? (
+                  <div className="col-md-6">
+                    <label className="form-label">Conta ISS Retido na Fonte (Ativo)</label>
+                    <select
+                      className="form-select"
+                      value={retainedTaxAccountGuid}
+                      disabled={isInvoicePosted}
+                      onChange={(event) => setRetainedTaxAccountGuid(event.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      {postingAccounts
+                        .filter((account) => account.id !== postingAccountGuid && !account.is_placeholder)
+                        .map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {accountFullNameById.get(account.id) || account.name}
+                          </option>
+                        ))}
+                    </select>
+                    <div className="small-muted mt-1">
+                      Valor retido atual: {formatMoney(selectedInvoice.tax_num, selectedInvoice.tax_denom, selectedInvoiceMnemonic)}
+                    </div>
+                    <div className="small-muted">{retainedTaxAccountLabel}</div>
+                  </div>
+                ) : null}
                 <div className="col-md-2">
                   <label className="form-label d-block">Ativo</label>
                   <input
@@ -1403,7 +1467,11 @@ export default function InvoicingPage({
                       type="button"
                       className="btn btn-outline-primary btn-sm"
                       onClick={postSelectedInvoice}
-                      disabled={!postingAccountGuid || selectedInvoice.entries.length === 0}
+                      disabled={
+                        !postingAccountGuid ||
+                        selectedInvoice.entries.length === 0 ||
+                        (selectedInvoiceTaxAmount > 0 && !retainedTaxAccountGuid)
+                      }
                     >
                       Postar fatura
                     </button>
@@ -1566,7 +1634,7 @@ export default function InvoicingPage({
                       <th>Desconto</th>
                       <th>Tributável</th>
                       <th>Subtotal</th>
-                      <th>Imposto</th>
+                      <th>Imposto (incl.)</th>
                       <th>Total</th>
                       <th />
                     </tr>
@@ -1743,7 +1811,7 @@ export default function InvoicingPage({
                     />
                   </div>
                   <div className="col-md-1">
-                    <label className="form-label">Imposto</label>
+                    <label className="form-label">Imposto (incl.)</label>
                     <input
                       className="form-control"
                       value={entryForm.tax_amount}
@@ -1786,7 +1854,7 @@ export default function InvoicingPage({
                   {formatMoney(selectedInvoice.subtotal_num, selectedInvoice.subtotal_denom, selectedInvoiceMnemonic)}
                 </div>
                 <div>
-                  <strong>Impostos:</strong>{" "}
+                  <strong>Impostos incluídos:</strong>{" "}
                   {formatMoney(selectedInvoice.tax_num, selectedInvoice.tax_denom, selectedInvoiceMnemonic)}
                 </div>
                 <div>

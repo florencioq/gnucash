@@ -170,7 +170,7 @@ def test_invoice_crud_and_entries(client):
     assert entry["subtotal_denom"] == 1
     assert entry["tax_num"] == 5
     assert entry["tax_denom"] == 1
-    assert entry["total_num"] == 275
+    assert entry["total_num"] == 270
     assert entry["total_denom"] == 1
     entry_guid = entry["guid"]
 
@@ -182,7 +182,7 @@ def test_invoice_crud_and_entries(client):
     assert invoice_after_entry["subtotal_denom"] == 1
     assert invoice_after_entry["tax_num"] == 5
     assert invoice_after_entry["tax_denom"] == 1
-    assert invoice_after_entry["total_num"] == 275
+    assert invoice_after_entry["total_num"] == 270
     assert invoice_after_entry["total_denom"] == 1
 
     patched_entry = client.patch(
@@ -193,7 +193,7 @@ def test_invoice_crud_and_entries(client):
         },
     )
     assert patched_entry.status_code == 200
-    assert patched_entry.json()["total_num"] == 455
+    assert patched_entry.json()["total_num"] == 450
 
     patched_invoice = client.patch(
         f"/invoices/{invoice_guid}",
@@ -1015,6 +1015,133 @@ def test_invoice_payment_partial_and_undo_flow(client):
     assert undo_first_payload["open_amount_denom"] == 1
     assert undo_first_payload["payments"] == []
 
+
+def test_invoice_post_with_retained_tax_reduces_receivable_open_amount(client):
+    book_id = create_book(client, "Book Retained Tax")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, customer_id="CRETIDO")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    receivable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    retained_tax_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="ISS Retido na Fonte",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+    bank_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Banco",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    created = client.post(
+        "/invoices",
+        json={
+            "book_id": book_id,
+            "id": "000500",
+            "currency_guid": currency_guid,
+            "customer_guid": customer_guid,
+        },
+    )
+    assert created.status_code == 201
+    invoice_guid = created.json()["guid"]
+
+    entry = client.post(
+        f"/invoices/{invoice_guid}/entries",
+        json={
+            "date": "2026-02-16T00:00:00Z",
+            "description": "Servico",
+            "income_account_guid": income_account_guid,
+            "quantity_num": 1,
+            "quantity_denom": 1,
+            "unit_price_num": 10000,
+            "unit_price_denom": 100,
+            "tax_num": 500,
+            "tax_denom": 100,
+        },
+    )
+    assert entry.status_code == 201
+
+    missing_retained_account = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={"post_account_guid": receivable_account_guid},
+    )
+    assert missing_retained_account.status_code == 409
+    assert missing_retained_account.json()["code"] == "MISSING_RETAINED_TAX_ACCOUNT"
+
+    posted = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={
+            "post_account_guid": receivable_account_guid,
+            "retained_tax_account_guid": retained_tax_account_guid,
+        },
+    )
+    assert posted.status_code == 200
+    posted_payload = posted.json()
+    assert posted_payload["status"] == "PARTIAL"
+    assert posted_payload["total_num"] == 100
+    assert posted_payload["tax_num"] == 5
+    assert posted_payload["open_amount_num"] == 95
+    assert posted_payload["open_amount_denom"] == 1
+
+    tx = client.get(f"/transactions/{posted_payload['post_tx_guid']}")
+    assert tx.status_code == 200
+    splits = tx.json()["splits"]
+    assert len(splits) == 3
+
+    receivable_split = next(split for split in splits if split["account_guid"] == receivable_account_guid)
+    retained_split = next(split for split in splits if split["account_guid"] == retained_tax_account_guid)
+    income_split = next(split for split in splits if split["account_guid"] == income_account_guid)
+    assert receivable_split["value_num"] == 9500
+    assert receivable_split["value_denom"] == 100
+    assert receivable_split["lot_guid"] == posted_payload["post_lot_guid"]
+    assert retained_split["value_num"] == 500
+    assert retained_split["value_denom"] == 100
+    assert retained_split["lot_guid"] is None
+    assert income_split["value_num"] == -10000
+    assert income_split["value_denom"] == 100
+
+    payment = client.post(
+        f"/invoices/{invoice_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": 9500,
+            "amount_denom": 100,
+        },
+    )
+    assert payment.status_code == 200
+    paid_payload = payment.json()
+    assert paid_payload["status"] == "PAID"
+    assert paid_payload["open_amount_num"] == 0
+    assert len(paid_payload["payments"]) == 1
     unpost = client.post(f"/invoices/{invoice_guid}/unpost", json={})
     assert unpost.status_code == 200
     assert unpost.json()["status"] == "UNPAID"

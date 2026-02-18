@@ -308,7 +308,7 @@ def _entry_totals(entry: InvoiceEntry) -> tuple[Fraction, Fraction, Fraction]:
 
     subtotal = base - discount_amount
     tax = Fraction(entry.i_tax_num, entry.i_tax_denom or 1)
-    total = subtotal + tax
+    total = subtotal
     return subtotal, tax, total
 
 

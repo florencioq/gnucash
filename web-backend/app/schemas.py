@@ -429,6 +429,7 @@ class InvoicePatch(BaseModel):
 
 class InvoicePostRequest(BaseModel):
     post_account_guid: UUID
+    retained_tax_account_guid: UUID | None = None
     post_date: datetime | None = None
     memo: str | None = Field(default=None, max_length=2048)
 
