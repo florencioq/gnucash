@@ -42,10 +42,12 @@
 ## Books
 
 - `POST /books`: create book (`is_active` optional, superuser only).
+  - supports optional setup account fields: `default_payables_account_guid`, `default_receivables_account_guid`, `default_iss_recoverable_account_guid`.
 - `GET /books`: list books (active first; filtered to accessible books for non-superusers).
 - `GET /books/active`: get active book within caller visibility.
 - `GET /books/{book_id}`: get by id (requires book read access for non-superusers).
-- `PATCH /books/{book_id}`: patch `name`/`is_active` (superuser only).
+- `PATCH /books/{book_id}`: patch `name`/`is_active` and setup account fields (superuser only).
+  - setup validations enforce same-book account, expected type (`LIABILITY` for payables; `ASSET` for receivables/ISS recoverable), non-placeholder, and `default_iss_recoverable_account_guid != default_receivables_account_guid`.
 - `DELETE /books/{book_id}`: delete when no linked accounts, invoices/bills, customers, vendors, or user access grants (superuser only).
 
 ## Commodities
@@ -72,6 +74,7 @@
 - `GET /customers/{customer_guid}`
 - `PATCH /customers/{customer_guid}`
 - `DELETE /customers/{customer_guid}` (blocked while referenced by customer invoices).
+- `income_account_guid` is optional and, when set, must be same-book `INCOME` and non-placeholder.
 
 ## Vendors
 
@@ -80,6 +83,7 @@
 - `GET /vendors/{vendor_guid}`
 - `PATCH /vendors/{vendor_guid}`
 - `DELETE /vendors/{vendor_guid}` (blocked while referenced by vendor bills).
+- `expense_account_guid` is optional and, when set, must be same-book `EXPENSE` and non-placeholder.
 
 ## Invoices (customer flow)
 
@@ -106,6 +110,9 @@ Posting:
 - `POST /invoices/{invoice_guid}/post`
   - requires at least one entry and non-zero total.
   - post account must be same-book `ASSET`, non-placeholder, commodity-compatible.
+  - when invoice has retained-at-source tax amount, `retained_tax_account_guid` is required.
+  - retained tax account must be same-book `ASSET`, non-placeholder, commodity-compatible, and different from post account.
+  - retained-at-source tax reduces receivable open amount at posting time, so initial status may be `PARTIAL`.
 - `POST /invoices/{invoice_guid}/unpost`
   - blocked if payment splits exist in posting lot.
 
@@ -168,6 +175,12 @@ Protection rule:
 - `GET /reports/income-statement?book_id=&month=YYYY-MM`
 - `GET /reports/income-statement/matrix?book_id=&start_month=YYYY-MM&end_month=YYYY-MM`
 - `GET /reports/income-statement/accounts/{account_id}/entries?book_id=&month=YYYY-MM`
+- `GET /reports/invoices/settlement-by-customer?book_id=&customer_guid=&posted_start_date=&posted_end_date=&sort_key=&sort_direction=&page=&page_size=`
+  - returns `{items, customer_summaries, page, page_size, total_items, total_pages}`.
+  - each item includes invoice amount (`total_num`, `total_denom`, `currency_guid`) and payment status (`PAID` or `OPEN`).
+  - includes posted invoices that are `PAID` and `OPEN`.
+  - for `PAID` rows, day-difference reference is settlement date; for `OPEN` rows, reference is current date.
+  - default ordering is `posted_month_end_date` ascending.
 
 Validation notes:
 - month format and range limits are enforced.

@@ -59,6 +59,7 @@ This document is a reference implementation profile and does not override normat
     - `Razão` (`bi-journal-bookmark`)
   - `Relatórios` (`bi-bar-chart-line`)
     - `DRE Mensal` (`bi-graph-up-arrow`)
+    - `Prazo Quitação` (`bi-hourglass-split`)
   - `Cadastros` (`bi-collection`)
     - `Livros` (`bi-book`)
     - `Moedas` (`bi-currency-exchange`)
@@ -68,10 +69,17 @@ This document is a reference implementation profile and does not override normat
   - `Administração` (`bi-gear`)
     - `Usuários` (`bi-person-badge`) (superuser only)
 - Suggested section ordering SHOULD be: `Operações`, `Contábil`, `Relatórios`, `Cadastros`, `Administração`.
+- Sidebar navigation SHOULD support collapsed mode with icon-only actions that remain fully clickable.
+- Sidebar collapsed mode SHOULD keep feature parity (navigation behavior must be identical to expanded mode).
 - Dynamic document tabs (`Fatura <id>`, `Compra <id>`) SHOULD remain closable and SHOULD render in a secondary row/panel, separate from primary sidebar navigation.
+- Navigating from a dynamic detail tab back to its list (`Faturamentos`/`Compras`) SHOULD close the originating dynamic tab to avoid stale "Novo ..." tabs lingering in list context.
 - Account tree should be primary for account navigation.
 - Tree selectors should hide synthetic `ROOT` where user must choose actionable accounts.
 - Books UI should expose active-book selection.
+- Books UI SHOULD expose setup account selectors backed by hierarchical account trees for:
+  - default payables account (`default_payables_account_guid`)
+  - default receivables account (`default_receivables_account_guid`)
+  - default ISS recoverable account (`default_iss_recoverable_account_guid`)
 - Frontend should include login screen and protected navigation guard for business routes.
 - Frontend should include user administration screen for superusers (create users and manage per-book access roles).
 - User administration screen should list existing per-book grants for each non-superuser and allow:
@@ -83,6 +91,12 @@ This document is a reference implementation profile and does not override normat
 - Posted invoice/bill should lock line mutations until unposted.
 - Invoicing entry editor should start with no revenue account selected; user must choose `income_account_guid` explicitly.
 - Purchasing entry editor should start with no expense account selected; user must choose `income_account_guid` explicitly.
+- Customer and vendor master forms SHOULD expose default account selectors using hierarchical account trees.
+- Invoicing entry forms SHOULD auto-suggest customer default revenue account when available.
+- Purchasing entry forms SHOULD auto-suggest vendor default expense account when available.
+- Invoicing posting form SHOULD auto-suggest book default receivables account when available.
+- Invoicing posting form SHOULD auto-suggest book default ISS recoverable account when retained tax is present.
+- Invoicing line editor SHOULD treat tax amount as informational/included value while retained-at-source behavior is resolved during posting/open-balance calculation.
 - `Nova Fatura` and `Nova Compra` detail tabs should open with clean state and must not render stale header/line data from previously selected documents.
 - Revenue/expense account selectors in entry editors should prioritize leaf-first path labels (`account / parent / ...`) and provide wider input columns to keep leaf names visible.
 - Payment account selection should use hierarchical account pickers.
@@ -95,6 +109,7 @@ This document is a reference implementation profile and does not override normat
 - Invoicing and purchasing lists should use server-side pagination (`/invoices/list`, `/bills/list`) with filtering and sorting parameters.
 - "Contas a Receber" screen should consume `/invoices/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each faturamento.
 - "Contas a Pagar" screen should consume `/bills/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each compra.
+- "Prazo Quitação" report screen SHOULD consume `/reports/invoices/settlement-by-customer` with server-side filtering/sorting/pagination.
 - Invoicing and purchasing lists should persist filter/sort/page state when user switches tabs and after browser refresh within the same session.
 - Invoicing and purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
 - Detail screens should open as dynamic, closable tabs when launched from list actions.

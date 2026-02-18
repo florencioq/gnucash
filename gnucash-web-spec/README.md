@@ -18,8 +18,10 @@ Includes:
 - Invoice and Bill workflows (entries, posting, unposting, payments, payment undo)
 - Paginated invoice/bill summary listing contracts (`/invoices/list`, `/bills/list`)
 - Operational open-items screens (`Contas a Receber` / `Contas a Pagar`) backed by posted+open filters
+- Book setup defaults for posting accounts (`payables`, `receivables`, `ISS a recuperar`)
+- Customer/vendor default account contracts (`income_account_guid`, `expense_account_guid`)
 - Transaction/Split posting and editing restrictions when linked to invoice/bill flows
-- Income statement reporting endpoints
+- Reporting endpoints (`DRE Mensal` and invoice settlement lag by customer)
 
 Out of scope:
 - tax engine and taxtable behavior

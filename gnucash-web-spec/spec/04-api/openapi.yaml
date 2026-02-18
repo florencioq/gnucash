@@ -2293,6 +2293,103 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /reports/invoices/settlement-by-customer:
+    get:
+      tags:
+      - Reports
+      summary: Get Invoice Settlement By Customer Report
+      operationId: get_invoice_settlement_by_customer_report_reports_invoices_settlement_by_customer_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: book_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Book Id
+      - name: customer_guid
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Customer Guid
+      - name: posted_start_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Posted Start Date
+      - name: posted_end_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Posted End Date
+      - name: sort_key
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - customer
+          - invoice_id
+          - date_posted
+          - posted_month_end_date
+          - settled_date
+          - days_difference
+          default: posted_month_end_date
+          title: Sort Key
+      - name: sort_direction
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: asc
+          title: Sort Direction
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 25
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceSettlementByCustomerReportOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     AccountCreate:
@@ -3034,6 +3131,24 @@ components:
           - type: boolean
           - type: 'null'
           title: Is Active
+        default_payables_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Default Payables Account Guid
+        default_receivables_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Default Receivables Account Guid
+        default_iss_recoverable_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Default Iss Recoverable Account Guid
       type: object
       title: BookCreate
     BookOut:
@@ -3049,6 +3164,21 @@ components:
         is_active:
           type: boolean
           title: Is Active
+        default_payables_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Default Payables Account Guid
+        default_receivables_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Default Receivables Account Guid
+        default_iss_recoverable_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Default Iss Recoverable Account Guid
         created_at:
           anyOf:
           - type: string
@@ -3059,6 +3189,9 @@ components:
       - id
       - name
       - is_active
+      - default_payables_account_guid
+      - default_receivables_account_guid
+      - default_iss_recoverable_account_guid
       - created_at
       title: BookOut
     BookPatch:
@@ -3074,6 +3207,24 @@ components:
           - type: boolean
           - type: 'null'
           title: Is Active
+        default_payables_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Default Payables Account Guid
+        default_receivables_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Default Receivables Account Guid
+        default_iss_recoverable_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Default Iss Recoverable Account Guid
       type: object
       title: BookPatch
     CommodityCreate:
@@ -4797,6 +4948,12 @@ components:
           type: string
           format: uuid
           title: Post Account Guid
+        retained_tax_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Retained Tax Account Guid
         post_date:
           anyOf:
           - type: string
@@ -4813,6 +4970,132 @@ components:
       required:
       - post_account_guid
       title: InvoicePostRequest
+    InvoiceSettlementByCustomerItemOut:
+      properties:
+        customer_guid:
+          type: string
+          title: Customer Guid
+        customer_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Customer Name
+        invoice_guid:
+          type: string
+          title: Invoice Guid
+        invoice_id:
+          type: string
+          title: Invoice Id
+        payment_status:
+          type: string
+          title: Payment Status
+        currency_guid:
+          type: string
+          title: Currency Guid
+        total_num:
+          type: integer
+          title: Total Num
+        total_denom:
+          type: integer
+          title: Total Denom
+        date_posted:
+          type: string
+          format: date-time
+          title: Date Posted
+        posted_month_end_date:
+          type: string
+          format: date
+          title: Posted Month End Date
+        settled_date:
+          type: string
+          format: date
+          title: Settled Date
+        days_difference:
+          type: integer
+          title: Days Difference
+      type: object
+      required:
+      - customer_guid
+      - customer_name
+      - invoice_guid
+      - invoice_id
+      - payment_status
+      - currency_guid
+      - total_num
+      - total_denom
+      - date_posted
+      - posted_month_end_date
+      - settled_date
+      - days_difference
+      title: InvoiceSettlementByCustomerItemOut
+    InvoiceSettlementByCustomerSummaryOut:
+      properties:
+        customer_guid:
+          type: string
+          title: Customer Guid
+        customer_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Customer Name
+        invoice_count:
+          type: integer
+          title: Invoice Count
+        avg_days_difference:
+          type: number
+          title: Avg Days Difference
+        min_days_difference:
+          type: integer
+          title: Min Days Difference
+        max_days_difference:
+          type: integer
+          title: Max Days Difference
+      type: object
+      required:
+      - customer_guid
+      - customer_name
+      - invoice_count
+      - avg_days_difference
+      - min_days_difference
+      - max_days_difference
+      title: InvoiceSettlementByCustomerSummaryOut
+    InvoiceSettlementByCustomerReportOut:
+      properties:
+        book_id:
+          type: string
+          title: Book Id
+        items:
+          items:
+            $ref: '#/components/schemas/InvoiceSettlementByCustomerItemOut'
+          type: array
+          title: Items
+        customer_summaries:
+          items:
+            $ref: '#/components/schemas/InvoiceSettlementByCustomerSummaryOut'
+          type: array
+          title: Customer Summaries
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+        total_items:
+          type: integer
+          title: Total Items
+        total_pages:
+          type: integer
+          title: Total Pages
+      type: object
+      required:
+      - book_id
+      - items
+      - customer_summaries
+      - page
+      - page_size
+      - total_items
+      - total_pages
+      title: InvoiceSettlementByCustomerReportOut
     InvoiceTypeSchema:
       type: string
       enum:

@@ -6,6 +6,9 @@ Fields:
 - `id: string(36)` UUID
 - `name: string(120) | null`
 - `is_active: boolean`
+- `default_payables_account_guid: string(36) | null`
+- `default_receivables_account_guid: string(36) | null`
+- `default_iss_recoverable_account_guid: string(36) | null`
 - `created_at: timestamp UTC`
 
 ## Document Number Counter
@@ -69,6 +72,7 @@ Fields:
 - `name: string(2048)`
 - `id: string(2048)`
 - `currency_guid: string(36)`
+- `income_account_guid: string(36) | null`
 - `active: boolean`
 - `notes: string(2048)`
 - address/contact fields
@@ -83,6 +87,7 @@ Fields:
 - `name: string(2048)`
 - `id: string(2048)`
 - `currency_guid: string(36)`
+- `expense_account_guid: string(36) | null`
 - `active: boolean`
 - `notes: string(2048)`
 - address/contact fields
@@ -118,7 +123,7 @@ Fields:
 - `income_account_guid` (`i_acct`) : string(36)
 - quantity/unit-price/discount rationals
 - discount metadata (`discount_type`, `discount_how`)
-- tax flags
+- tax flags and explicit tax amount rationals (`tax_num`, `tax_denom`)
 - `created_at: timestamp UTC`
 - `updated_at: timestamp UTC`
 

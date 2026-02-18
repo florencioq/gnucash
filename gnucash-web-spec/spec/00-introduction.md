@@ -16,7 +16,7 @@ Includes:
 - Book, Commodity, Account, Customer, Vendor
 - Invoice/Bill lifecycle operations
 - Transaction/Split posting operations
-- Account-tree balances and income statement reporting APIs
+- Account-tree balances and reporting APIs (income statement and invoice settlement lag by customer)
 
 Does not include:
 - tax-table calculation rules

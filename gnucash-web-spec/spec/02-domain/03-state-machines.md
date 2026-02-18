@@ -19,7 +19,8 @@ Computed status machine:
 
 Operational transitions:
 - `create` -> `UNPAID`
-- `post` -> `POSTED` (or `PARTIAL`/`PAID` in degenerate historical cases)
+- `post` -> `POSTED` (default path without retained-at-source tax)
+- `post` -> `PARTIAL` when retained-at-source tax reduces open amount at posting time
 - `payments` -> `PARTIAL` or `PAID`
 - `payment undo` -> `POSTED` or `PARTIAL`
 - `unpost` -> `UNPAID`

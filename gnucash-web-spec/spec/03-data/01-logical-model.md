@@ -26,10 +26,13 @@ Current logical model includes:
 - `Book` 1:N `DocumentNumberCounter`
 - `User` 1:N `UserBookAccess`
 - `Book` 1:N `UserBookAccess`
+- `Book` 0..1:N default setup account references (`default_payables_account_guid`, `default_receivables_account_guid`, `default_iss_recoverable_account_guid`) to `Account`
 - `Commodity` 1:N `Account`
 - `Commodity` 1:N `Transaction`
 - `Commodity` 1:N `Customer`/`Vendor`/`Invoice`
 - `Account` 1:N `Account` (self hierarchy)
+- `Customer` 0..1:1 `Account` (`income_account_guid`)
+- `Vendor` 0..1:1 `Account` (`expense_account_guid`)
 - `Invoice` 1:N `InvoiceEntry`
 - `Account` 1:N `InvoiceEntry`
 - `Account` 1:N `Lot`
@@ -42,6 +45,7 @@ Current logical model includes:
 - Invoice/bill business-number sequencing uses per-book/per-owner-type counters (`DocumentNumberCounter`) for collision-safe auto-number reservation.
 - Authorization uses global user roles (`is_superuser`) plus book-scoped grants (`UserBookAccess.role`).
 - Open-balance control for invoice/bill posting uses lots (`post_lot`) and linked splits.
+- Retained-at-source tax in invoicing is represented in posting splits via dedicated retained-tax asset account when applicable.
 - Income statement APIs are read models derived from `transactions` + `splits` + account types.
 
 ## Representation independence

@@ -21,78 +21,85 @@ Primary suites:
 1. Create/list books.
 2. Switch active book and enforce single active constraint.
 3. Reject deactivating the only active book.
-4. Create commodity and list by namespace.
-5. Reject duplicated `(namespace,mnemonic)`.
-6. Create root and child accounts.
-7. Enforce same-book parent rule.
-8. Reject hierarchy cycles.
-9. Return account tree ordered by sibling name.
-10. Expose `code`, `balance_num`, `balance_denom` in account tree.
-11. Reject deleting account with children.
-12. Reject deleting account/commodity in use.
+4. Validate book setup account fields (`default_payables_account_guid`, `default_receivables_account_guid`, `default_iss_recoverable_account_guid`) for type/same-book/non-placeholder constraints.
+5. Reject invalid book setup when ISS recoverable account equals receivables account.
+6. Create commodity and list by namespace.
+7. Reject duplicated `(namespace,mnemonic)`.
+8. Create root and child accounts.
+9. Enforce same-book parent rule.
+10. Reject hierarchy cycles.
+11. Return account tree ordered by sibling name.
+12. Expose `code`, `balance_num`, `balance_denom` in account tree.
+13. Reject deleting account with children.
+14. Reject deleting account/commodity in use.
 
 ## Auth and user-access scenarios
 
-13. Auth register/login/me/refresh flow with normalized email and token issuance.
-14. `AUTH_REQUIRED=true` blocks protected routes without bearer token.
-15. First user bootstrap is auto-superuser and subsequent unauthenticated register is rejected.
-16. Post-bootstrap user registration requires superuser token.
-17. `GET /auth/users` rejects non-superuser caller.
-18. Book-scoped access: non-granted user gets `FORBIDDEN_BOOK`.
-19. Grant `VIEWER` allows read and still blocks write.
-20. Grant `EDITOR` allows write for the granted book only.
-21. Book/commodity mutations reject non-superuser callers.
+15. Auth register/login/me/refresh flow with normalized email and token issuance.
+16. `AUTH_REQUIRED=true` blocks protected routes without bearer token.
+17. First user bootstrap is auto-superuser and subsequent unauthenticated register is rejected.
+18. Post-bootstrap user registration requires superuser token.
+19. `GET /auth/users` rejects non-superuser caller.
+20. Book-scoped access: non-granted user gets `FORBIDDEN_BOOK`.
+21. Grant `VIEWER` allows read and still blocks write.
+22. Grant `EDITOR` allows write for the granted book only.
+23. Book/commodity mutations reject non-superuser callers.
 
 ## Parties scenarios
 
-22. Customer CRUD and list by book.
-23. Vendor CRUD and list by book.
-24. Reject customer creation with invalid book/currency.
-25. Reject vendor creation with invalid book/currency.
-26. Reject deleting referenced commodity or book.
+24. Customer CRUD and list by book.
+25. Vendor CRUD and list by book.
+26. Reject customer creation with invalid book/currency.
+27. Reject vendor creation with invalid book/currency.
+28. Validate customer default income account constraints.
+29. Validate vendor default expense account constraints.
+30. Reject deleting referenced commodity or book.
 
 ## Transaction scenarios
 
-27. Create/get balanced transaction with splits.
-28. Reject unbalanced transaction.
-29. Reject cross-book split transactions.
-30. List transactions by book.
-31. Patch transaction replacing splits.
-32. Reject patch/delete for invoice-linked transactions.
+31. Create/get balanced transaction with splits.
+32. Reject unbalanced transaction.
+33. Reject cross-book split transactions.
+34. List transactions by book.
+35. Patch transaction replacing splits.
+36. Reject patch/delete for invoice-linked transactions.
 
 ## Invoice scenarios
 
-33. Invoice CRUD with entries.
-34. Invoice validation rules (book/currency/customer/account constraints).
-35. Invoice posting and unposting flow.
-36. Invoice payment partial/full flow and payment undo.
-37. Reject invoice unpost when posting lot has payment splits.
-38. Reject deleting posted invoice.
+37. Invoice CRUD with entries.
+38. Invoice validation rules (book/currency/customer/account constraints).
+39. Invoice posting and unposting flow.
+40. Invoice retained-tax posting flow requiring retained tax account and reduced initial open amount.
+41. Invoice payment partial/full flow and payment undo.
+42. Reject invoice unpost when posting lot has payment splits.
+43. Reject deleting posted invoice.
 
 ## Bill scenarios
 
-39. Bill CRUD with entries.
-40. Bill posting and unposting flow.
-41. Bill payment partial/full flow and payment undo.
-42. Reject deleting vendor with existing bills.
-43. Invoice paginated summary listing (`/invoices/list`) with filters/sort/page metadata.
-44. Bill paginated summary listing (`/bills/list`) with filters/sort/page metadata.
-45. Invoice list `payment_filter=OPEN` returns only documents with non-zero open amount.
-46. Bill list `payment_filter=OPEN` returns only documents with non-zero open amount.
+44. Bill CRUD with entries.
+45. Bill posting and unposting flow.
+46. Bill payment partial/full flow and payment undo.
+47. Reject deleting vendor with existing bills.
+48. Invoice paginated summary listing (`/invoices/list`) with filters/sort/page metadata.
+49. Bill paginated summary listing (`/bills/list`) with filters/sort/page metadata.
+50. Invoice list `payment_filter=OPEN` returns only documents with non-zero open amount.
+51. Bill list `payment_filter=OPEN` returns only documents with non-zero open amount.
 
 ## Reporting scenarios
 
-47. Income statement monthly summary.
-48. Income statement account drill-down.
-49. Income statement matrix by month and account.
-50. Reject invalid month ranges and invalid drill-down account type.
+52. Income statement monthly summary.
+53. Income statement account drill-down.
+54. Income statement matrix by month and account.
+55. Invoice settlement-by-customer report includes paid and open invoices with day-difference logic.
+56. Reject invalid month ranges and invalid drill-down account type.
+57. Reject invalid posted date ranges for settlement-by-customer report.
 
 ## Seed scenarios
 
-51. Seed minimum data creates required entities.
-52. Seed minimum data is idempotent.
+58. Seed minimum data creates required entities.
+59. Seed minimum data is idempotent.
 
 ## Document numbering scenarios
 
-53. Invoice auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
-54. Bill auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
+60. Invoice auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
+61. Bill auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
