@@ -7,12 +7,21 @@ def test_customer_crud_and_list_by_book(client):
     book_a = create_book(client, "Book A")
     book_b = create_book(client, "Book B")
     currency = create_commodity(client, "BRL")
+    root_a = create_account(
+        client,
+        book_id=book_a,
+        commodity_id=currency,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
     income_account_a = create_account(
         client,
         book_id=book_a,
         commodity_id=currency,
         name="Receita de Servicos",
         account_type="INCOME",
+        parent_id=root_a,
     )
     income_account_other = create_account(
         client,
@@ -20,6 +29,7 @@ def test_customer_crud_and_list_by_book(client):
         commodity_id=currency,
         name="Receita de Consultoria",
         account_type="INCOME",
+        parent_id=root_a,
     )
 
     created = client.post(
@@ -81,12 +91,21 @@ def test_customer_crud_and_list_by_book(client):
 def test_vendor_crud_and_list_by_book(client):
     book_id = create_book(client)
     currency = create_commodity(client, "USD")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
     expense_account_a = create_account(
         client,
         book_id=book_id,
         commodity_id=currency,
         name="Despesas Administrativas",
         account_type="EXPENSE",
+        parent_id=root_id,
     )
     expense_account_other = create_account(
         client,
@@ -94,6 +113,7 @@ def test_vendor_crud_and_list_by_book(client):
         commodity_id=currency,
         name="Despesas de Material",
         account_type="EXPENSE",
+        parent_id=root_id,
     )
 
     created = client.post(
@@ -203,12 +223,29 @@ def test_customer_default_income_account_validation(client):
     book_id = create_book(client)
     other_book_id = create_book(client, "Other")
     currency = create_commodity(client, "BRL")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    other_root_id = create_account(
+        client,
+        book_id=other_book_id,
+        commodity_id=currency,
+        name="Root Other",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
     income_account = create_account(
         client,
         book_id=book_id,
         commodity_id=currency,
         name="Receita",
         account_type="INCOME",
+        parent_id=root_id,
     )
     expense_account = create_account(
         client,
@@ -216,6 +253,7 @@ def test_customer_default_income_account_validation(client):
         commodity_id=currency,
         name="Despesa",
         account_type="EXPENSE",
+        parent_id=root_id,
     )
     foreign_income_account = create_account(
         client,
@@ -223,6 +261,7 @@ def test_customer_default_income_account_validation(client):
         commodity_id=currency,
         name="Receita externa",
         account_type="INCOME",
+        parent_id=other_root_id,
     )
 
     valid = client.post(
@@ -269,12 +308,29 @@ def test_vendor_default_expense_account_validation(client):
     book_id = create_book(client)
     other_book_id = create_book(client, "Other")
     currency = create_commodity(client, "BRL")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    other_root_id = create_account(
+        client,
+        book_id=other_book_id,
+        commodity_id=currency,
+        name="Root Other",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
     expense_account = create_account(
         client,
         book_id=book_id,
         commodity_id=currency,
         name="Despesa",
         account_type="EXPENSE",
+        parent_id=root_id,
     )
     income_account = create_account(
         client,
@@ -282,6 +338,7 @@ def test_vendor_default_expense_account_validation(client):
         commodity_id=currency,
         name="Receita",
         account_type="INCOME",
+        parent_id=root_id,
     )
     foreign_expense_account = create_account(
         client,
@@ -289,6 +346,7 @@ def test_vendor_default_expense_account_validation(client):
         commodity_id=currency,
         name="Despesa externa",
         account_type="EXPENSE",
+        parent_id=other_root_id,
     )
 
     valid = client.post(

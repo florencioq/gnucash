@@ -1142,6 +1142,14 @@ def test_invoice_post_with_retained_tax_reduces_receivable_open_amount(client):
     assert paid_payload["status"] == "PAID"
     assert paid_payload["open_amount_num"] == 0
     assert len(paid_payload["payments"]) == 1
+    unpost_with_payment = client.post(f"/invoices/{invoice_guid}/unpost", json={})
+    assert unpost_with_payment.status_code == 409
+    assert unpost_with_payment.json()["code"] == "INVOICE_HAS_PAYMENTS"
+
+    payment_tx_guid = paid_payload["payments"][0]["tx_guid"]
+    undo_payment = client.post(f"/invoices/{invoice_guid}/payments/{payment_tx_guid}/undo", json={})
+    assert undo_payment.status_code == 200
+
     unpost = client.post(f"/invoices/{invoice_guid}/unpost", json={})
     assert unpost.status_code == 200
     assert unpost.json()["status"] == "UNPAID"
