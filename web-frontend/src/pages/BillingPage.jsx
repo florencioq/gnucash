@@ -132,6 +132,7 @@ function keepTypeBranches(nodes, allowedTypes) {
 export default function BillingPage({
   initialBillGuid = "",
   onOpenBillingList = null,
+  onBillDeleted = null,
   openCreateOnMount = false,
   onCreateMountHandled = null
 }) {
@@ -745,11 +746,20 @@ export default function BillingPage({
   };
 
   const removeInvoice = async (invoiceGuid) => {
+    const confirmed = window.confirm("Tem certeza que deseja excluir esta compra?");
+    if (!confirmed) return;
+
     const response = await api.del(`/bills/${invoiceGuid}`);
     if (!response.ok) {
       setError(response.error);
       return;
     }
+
+    if (typeof onBillDeleted === "function") {
+      onBillDeleted(invoiceGuid);
+      return;
+    }
+
     setEditingEntryGuid("");
     setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
     await loadBookData(activeBookId);

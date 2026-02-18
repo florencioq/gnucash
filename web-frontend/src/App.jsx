@@ -323,6 +323,7 @@ export default function App() {
               initialInvoiceGuid:
                 currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(activeTab),
               onOpenInvoicingList: () => setActiveTab("invoicing-list"),
+              onInvoiceDeleted: () => closeDynamicTab(activeTab),
               openCreateOnMount,
               onCreateMountHandled: openCreateOnMount
                 ? () =>
@@ -341,6 +342,7 @@ export default function App() {
             return {
               initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(activeTab),
               onOpenBillingList: () => setActiveTab("billing-list"),
+              onBillDeleted: () => closeDynamicTab(activeTab),
               openCreateOnMount,
               onCreateMountHandled: openCreateOnMount
                 ? () =>

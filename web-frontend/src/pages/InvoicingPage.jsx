@@ -132,6 +132,7 @@ function keepTypeBranches(nodes, allowedTypes) {
 export default function InvoicingPage({
   initialInvoiceGuid = "",
   onOpenInvoicingList = null,
+  onInvoiceDeleted = null,
   openCreateOnMount = false,
   onCreateMountHandled = null
 }) {
@@ -745,11 +746,20 @@ export default function InvoicingPage({
   };
 
   const removeInvoice = async (invoiceGuid) => {
+    const confirmed = window.confirm("Tem certeza que deseja excluir esta fatura?");
+    if (!confirmed) return;
+
     const response = await api.del(`/invoices/${invoiceGuid}`);
     if (!response.ok) {
       setError(response.error);
       return;
     }
+
+    if (typeof onInvoiceDeleted === "function") {
+      onInvoiceDeleted(invoiceGuid);
+      return;
+    }
+
     setEditingEntryGuid("");
     setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
     await loadBookData(activeBookId);
