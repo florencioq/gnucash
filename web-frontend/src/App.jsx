@@ -452,10 +452,14 @@ export default function App() {
     setActiveTab(tabId);
   };
 
-  const closeDynamicTab = (tabId) => {
+  const closeDynamicTab = (tabId, preferredFallbackTabId = "") => {
     const currentIds = tabs.map((tab) => tab.id);
     const currentIndex = currentIds.indexOf(tabId);
-    const fallbackTab = currentIndex > 0 ? currentIds[currentIndex - 1] : "books";
+    const defaultFallbackTab = currentIndex > 0 ? currentIds[currentIndex - 1] : "books";
+    const fallbackTab =
+      preferredFallbackTabId && tabIds.has(preferredFallbackTabId)
+        ? preferredFallbackTabId
+        : defaultFallbackTab;
 
     if (isInvoiceTab(tabId)) {
       setOpenInvoiceTabs((current) => current.filter((tab) => tab.id !== tabId));
@@ -554,7 +558,7 @@ export default function App() {
                 currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(activeTab),
               onOpenInvoicingList: () => setActiveTab("invoicing-list"),
               onOpenInvoiceTab: handleOpenInvoicing,
-              onInvoiceDeleted: () => closeDynamicTab(activeTab),
+              onInvoiceDeleted: () => closeDynamicTab(activeTab, "invoicing-list"),
               initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
               openCreateOnMount,
               onCreateMountHandled: openCreateOnMount
@@ -575,7 +579,7 @@ export default function App() {
               initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(activeTab),
               onOpenBillingList: () => setActiveTab("billing-list"),
               onOpenBillTab: handleOpenBilling,
-              onBillDeleted: () => closeDynamicTab(activeTab),
+              onBillDeleted: () => closeDynamicTab(activeTab, "billing-list"),
               initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
               openCreateOnMount,
               onCreateMountHandled: openCreateOnMount
