@@ -77,20 +77,22 @@ Primary suites:
 42. Reject deleting vendor with existing bills.
 43. Invoice paginated summary listing (`/invoices/list`) with filters/sort/page metadata.
 44. Bill paginated summary listing (`/bills/list`) with filters/sort/page metadata.
+45. Invoice list `payment_filter=OPEN` returns only documents with non-zero open amount.
+46. Bill list `payment_filter=OPEN` returns only documents with non-zero open amount.
 
 ## Reporting scenarios
 
-45. Income statement monthly summary.
-46. Income statement account drill-down.
-47. Income statement matrix by month and account.
-48. Reject invalid month ranges and invalid drill-down account type.
+47. Income statement monthly summary.
+48. Income statement account drill-down.
+49. Income statement matrix by month and account.
+50. Reject invalid month ranges and invalid drill-down account type.
 
 ## Seed scenarios
 
-49. Seed minimum data creates required entities.
-50. Seed minimum data is idempotent.
+51. Seed minimum data creates required entities.
+52. Seed minimum data is idempotent.
 
 ## Document numbering scenarios
 
-51. Invoice auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
-52. Bill auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
+53. Invoice auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
+54. Bill auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).

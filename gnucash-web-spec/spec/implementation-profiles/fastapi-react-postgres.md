@@ -71,6 +71,8 @@ This document is a reference implementation profile and does not override normat
 - "Novo" actions (`Nova Fatura` / `Nova Compra`) should be initiated from list views, not from detail views.
 - List fallback labels should be explicit for missing owner references (`cliente não encontrado` / `fornecedor não encontrado`).
 - Invoicing and purchasing lists should use server-side pagination (`/invoices/list`, `/bills/list`) with filtering and sorting parameters.
+- "Contas a Receber" screen should consume `/invoices/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each faturamento.
+- "Contas a Pagar" screen should consume `/bills/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each compra.
 - Invoicing and purchasing lists should persist filter/sort/page state when user switches tabs and after browser refresh within the same session.
 - Invoicing and purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
 - Detail screens should open as dynamic, closable tabs when launched from list actions.

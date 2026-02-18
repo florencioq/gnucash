@@ -88,6 +88,7 @@
 - `GET /invoices/list?book_id=&customer_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&sort_key=&sort_direction=&page=&page_size=`
   - paginated summary list for invoicing listing screens.
   - supports server-side filtering and sorting.
+  - `payment_filter=OPEN` returns only documents with non-zero open amount.
   - returns `{items, page, page_size, total_items, total_pages}`.
 - `GET /invoices/{invoice_guid}`
 - `PATCH /invoices/{invoice_guid}`
@@ -122,6 +123,7 @@ Payments:
 - `GET /bills/list?book_id=&vendor_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&sort_key=&sort_direction=&page=&page_size=`
   - paginated summary list for purchase listing screens.
   - supports server-side filtering and sorting.
+  - `payment_filter=OPEN` returns only documents with non-zero open amount.
   - returns `{items, page, page_size, total_items, total_pages}`.
 - `GET /bills/{bill_guid}`
 - `PATCH /bills/{bill_guid}`

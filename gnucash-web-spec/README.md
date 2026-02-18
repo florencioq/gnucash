@@ -17,6 +17,7 @@ Includes:
 - Customer and Vendor masters
 - Invoice and Bill workflows (entries, posting, unposting, payments, payment undo)
 - Paginated invoice/bill summary listing contracts (`/invoices/list`, `/bills/list`)
+- Operational open-items screens (`Contas a Receber` / `Contas a Pagar`) backed by posted+open filters
 - Transaction/Split posting and editing restrictions when linked to invoice/bill flows
 - Income statement reporting endpoints
 

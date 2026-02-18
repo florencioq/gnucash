@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.11 - 2026-02-18
+
+Payables open-items synchronization:
+- documented `payment_filter=OPEN` behavior in endpoint guide for both `/invoices/list` and `/bills/list`
+- updated OpenAPI query enum for invoice/bill `payment_filter` to include `OPEN`
+- extended acceptance coverage with explicit open-balance list-filter scenarios for invoices and bills
+- updated implementation profile with `Contas a Pagar` and `Contas a Receber` operational-tab behavior (posted + open items with direct navigation links)
+
 ## v0.4.10 - 2026-02-18
 
 User-access administration UI synchronization:
