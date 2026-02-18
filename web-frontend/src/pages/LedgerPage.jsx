@@ -500,8 +500,20 @@ export default function LedgerPage({
     return { tx, ownSplit: ownSplits[0], contraSplit: contraSplits[0] };
   };
 
+  const isTransactionLinkedToDocument = (txGuid) =>
+    Boolean(sourceByTxGuid[txGuid]?.documentGuid);
+
   const startEditingLedgerEntry = (txGuid) => {
     setError(null);
+    if (isTransactionLinkedToDocument(txGuid)) {
+      setError({
+        code: "VALIDATION_ERROR",
+        message: "lancamentos de faturamentos/compras devem ser alterados nas telas de Faturamentos/Compras",
+        details: {}
+      });
+      return;
+    }
+
     const context = getEditableTransactionContext(txGuid);
     if (!context) {
       setError({
@@ -619,6 +631,17 @@ export default function LedgerPage({
     };
 
     const txGuidInFlight = editingTxGuid;
+    if (txGuidInFlight && isTransactionLinkedToDocument(txGuidInFlight)) {
+      setSavingTxGuid("");
+      setEditingTxGuid("");
+      setError({
+        code: "VALIDATION_ERROR",
+        message: "lancamentos de faturamentos/compras devem ser alterados nas telas de Faturamentos/Compras",
+        details: {}
+      });
+      return;
+    }
+
     if (txGuidInFlight) {
       setSavingTxGuid(txGuidInFlight);
     }
@@ -645,6 +668,15 @@ export default function LedgerPage({
 
   const deleteLedgerEntry = async (txGuid) => {
     if (!txGuid) return;
+    if (isTransactionLinkedToDocument(txGuid)) {
+      setError({
+        code: "VALIDATION_ERROR",
+        message: "lancamentos de faturamentos/compras devem ser excluidos nas telas de Faturamentos/Compras",
+        details: {}
+      });
+      return;
+    }
+
     const confirmed = window.confirm("Deseja excluir este lancamento do razao?");
     if (!confirmed) return;
 
@@ -778,8 +810,11 @@ export default function LedgerPage({
               pagedLedgerRows.map((row) => {
                 const isRowEditing = editingTxGuid === row.txGuid;
                 const isRowSaving = savingTxGuid === row.txGuid;
-                const canEdit = Boolean(getEditableTransactionContext(row.txGuid));
+                const canEditContext = Boolean(getEditableTransactionContext(row.txGuid));
                 const source = sourceByTxGuid[row.txGuid] || null;
+                const isSourceLinked = Boolean(source);
+                const canEdit = canEditContext && !isSourceLinked;
+                const canDelete = !isSourceLinked;
                 const sourceLabel = source
                   ? source.sourceType === "invoicing"
                     ? `Faturamento #${source.documentId}${source.relation === "payment" ? " (pagamento)" : ""}`
@@ -814,7 +849,9 @@ export default function LedgerPage({
                           onClick={() => startEditingLedgerEntry(row.txGuid)}
                           disabled={!canEdit || isRowSaving || deletingTxGuid === row.txGuid}
                           title={
-                            canEdit
+                            isSourceLinked
+                              ? "Edite este lancamento em Faturamentos/Compras"
+                              : canEdit
                               ? "Editar lancamento"
                               : "Somente lancamentos com uma unica contra-partida podem ser editados"
                           }
@@ -825,7 +862,12 @@ export default function LedgerPage({
                           type="button"
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => deleteLedgerEntry(row.txGuid)}
-                          disabled={deletingTxGuid === row.txGuid || isRowSaving}
+                          disabled={!canDelete || deletingTxGuid === row.txGuid || isRowSaving}
+                          title={
+                            isSourceLinked
+                              ? "Exclua este lancamento em Faturamentos/Compras"
+                              : "Excluir lancamento"
+                          }
                         >
                           {deletingTxGuid === row.txGuid ? "Excluindo..." : "Excluir"}
                         </button>
