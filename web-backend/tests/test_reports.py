@@ -392,6 +392,8 @@ def test_income_statement_matrix_by_month_and_account(client):
     assert payload["net_income_totals"] == pytest.approx([600.0, 800.0])
 
     rows_by_id = {row["account_id"]: row for row in payload["rows"]}
+    assert rows_by_id[income_group_id]["account_name"] == "Services"
+    assert rows_by_id[income_group_id]["amounts"] == pytest.approx([900.0, 1200.0])
     assert rows_by_id[sales_id]["account_name"] == "Services / Sales"
     assert rows_by_id[support_id]["account_name"] == "Services / Support"
     assert rows_by_id[sales_id]["amounts"] == pytest.approx([900.0, 1000.0])

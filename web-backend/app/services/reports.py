@@ -297,6 +297,7 @@ def build_income_statement_matrix(
     all_accounts_by_id = {account.id: account for account in all_accounts}
 
     path_cache: dict[str, str] = {}
+    same_type_ancestor_cache: dict[str, list[str]] = {}
 
     def build_account_path(account_id: str, visited: set[str] | None = None) -> str:
         cached = path_cache.get(account_id)
@@ -331,6 +332,32 @@ def build_income_statement_matrix(
         full_path = f"{parent_path} / {account.name}"
         path_cache[account_id] = full_path
         return full_path
+
+    def same_type_ancestor_ids(account_id: str) -> list[str]:
+        cached = same_type_ancestor_cache.get(account_id)
+        if cached is not None:
+            return cached
+
+        account = all_accounts_by_id.get(account_id)
+        if account is None:
+            same_type_ancestor_cache[account_id] = []
+            return []
+
+        ancestors: list[str] = []
+        seen: set[str] = set()
+        parent_id = account.parent_id
+        while parent_id and parent_id not in seen:
+            seen.add(parent_id)
+            parent = all_accounts_by_id.get(parent_id)
+            if parent is None:
+                break
+            if parent.type != account.type:
+                break
+            ancestors.append(parent.id)
+            parent_id = parent.parent_id
+
+        same_type_ancestor_cache[account_id] = ancestors
+        return ancestors
 
     accounts = db.execute(
         select(Account).where(
@@ -387,6 +414,8 @@ def build_income_statement_matrix(
 
             normalized = _normalized_amount(account.type, _as_fraction(row.value_num, row.value_denom))
             monthly_by_account[account.id][index] += normalized
+            for ancestor_account_id in same_type_ancestor_ids(account.id):
+                monthly_by_account[ancestor_account_id][index] += normalized
             account_type_value = account.type.value if isinstance(account.type, AccountType) else str(account.type)
             if account_type_value == "INCOME":
                 revenue_totals[index] += normalized
