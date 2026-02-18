@@ -556,7 +556,7 @@ export default function App() {
             return {
               initialInvoiceGuid:
                 currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(activeTab),
-              onOpenInvoicingList: () => setActiveTab("invoicing-list"),
+              onOpenInvoicingList: () => closeDynamicTab(activeTab, "invoicing-list"),
               onOpenInvoiceTab: handleOpenInvoicing,
               onInvoiceDeleted: () => closeDynamicTab(activeTab, "invoicing-list"),
               initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
@@ -577,7 +577,7 @@ export default function App() {
             const openCreateOnMount = Boolean(currentTab?.openCreate);
             return {
               initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(activeTab),
-              onOpenBillingList: () => setActiveTab("billing-list"),
+              onOpenBillingList: () => closeDynamicTab(activeTab, "billing-list"),
               onOpenBillTab: handleOpenBilling,
               onBillDeleted: () => closeDynamicTab(activeTab, "billing-list"),
               initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
