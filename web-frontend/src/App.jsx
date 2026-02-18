@@ -508,7 +508,7 @@ export default function App() {
       <header className="brand-bar">
         <div className="container d-flex align-items-center justify-content-between gap-3 flex-wrap">
           <div>
-            <h1 className="brand-title">GnuCash Web</h1>
+            <h1 className="brand-title">IgeosCash</h1>
             <div className="small-muted">API: {apiBase()}</div>
           </div>
           <div className="d-flex align-items-center gap-2">

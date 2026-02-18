@@ -40,7 +40,7 @@ _load_dotenv()
 
 
 class Settings:
-    app_name: str = "GnuCash Web Backend"
+    app_name: str = "IgeosCash Backend"
     app_version: str = "0.1.0"
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./gnucash.db")
     seed_on_startup: bool = _env_bool("SEED_ON_STARTUP", default=False)

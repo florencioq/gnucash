@@ -173,7 +173,7 @@ export default function CustomersPage() {
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h2 className="mb-1">Clientes</h2>
-          <div className="small-muted">Cadastro de clientes no estilo GnuCash.</div>
+          <div className="small-muted">Cadastro de clientes no estilo IgeosCash.</div>
         </div>
       </div>
 

@@ -152,7 +152,7 @@ export default function VendorsPage() {
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h2 className="mb-1">Fornecedores</h2>
-          <div className="small-muted">Cadastro de fornecedores no estilo GnuCash.</div>
+          <div className="small-muted">Cadastro de fornecedores no estilo IgeosCash.</div>
         </div>
       </div>
 
