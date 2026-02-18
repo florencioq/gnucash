@@ -300,7 +300,7 @@ def _entry_totals(entry: InvoiceEntry) -> tuple[Fraction, Fraction, Fraction]:
     discount_amount = discount_ratio if discount_type == InvoiceEntryDiscountTypeSchema.VALUE.value else base * discount_ratio
 
     subtotal = base - discount_amount
-    tax = Fraction(0, 1)
+    tax = Fraction(entry.i_tax_num, entry.i_tax_denom or 1)
     total = subtotal + tax
     return subtotal, tax, total
 
@@ -1275,6 +1275,8 @@ def create_invoice_entry(invoice_guid: UUID, payload: InvoiceEntryCreate, db: Se
         i_disc_type=payload.discount_type.value,
         i_disc_how=payload.discount_how.value,
         i_taxable=payload.taxable,
+        i_tax_num=payload.tax_num,
+        i_tax_denom=payload.tax_denom,
         i_taxincluded=payload.tax_included,
         i_taxtable=str(payload.tax_table_guid) if payload.tax_table_guid else None,
     )
@@ -1345,6 +1347,14 @@ def patch_invoice_entry(
         entry.i_disc_how = data["discount_how"].value
     if "taxable" in data and data["taxable"] is not None:
         entry.i_taxable = data["taxable"]
+    if "tax_num" in data:
+        if data["tax_num"] is None:
+            raise api_error(400, "INVALID_ENTRY", "tax_num cannot be null")
+        entry.i_tax_num = data["tax_num"]
+    if "tax_denom" in data:
+        if data["tax_denom"] is None:
+            raise api_error(400, "INVALID_ENTRY", "tax_denom cannot be null")
+        entry.i_tax_denom = data["tax_denom"]
     if "tax_included" in data and data["tax_included"] is not None:
         entry.i_taxincluded = data["tax_included"]
     if "tax_table_guid" in data:

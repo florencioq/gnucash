@@ -161,7 +161,9 @@ def test_bill_crud_and_entries(client):
             "discount_denom": 100,
             "discount_type": "PERCENT",
             "discount_how": "PRETAX",
-            "taxable": False,
+            "taxable": True,
+            "tax_num": 500,
+            "tax_denom": 100,
             "tax_included": False,
         },
     )
@@ -169,7 +171,9 @@ def test_bill_crud_and_entries(client):
     entry = created_entry.json()
     assert entry["subtotal_num"] == 270
     assert entry["subtotal_denom"] == 1
-    assert entry["total_num"] == 270
+    assert entry["tax_num"] == 5
+    assert entry["tax_denom"] == 1
+    assert entry["total_num"] == 275
     assert entry["total_denom"] == 1
     entry_guid = entry["guid"]
 
@@ -178,14 +182,16 @@ def test_bill_crud_and_entries(client):
     bill_after_entry = fetched.json()
     assert len(bill_after_entry["entries"]) == 1
     assert bill_after_entry["subtotal_num"] == 270
-    assert bill_after_entry["total_num"] == 270
+    assert bill_after_entry["tax_num"] == 5
+    assert bill_after_entry["tax_denom"] == 1
+    assert bill_after_entry["total_num"] == 275
 
     patched_entry = client.patch(
         f"/bills/{bill_guid}/entries/{entry_guid}",
         json={"quantity_num": 3, "discount_num": 0},
     )
     assert patched_entry.status_code == 200
-    assert patched_entry.json()["total_num"] == 450
+    assert patched_entry.json()["total_num"] == 455
 
     patched_bill = client.patch(
         f"/bills/{bill_guid}",

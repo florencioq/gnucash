@@ -343,6 +343,8 @@ class InvoiceEntryCreate(BaseModel):
     discount_type: InvoiceEntryDiscountTypeSchema = InvoiceEntryDiscountTypeSchema.PERCENT
     discount_how: InvoiceEntryDiscountHowSchema = InvoiceEntryDiscountHowSchema.PRETAX
     taxable: bool = False
+    tax_num: int = 0
+    tax_denom: int = Field(default=1, gt=0)
     tax_included: bool = False
     tax_table_guid: UUID | None = None
 
@@ -362,6 +364,8 @@ class InvoiceEntryPatch(BaseModel):
     discount_type: InvoiceEntryDiscountTypeSchema | None = None
     discount_how: InvoiceEntryDiscountHowSchema | None = None
     taxable: bool | None = None
+    tax_num: int | None = None
+    tax_denom: int | None = Field(default=None, gt=0)
     tax_included: bool | None = None
     tax_table_guid: UUID | None = None
 

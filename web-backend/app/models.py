@@ -300,6 +300,8 @@ class InvoiceEntry(Base):
     i_disc_type: Mapped[str] = mapped_column(String(32), default="PERCENT")
     i_disc_how: Mapped[str] = mapped_column(String(32), default="PRETAX")
     i_taxable: Mapped[bool] = mapped_column(Boolean, default=False)
+    i_tax_num: Mapped[int] = mapped_column(BigInteger, default=0)
+    i_tax_denom: Mapped[int] = mapped_column(BigInteger, default=1)
     i_taxincluded: Mapped[bool] = mapped_column(Boolean, default=False)
     i_taxtable: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     b_paytype: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -318,6 +320,7 @@ class InvoiceEntry(Base):
         CheckConstraint("quantity_denom > 0", name="ck_entries_quantity_denom_positive"),
         CheckConstraint("i_price_denom > 0", name="ck_entries_price_denom_positive"),
         CheckConstraint("i_discount_denom > 0", name="ck_entries_discount_denom_positive"),
+        CheckConstraint("i_tax_denom > 0", name="ck_entries_tax_denom_positive"),
     )
 
 

@@ -91,7 +91,7 @@ function defaultEntryForm(incomeAccountGuid = "") {
     discount: "0",
     discount_type: "PERCENT",
     discount_how: "PRETAX",
-    taxable: false,
+    tax_amount: "0",
     tax_included: false
   };
 }
@@ -862,6 +862,8 @@ export default function InvoicingPage({
           discount_type: entry.discount_type,
           discount_how: entry.discount_how,
           taxable: Boolean(entry.taxable),
+          tax_num: entry.tax_num ?? 0,
+          tax_denom: entry.tax_denom ?? 1,
           tax_included: Boolean(entry.tax_included),
           tax_table_guid: entry.tax_table_guid || null
         };
@@ -917,7 +919,7 @@ export default function InvoicingPage({
       discount: decimalString(discountValue, 2),
       discount_type: discountType,
       discount_how: entry.discount_how || "PRETAX",
-      taxable: Boolean(entry.taxable),
+      tax_amount: decimalString(rationalToNumber(entry.tax_num, entry.tax_denom), 2),
       tax_included: Boolean(entry.tax_included)
     });
   };
@@ -968,6 +970,12 @@ export default function InvoicingPage({
       return;
     }
 
+    const tax = decimalToRational(entryForm.tax_amount, 100);
+    if (!tax || tax.denom <= 0) {
+      setError({ code: "VALIDATION_ERROR", message: "Imposto inválido", details: {} });
+      return;
+    }
+
     const payload = {
       date: `${entryForm.date}T00:00:00Z`,
       description: entryForm.description.trim() || null,
@@ -982,7 +990,9 @@ export default function InvoicingPage({
       discount_denom: discount.denom,
       discount_type: entryForm.discount_type,
       discount_how: entryForm.discount_how,
-      taxable: Boolean(entryForm.taxable),
+      taxable: tax.num !== 0,
+      tax_num: tax.num,
+      tax_denom: tax.denom,
       tax_included: Boolean(entryForm.tax_included)
     };
 
@@ -1732,18 +1742,15 @@ export default function InvoicingPage({
                       onChange={(event) => setEntryForm((current) => ({ ...current, discount: event.target.value }))}
                     />
                   </div>
-                  <div className="col-md-1 d-flex align-items-end">
-                    <div className="form-check">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        checked={entryForm.taxable}
-                        onChange={(event) =>
-                          setEntryForm((current) => ({ ...current, taxable: event.target.checked }))
-                        }
-                      />
-                      <label className="form-check-label">Trib.</label>
-                    </div>
+                  <div className="col-md-1">
+                    <label className="form-label">Imposto</label>
+                    <input
+                      className="form-control"
+                      value={entryForm.tax_amount}
+                      onChange={(event) =>
+                        setEntryForm((current) => ({ ...current, tax_amount: event.target.value }))
+                      }
+                    />
                   </div>
                   </div>
 
