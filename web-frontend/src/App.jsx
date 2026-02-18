@@ -12,6 +12,7 @@ import InvoicingPage from "./pages/InvoicingPage.jsx";
 import BillingListPage from "./pages/BillingListPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
+import ReceivablesPage from "./pages/ReceivablesPage.jsx";
 import {
   api,
   apiBase,
@@ -34,6 +35,7 @@ const baseTabs = [
   { id: "users", label: "Usuários", component: UsersPage },
   { id: "ledger", label: "Razão", component: LedgerPage },
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
+  { id: "receivables", label: "Contas a Receber", component: ReceivablesPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
   { id: "billing-list", label: "Compras", component: BillingListPage }
 ];
@@ -169,6 +171,7 @@ export default function App() {
   const ActiveComponent = activeTabDef.component;
   const tabIds = useMemo(() => new Set(tabs.map((tab) => tab.id)), [tabs]);
   const isInvoicingTab =
+    activeTab === "receivables" ||
     activeTab === "invoicing-list" ||
     activeTab === "billing-list" ||
     isInvoiceTab(activeTab) ||
@@ -436,6 +439,13 @@ export default function App() {
       ? { onOpenLedger: handleOpenLedger }
       : activeTab === "income-statement"
         ? { onOpenLedger: handleOpenLedger }
+      : activeTab === "receivables"
+        ? {
+            onOpenInvoicing: handleOpenInvoicing,
+            onCreateInvoicing: handleCreateInvoicing,
+            onOpenBilling: ({ billGuid, billId }) =>
+              handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
+          }
       : activeTab === "ledger"
         ? {
             initialAccountId: ledgerTargetAccountId,

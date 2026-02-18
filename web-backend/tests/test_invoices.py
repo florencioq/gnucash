@@ -399,6 +399,101 @@ def test_invoice_list_paginated_summary(client):
     assert filtered_payload["items"][0]["customer_guid"] == customer_b_guid
 
 
+def test_invoice_list_open_payment_filter(client):
+    book_id = create_book(client, "Book Open Filter")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, customer_id="COPEN")
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+    receivable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    bank_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Banco",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    invoice_open_guid = create_invoice_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        customer_guid=customer_guid,
+        income_account_guid=income_account_guid,
+        invoice_id="000010",
+        date_opened="2026-01-10T00:00:00Z",
+        unit_price_num=10000,
+    )
+    invoice_paid_guid = create_invoice_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        customer_guid=customer_guid,
+        income_account_guid=income_account_guid,
+        invoice_id="000011",
+        date_opened="2026-01-11T00:00:00Z",
+        unit_price_num=20000,
+    )
+
+    post_open = client.post(
+        f"/invoices/{invoice_open_guid}/post",
+        json={"post_account_guid": receivable_account_guid},
+    )
+    assert post_open.status_code == 200
+    assert post_open.json()["status"] == "POSTED"
+
+    post_paid = client.post(
+        f"/invoices/{invoice_paid_guid}/post",
+        json={"post_account_guid": receivable_account_guid},
+    )
+    assert post_paid.status_code == 200
+    assert post_paid.json()["status"] == "POSTED"
+
+    pay_full = client.post(
+        f"/invoices/{invoice_paid_guid}/payments",
+        json={
+            "transfer_account_guid": bank_account_guid,
+            "amount_num": 20000,
+            "amount_denom": 100,
+            "payment_date": "2026-01-12T00:00:00Z",
+        },
+    )
+    assert pay_full.status_code == 200
+    assert pay_full.json()["status"] == "PAID"
+
+    open_only = client.get(
+        f"/invoices/list?book_id={book_id}&payment_filter=OPEN&sort_key=id&sort_direction=asc&page=1&page_size=25"
+    )
+    assert open_only.status_code == 200
+    payload = open_only.json()
+    assert payload["total_items"] == 1
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["guid"] == invoice_open_guid
+    assert payload["items"][0]["payment_status"] == "UNPAID"
+
+
 def test_invoice_validation_rules(client):
     book_id = create_book(client, "Book A")
     other_book_id = create_book(client, "Book B")
