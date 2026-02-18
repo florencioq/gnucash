@@ -216,10 +216,6 @@ export default function InvoicingPage({
 
     return cache;
   }, [accounts, accountsById]);
-  const incomeAccounts = useMemo(
-    () => accounts.filter((account) => account.type === "INCOME"),
-    [accounts]
-  );
   const postingAccounts = useMemo(
     () => accounts.filter((account) => account.type === "ASSET"),
     [accounts]
@@ -350,7 +346,6 @@ export default function InvoicingPage({
       loadAccountTree(bookId)
     ]);
     const defaultCustomer = loadedCustomers[0]?.guid || "";
-    const defaultIncome = loadedAccounts.find((account) => account.type === "INCOME")?.id || "";
     const defaultPosting = loadedAccounts.find((account) => account.type === "ASSET")?.id || "";
     setCreateForm((current) => ({
       ...current,
@@ -365,7 +360,7 @@ export default function InvoicingPage({
         current.income_account_guid &&
         loadedAccounts.some((account) => account.id === current.income_account_guid)
           ? current.income_account_guid
-          : defaultIncome
+          : ""
     }));
     setPostingAccountGuid((current) =>
       current && loadedAccounts.some((account) => account.id === current && account.type === "ASSET")
@@ -401,10 +396,9 @@ export default function InvoicingPage({
   useEffect(() => {
     if (!selectedInvoiceGuid) {
       setEditingEntryGuid("");
-      const defaultIncome = incomeAccounts[0]?.id || "";
-      setEntryForm(defaultEntryForm(defaultIncome));
+      setEntryForm(defaultEntryForm());
     }
-  }, [selectedInvoiceGuid, incomeAccounts]);
+  }, [selectedInvoiceGuid]);
 
   useEffect(() => {
     if (!selectedInvoice) return;
@@ -795,7 +789,7 @@ export default function InvoicingPage({
     }
 
     setEditingEntryGuid("");
-    setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
+    setEntryForm(defaultEntryForm());
     await loadBookData(activeBookId);
   };
 
@@ -882,7 +876,7 @@ export default function InvoicingPage({
 
   const resetEntryEditor = () => {
     setEditingEntryGuid("");
-    setEntryForm(defaultEntryForm(incomeAccounts[0]?.id || ""));
+    setEntryForm(defaultEntryForm());
   };
 
   const startEditEntry = (entry) => {
