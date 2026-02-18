@@ -613,9 +613,11 @@ export default function App() {
           </div>
           <div className="d-flex align-items-center gap-2">
             {hasAuthSession && currentUser ? (
-              <span className="small-muted">Usuário: {currentUser.full_name || currentUser.email}</span>
+              <span className="small-muted brand-user-label">
+                Usuário: {currentUser.full_name || currentUser.email}
+              </span>
             ) : hasAuthSession ? (
-              <span className="small-muted">Sessão autenticada</span>
+              <span className="small-muted brand-user-label">Sessão autenticada</span>
             ) : null}
             {hasAuthSession ? (
               <button className="btn btn-sm btn-outline-light" type="button" onClick={handleLogout}>

@@ -37,6 +37,15 @@ body {
   border-bottom: 4px solid var(--accent-2);
 }
 
+.brand-bar .small-muted {
+  color: rgba(244, 239, 230, 0.88);
+}
+
+.brand-user-label {
+  color: #f8f4ec;
+  font-weight: 600;
+}
+
 .brand-title {
   font-weight: 700;
   letter-spacing: 0.04em;
