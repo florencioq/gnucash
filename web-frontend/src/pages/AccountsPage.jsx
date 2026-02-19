@@ -25,8 +25,10 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [tree, setTree] = useState([]);
+  const [accountSearch, setAccountSearch] = useState("");
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
   const [parentSearch, setParentSearch] = useState("");
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
@@ -88,6 +90,10 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     () => filterTree(tree, parentSearch),
     [tree, parentSearch]
   );
+  const visibleAccountTree = useMemo(
+    () => filterTree(tree, accountSearch),
+    [tree, accountSearch]
+  );
 
   const loadCommodities = async () => {
     const res = await api.get("/commodities?namespace=CURRENCY");
@@ -132,7 +138,11 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   useEffect(() => {
     if (activeBookId) {
       loadAll(activeBookId);
+      return;
     }
+    setAccountModalOpen(false);
+    setEditing(null);
+    setAccountSearch("");
   }, [activeBookId]);
 
   useEffect(() => {
@@ -176,6 +186,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       parent_id: "",
       is_placeholder: false
     });
+    setAccountModalOpen(false);
     await loadAll(activeBookId);
   };
 
@@ -195,6 +206,8 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       type: account.type,
       is_placeholder: account.is_placeholder
     });
+    setError(null);
+    setAccountModalOpen(true);
   };
 
   const submitEdit = async (event) => {
@@ -215,7 +228,30 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       return;
     }
     setEditing(null);
+    setAccountModalOpen(false);
     await loadAll(activeBookId);
+  };
+
+  const openCreateAccountModal = () => {
+    setEditing(null);
+    setForm((current) => ({
+      ...current,
+      name: "",
+      type: "ASSET",
+      parent_id: "",
+      is_placeholder: false
+    }));
+    setParentPickerOpen(false);
+    setParentSearch("");
+    setError(null);
+    setAccountModalOpen(true);
+  };
+
+  const closeAccountModal = () => {
+    setAccountModalOpen(false);
+    setParentPickerOpen(false);
+    setParentSearch("");
+    setEditing(null);
   };
 
   const openLedgerFromTree = (node) => {
@@ -289,6 +325,9 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           <h2 className="mb-1">Contas</h2>
           <div className="small-muted">Gerencie a hierarquia de contas por livro.</div>
         </div>
+        <button className="btn btn-accent" type="button" onClick={openCreateAccountModal} disabled={!activeBookId}>
+          Nova conta
+        </button>
       </div>
 
       {activeBook ? (
@@ -298,113 +337,6 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
-
-      <form className="row g-2 align-items-end mb-4" onSubmit={create}>
-        <div className="col-md-3">
-          <label className="form-label">Nome</label>
-          <input
-            className="form-control"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Tipo</label>
-          <select
-            className="form-select"
-            value={form.type}
-            onChange={(event) => {
-              const nextType = event.target.value;
-              setForm({
-                ...form,
-                type: nextType,
-                parent_id: nextType === "ROOT" ? "" : form.parent_id,
-                is_placeholder: nextType === "ROOT" ? true : form.is_placeholder
-              });
-            }}
-          >
-            {[
-              "ROOT",
-              "ASSET",
-              "LIABILITY",
-              "INCOME",
-              "EXPENSE",
-              "EQUITY"
-            ].map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Moeda</label>
-          <select
-            className="form-select"
-            value={form.commodity_id}
-            onChange={(event) => setForm({ ...form, commodity_id: event.target.value })}
-          >
-            {commodities.map((commodity) => (
-              <option key={commodity.id} value={commodity.id}>
-                {commodity.mnemonic}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="col-md-4">
-          <label className="form-label">Conta pai</label>
-          <div className="tree-select">
-            <button
-              type="button"
-              className="form-select tree-select-toggle"
-              onClick={toggleParentPicker}
-              disabled={isRootType}
-            >
-              <span className="tree-select-label">{parentAccountLabel}</span>
-              <span className="tree-select-caret">{parentPickerOpen ? "▲" : "▼"}</span>
-            </button>
-            {parentPickerOpen ? (
-              <div className="tree-select-menu">
-                <input
-                  className="form-control mb-2"
-                  value={parentSearch}
-                  onChange={(event) => setParentSearch(event.target.value)}
-                  placeholder="Filtrar conta pai"
-                />
-                <div className="counter-tree-panel">
-                  {visibleParentTree.length > 0 ? (
-                    renderParentTreeNodes(visibleParentTree)
-                  ) : (
-                    <div className="small-muted">Nenhuma conta encontrada para este filtro.</div>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-          {isRootType ? (
-            <div className="small-muted mt-1">ROOT não pode ter conta pai.</div>
-          ) : null}
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Marcador</label>
-          <select
-            className="form-select"
-            value={form.is_placeholder ? "true" : "false"}
-            onChange={(event) =>
-              setForm({ ...form, is_placeholder: event.target.value === "true" })
-            }
-          >
-            <option value="false">Não</option>
-            <option value="true">Sim</option>
-          </select>
-        </div>
-        <div className="col-md-3">
-          <button className="btn btn-accent w-100" type="submit" disabled={!activeBookId}>
-            Criar conta
-          </button>
-        </div>
-      </form>
 
       {error ? (
         <div className="alert alert-danger" role="alert">
@@ -419,52 +351,192 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
 
       <div className="section-card">
         <h5 className="mb-3">Árvore de contas</h5>
-        {editing ? (
-          <form className="row g-2 align-items-end mb-3" onSubmit={submitEdit}>
-            <div className="col-md-4">
-              <label className="form-label">Editar nome</label>
-              <input
-                className="form-control"
-                value={editing.name}
-                onChange={(event) => setEditing({ ...editing, name: event.target.value })}
-                required
-              />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label">Marcador</label>
-              <select
-                className="form-select"
-                value={editing.type === "ROOT" ? "true" : editing.is_placeholder ? "true" : "false"}
-                onChange={(event) =>
-                  setEditing({ ...editing, is_placeholder: event.target.value === "true" })
-                }
-                disabled={editing.type === "ROOT"}
-              >
-                <option value="false">Não</option>
-                <option value="true">Sim</option>
-              </select>
-              {editing.type === "ROOT" ? (
-                <div className="small-muted mt-1">ROOT deve ser marcador.</div>
-              ) : null}
-            </div>
-            <div className="col-md-4 d-flex gap-2">
-              <button className="btn btn-accent" type="submit">
-                Salvar alterações
-              </button>
-              <button className="btn btn-outline-secondary" type="button" onClick={() => setEditing(null)}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        ) : null}
+        <div className="row g-2 align-items-end mb-3">
+          <div className="col-md-5">
+            <label className="form-label">Buscar por nome</label>
+            <input
+              className="form-control"
+              value={accountSearch}
+              onChange={(event) => setAccountSearch(event.target.value)}
+              placeholder="Digite o nome da conta"
+              disabled={!activeBookId}
+            />
+          </div>
+        </div>
         <AccountTree
-          nodes={tree}
+          nodes={visibleAccountTree}
           commodityMnemonicById={commodityMnemonicById}
           onLedger={openLedgerFromTree}
           onEdit={(node) => editAccount(node)}
           onDelete={(node) => remove(node.id)}
         />
       </div>
+
+      {accountModalOpen ? (
+        <div className="modal d-block vendor-modal" tabIndex={-1} role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-xl vendor-modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{editing ? "Editar conta" : "Nova conta"}</h5>
+                <button type="button" className="btn-close" aria-label="Fechar" onClick={closeAccountModal} />
+              </div>
+              {editing ? (
+                <form className="modal-body" onSubmit={submitEdit}>
+                  <div className="row g-2 align-items-end">
+                    <div className="col-md-5">
+                      <label className="form-label">Editar nome</label>
+                      <input
+                        className="form-control"
+                        value={editing.name}
+                        onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Marcador</label>
+                      <select
+                        className="form-select"
+                        value={editing.type === "ROOT" ? "true" : editing.is_placeholder ? "true" : "false"}
+                        onChange={(event) =>
+                          setEditing({ ...editing, is_placeholder: event.target.value === "true" })
+                        }
+                        disabled={editing.type === "ROOT"}
+                      >
+                        <option value="false">Não</option>
+                        <option value="true">Sim</option>
+                      </select>
+                      {editing.type === "ROOT" ? (
+                        <div className="small-muted mt-1">ROOT deve ser marcador.</div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="modal-footer px-0 pb-0 mt-3">
+                    <button className="btn btn-outline-secondary" type="button" onClick={closeAccountModal}>
+                      Cancelar
+                    </button>
+                    <button className="btn btn-accent" type="submit">
+                      Salvar alterações
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form className="modal-body" onSubmit={create}>
+                  <div className="row g-2 align-items-end">
+                    <div className="col-md-3">
+                      <label className="form-label">Nome</label>
+                      <input
+                        className="form-control"
+                        value={form.name}
+                        onChange={(event) => setForm({ ...form, name: event.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <label className="form-label">Tipo</label>
+                      <select
+                        className="form-select"
+                        value={form.type}
+                        onChange={(event) => {
+                          const nextType = event.target.value;
+                          setForm({
+                            ...form,
+                            type: nextType,
+                            parent_id: nextType === "ROOT" ? "" : form.parent_id,
+                            is_placeholder: nextType === "ROOT" ? true : form.is_placeholder
+                          });
+                        }}
+                      >
+                        {[
+                          "ROOT",
+                          "ASSET",
+                          "LIABILITY",
+                          "INCOME",
+                          "EXPENSE",
+                          "EQUITY"
+                        ].map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-2">
+                      <label className="form-label">Moeda</label>
+                      <select
+                        className="form-select"
+                        value={form.commodity_id}
+                        onChange={(event) => setForm({ ...form, commodity_id: event.target.value })}
+                      >
+                        {commodities.map((commodity) => (
+                          <option key={commodity.id} value={commodity.id}>
+                            {commodity.mnemonic}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Conta pai</label>
+                      <div className="tree-select">
+                        <button
+                          type="button"
+                          className="form-select tree-select-toggle"
+                          onClick={toggleParentPicker}
+                          disabled={isRootType}
+                        >
+                          <span className="tree-select-label">{parentAccountLabel}</span>
+                          <span className="tree-select-caret">{parentPickerOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {parentPickerOpen ? (
+                          <div className="tree-select-menu">
+                            <input
+                              className="form-control mb-2"
+                              value={parentSearch}
+                              onChange={(event) => setParentSearch(event.target.value)}
+                              placeholder="Filtrar conta pai"
+                            />
+                            <div className="counter-tree-panel">
+                              {visibleParentTree.length > 0 ? (
+                                renderParentTreeNodes(visibleParentTree)
+                              ) : (
+                                <div className="small-muted">Nenhuma conta encontrada para este filtro.</div>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      {isRootType ? (
+                        <div className="small-muted mt-1">ROOT não pode ter conta pai.</div>
+                      ) : null}
+                    </div>
+                    <div className="col-md-2">
+                      <label className="form-label">Marcador</label>
+                      <select
+                        className="form-select"
+                        value={form.is_placeholder ? "true" : "false"}
+                        onChange={(event) =>
+                          setForm({ ...form, is_placeholder: event.target.value === "true" })
+                        }
+                      >
+                        <option value="false">Não</option>
+                        <option value="true">Sim</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="modal-footer px-0 pb-0 mt-3">
+                    <button className="btn btn-outline-secondary" type="button" onClick={closeAccountModal}>
+                      Cancelar
+                    </button>
+                    <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
+                      Criar conta
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {accountModalOpen ? <div className="modal-backdrop show" /> : null}
     </div>
   );
 }
