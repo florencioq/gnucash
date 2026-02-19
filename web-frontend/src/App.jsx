@@ -27,6 +27,7 @@ const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
 const NEW_INVOICE_TAB_GUID = "new";
 const NEW_BILL_TAB_GUID = "new";
 const DEFAULT_AUTH_TAB_ID = "income-statement";
+const INCOME_STATEMENT_DETAIL_TAB_ID = "report:income-statement";
 
 const baseTabs = [
   { id: "login", label: "Login", component: LoginPage },
@@ -106,6 +107,10 @@ function isBillTab(tabId) {
   return tabId.startsWith("bill:");
 }
 
+function isIncomeStatementDetailTab(tabId) {
+  return tabId === INCOME_STATEMENT_DETAIL_TAB_ID;
+}
+
 function invoiceGuidFromTab(tabId) {
   return tabId.slice("invoice:".length);
 }
@@ -166,6 +171,35 @@ function sanitizeBillTabs(items) {
   return sanitized;
 }
 
+function sanitizeReportTabs(items) {
+  if (!Array.isArray(items)) return [];
+  const sanitized = [];
+  let hasIncomeStatementTab = false;
+
+  for (const item of items) {
+    const explicitReportId = String(item?.reportId || "").trim();
+    const rawId = String(item?.id || "").trim();
+    const reportId =
+      explicitReportId ||
+      (rawId.startsWith("report:") ? rawId.slice("report:".length) : "");
+    if (reportId !== "income-statement") continue;
+    if (hasIncomeStatementTab) continue;
+    hasIncomeStatementTab = true;
+
+    const label =
+      typeof item?.label === "string" && item.label.trim().length > 0
+        ? item.label.trim()
+        : "DRE Mensal";
+    sanitized.push({
+      id: INCOME_STATEMENT_DETAIL_TAB_ID,
+      label,
+      reportId: "income-statement"
+    });
+  }
+
+  return sanitized;
+}
+
 function loadAppTabsState() {
   if (typeof window === "undefined") return null;
   try {
@@ -180,6 +214,7 @@ function loadAppTabsState() {
         typeof parsed.ledgerTargetAccountId === "string" ? parsed.ledgerTargetAccountId : "",
       openInvoiceTabs: sanitizeInvoiceTabs(parsed.openInvoiceTabs),
       openBillTabs: sanitizeBillTabs(parsed.openBillTabs),
+      openReportTabs: sanitizeReportTabs(parsed.openReportTabs),
       sidebarCollapsed: Boolean(parsed.sidebarCollapsed)
     };
   } catch {
@@ -203,6 +238,9 @@ export default function App() {
     () => persistedTabsState?.openInvoiceTabs || []
   );
   const [openBillTabs, setOpenBillTabs] = useState(() => persistedTabsState?.openBillTabs || []);
+  const [openReportTabs, setOpenReportTabs] = useState(
+    () => persistedTabsState?.openReportTabs || []
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => Boolean(persistedTabsState?.sidebarCollapsed)
   );
@@ -212,10 +250,15 @@ export default function App() {
 
   const detailTabs = useMemo(
     () => [
+      ...openReportTabs.map((tab) => ({
+        ...tab,
+        component: IncomeStatementPage,
+        closable: true
+      })),
       ...openInvoiceTabs.map((tab) => ({ ...tab, component: InvoicingPage, closable: true })),
       ...openBillTabs.map((tab) => ({ ...tab, component: BillingPage, closable: true }))
     ],
-    [openBillTabs, openInvoiceTabs]
+    [openBillTabs, openInvoiceTabs, openReportTabs]
   );
   const navigationTabs = useMemo(() => {
     if (!hasAuthSession) return baseTabs.filter((tab) => tab.id === "login");
@@ -306,6 +349,7 @@ export default function App() {
     if (hasAuthSession) return;
     setOpenInvoiceTabs([]);
     setOpenBillTabs([]);
+    setOpenReportTabs([]);
     setLedgerTargetAccountId("");
     if (activeTab !== "login") {
       setActiveTab("login");
@@ -322,14 +366,46 @@ export default function App() {
         ledgerTargetAccountId,
         openInvoiceTabs,
         openBillTabs,
+        openReportTabs,
         sidebarCollapsed
       })
     );
-  }, [activeTab, lastNonLedgerTab, ledgerTargetAccountId, openInvoiceTabs, openBillTabs, sidebarCollapsed]);
+  }, [
+    activeTab,
+    lastNonLedgerTab,
+    ledgerTargetAccountId,
+    openInvoiceTabs,
+    openBillTabs,
+    openReportTabs,
+    sidebarCollapsed
+  ]);
 
   const handleOpenLedger = ({ accountId }) => {
     setLedgerTargetAccountId(accountId || "");
     setActiveTab("ledger");
+  };
+
+  const handleOpenIncomeStatementTab = () => {
+    const label = "DRE Mensal";
+    setOpenReportTabs((current) => {
+      const hasTab = current.some((tab) => tab.id === INCOME_STATEMENT_DETAIL_TAB_ID);
+      if (hasTab) {
+        return current.map((tab) =>
+          tab.id === INCOME_STATEMENT_DETAIL_TAB_ID && tab.label !== label
+            ? { ...tab, label }
+            : tab
+        );
+      }
+      return [
+        ...current,
+        {
+          id: INCOME_STATEMENT_DETAIL_TAB_ID,
+          label,
+          reportId: "income-statement"
+        }
+      ];
+    });
+    setActiveTab(INCOME_STATEMENT_DETAIL_TAB_ID);
   };
 
   const handleOpenInvoicing = ({
@@ -475,6 +551,9 @@ export default function App() {
     if (isBillTab(tabId)) {
       setOpenBillTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
+    if (isIncomeStatementDetailTab(tabId)) {
+      setOpenReportTabs((current) => current.filter((tab) => tab.id !== tabId));
+    }
 
     setActiveTab((current) => (current === tabId ? fallbackTab : current));
   };
@@ -505,7 +584,9 @@ export default function App() {
   };
 
   const ledgerReturnTab =
-    (lastNonLedgerTab === "payables" ||
+    (lastNonLedgerTab === "income-statement" ||
+      isIncomeStatementDetailTab(lastNonLedgerTab) ||
+      lastNonLedgerTab === "payables" ||
       lastNonLedgerTab === "invoicing-list" ||
       lastNonLedgerTab === "billing-list" ||
       isInvoiceTab(lastNonLedgerTab) ||
@@ -519,7 +600,7 @@ export default function App() {
       ? { currentUser, onLoginSuccess: handleLoginSuccess }
       : activeTab === "accounts"
       ? { onOpenLedger: handleOpenLedger }
-      : activeTab === "income-statement"
+      : activeTab === "income-statement" || isIncomeStatementDetailTab(activeTab)
         ? { onOpenLedger: handleOpenLedger }
       : activeTab === "invoice-settlement-report"
         ? { onOpenInvoicing: handleOpenInvoicing }
@@ -660,21 +741,33 @@ export default function App() {
                   <section key={section.id} className="app-nav-section">
                     <h2 className="app-nav-section-title">{section.label}</h2>
                     <div className="app-nav-links">
-                      {section.items.map((tab) => (
+                      {section.items.map((tab) => {
+                        const isIncomeStatementNav = tab.id === "income-statement";
+                        const isActive =
+                          activeTab === tab.id ||
+                          (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab));
+                        return (
                         <button
                           key={tab.id}
-                          className={`app-nav-link ${activeTab === tab.id ? "is-active" : ""}`}
+                          className={`app-nav-link ${isActive ? "is-active" : ""}`}
                           type="button"
                           title={tab.label}
                           aria-label={tab.label}
-                          onClick={() => setActiveTab(tab.id)}
+                          onClick={() => {
+                            if (isIncomeStatementNav) {
+                              handleOpenIncomeStatementTab();
+                              return;
+                            }
+                            setActiveTab(tab.id);
+                          }}
                         >
                           <span className="app-nav-link-icon" aria-hidden="true">
                             {navIconByTabId[tab.id] || "•"}
                           </span>
                           <span className="app-nav-link-label">{tab.label}</span>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                 ))}
