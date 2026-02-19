@@ -95,6 +95,8 @@ This document is a reference implementation profile and does not override normat
 - Invoicing entry editor should start with no revenue account selected; user must choose `income_account_guid` explicitly.
 - Purchasing entry editor should start with no expense account selected; user must choose `income_account_guid` explicitly.
 - Customer and vendor master forms SHOULD expose default account selectors using hierarchical account trees.
+- Customer and vendor master create/edit actions SHOULD open in modal dialogs instead of inline table-adjacent forms.
+- Vendor master list SHOULD provide name search, active/inactive status filter, sortable name column, and UI pagination controls.
 - Invoicing entry forms SHOULD auto-suggest customer default revenue account when available.
 - Purchasing entry forms SHOULD auto-suggest vendor default expense account when available.
 - Invoicing posting form SHOULD auto-suggest book default receivables account when available.

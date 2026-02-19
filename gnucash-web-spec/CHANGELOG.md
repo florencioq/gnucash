@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.13 - 2026-02-19
+
+Vendor master UX synchronization:
+- documented modal-based create/edit behavior for customer/vendor master forms in implementation profile
+- documented vendor list UX expectations for name search, active/inactive filtering, name sorting, and pagination controls
+- extended acceptance coverage notes with vendor-master UI scenarios for modal workflow and list interactions
+
 ## v0.4.12 - 2026-02-19
 
 Implementation profile synchronization:

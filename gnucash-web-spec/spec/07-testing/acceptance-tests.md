@@ -103,3 +103,6 @@ Primary suites:
 
 60. Invoice auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
 61. Bill auto-numbering syncs with manual high IDs (blank-ID create after manual high ID returns next value).
+62. Vendor master create/edit workflow via modal dialog (open, save, cancel, close behavior).
+63. Vendor master list name search + active/inactive filter interaction.
+64. Vendor master list name sorting toggle and UI pagination behavior.
