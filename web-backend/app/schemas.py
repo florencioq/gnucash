@@ -146,6 +146,8 @@ class AccountTreeNode(BaseModel):
     is_placeholder: bool
     balance_num: int = 0
     balance_denom: int = 1
+    posting_count: int = 0
+    subtree_posting_count: int = 0
     children: list["AccountTreeNode"] = Field(default_factory=list)
 
 

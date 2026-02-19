@@ -85,7 +85,14 @@ function computeEffectiveBalances(nodes) {
   return map;
 }
 
-function pruneZeroBalanceNodes(nodes, effectiveBalanceById) {
+function pruneNodesByVisibilityOptions(
+  nodes,
+  {
+    effectiveBalanceById,
+    hideZeroBalances,
+    hideWithoutPostings
+  }
+) {
   const visit = (node) => {
     const children = Array.isArray(node.children) ? node.children : [];
     const visibleChildren = children.map(visit).filter(Boolean);
@@ -93,10 +100,13 @@ function pruneZeroBalanceNodes(nodes, effectiveBalanceById) {
       numerator: 0n,
       denominator: 1n
     };
-    const isZero = effective.numerator === 0n;
+    const isZeroBalance = effective.numerator === 0n;
+    const subtreePostingCount = Number(node.subtree_posting_count ?? node.posting_count ?? 0);
+    const hasNoPostings = subtreePostingCount <= 0;
 
-    // Keep non-zero nodes and keep zero parents that still have visible descendants.
-    if (isZero && visibleChildren.length === 0) return null;
+    const shouldHideByZero = hideZeroBalances && isZeroBalance && visibleChildren.length === 0;
+    const shouldHideByPostings = hideWithoutPostings && hasNoPostings && visibleChildren.length === 0;
+    if (shouldHideByZero || shouldHideByPostings) return null;
 
     if (visibleChildren.length === children.length) return node;
     return { ...node, children: visibleChildren };
@@ -237,6 +247,7 @@ function Node({
 export default function AccountTree({
   nodes,
   hideZeroBalances = false,
+  hideWithoutPostings = false,
   commodityMnemonicById,
   onLedger,
   onEdit,
@@ -248,8 +259,15 @@ export default function AccountTree({
     [nodes]
   );
   const renderedNodes = useMemo(
-    () => (hideZeroBalances ? pruneZeroBalanceNodes(nodes || [], effectiveBalanceById) : nodes || []),
-    [nodes, hideZeroBalances, effectiveBalanceById]
+    () => {
+      if (!hideZeroBalances && !hideWithoutPostings) return nodes || [];
+      return pruneNodesByVisibilityOptions(nodes || [], {
+        effectiveBalanceById,
+        hideZeroBalances,
+        hideWithoutPostings
+      });
+    },
+    [nodes, hideZeroBalances, hideWithoutPostings, effectiveBalanceById]
   );
 
   useEffect(() => {

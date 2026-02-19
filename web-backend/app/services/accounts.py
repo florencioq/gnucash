@@ -52,12 +52,14 @@ def build_account_tree(db: Session, *, book_id: str) -> list[AccountTreeNode]:
     account_ids = [account.id for account in accounts]
 
     balances_by_account: dict[str, Fraction] = defaultdict(lambda: Fraction(0, 1))
+    postings_by_account: dict[str, int] = defaultdict(int)
     if account_ids:
         split_rows = db.execute(
             select(Split.account_guid, Split.value_num, Split.value_denom).where(Split.account_guid.in_(account_ids))
         ).all()
         for account_guid, value_num, value_denom in split_rows:
             balances_by_account[account_guid] += Fraction(value_num, value_denom)
+            postings_by_account[account_guid] += 1
 
     by_parent: dict[str | None, list[Account]] = defaultdict(list)
     for account in accounts:
@@ -65,7 +67,10 @@ def build_account_tree(db: Session, *, book_id: str) -> list[AccountTreeNode]:
 
     def build_node(account: Account) -> AccountTreeNode:
         children = sorted(by_parent.get(account.id, []), key=lambda x: x.name)
+        children_nodes = [build_node(child) for child in children]
         balance = balances_by_account.get(account.id, Fraction(0, 1))
+        posting_count = postings_by_account.get(account.id, 0)
+        subtree_posting_count = posting_count + sum(child.subtree_posting_count for child in children_nodes)
         return AccountTreeNode(
             id=account.id,
             book_id=account.book_id,
@@ -77,7 +82,9 @@ def build_account_tree(db: Session, *, book_id: str) -> list[AccountTreeNode]:
             is_placeholder=account.is_placeholder,
             balance_num=balance.numerator,
             balance_denom=balance.denominator,
-            children=[build_node(child) for child in children],
+            posting_count=posting_count,
+            subtree_posting_count=subtree_posting_count,
+            children=children_nodes,
         )
 
     roots = sorted(by_parent.get(None, []), key=lambda x: x.name)

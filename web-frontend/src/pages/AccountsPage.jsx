@@ -27,6 +27,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   const [tree, setTree] = useState([]);
   const [accountSearch, setAccountSearch] = useState("");
   const [hideZeroBalances, setHideZeroBalances] = useState(false);
+  const [hideWithoutPostings, setHideWithoutPostings] = useState(false);
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
   const [parentSearch, setParentSearch] = useState("");
   const [accountModalOpen, setAccountModalOpen] = useState(false);
@@ -377,11 +378,25 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
                 Ocultar contas com saldo zerado
               </label>
             </div>
+            <div className="form-check mt-2">
+              <input
+                id="accounts-hide-without-postings"
+                className="form-check-input"
+                type="checkbox"
+                checked={hideWithoutPostings}
+                onChange={(event) => setHideWithoutPostings(event.target.checked)}
+                disabled={!activeBookId}
+              />
+              <label className="form-check-label" htmlFor="accounts-hide-without-postings">
+                Ocultar contas sem lançamentos
+              </label>
+            </div>
           </div>
         </div>
         <AccountTree
           nodes={visibleAccountTree}
           hideZeroBalances={hideZeroBalances}
+          hideWithoutPostings={hideWithoutPostings}
           commodityMnemonicById={commodityMnemonicById}
           onLedger={openLedgerFromTree}
           onEdit={(node) => editAccount(node)}
