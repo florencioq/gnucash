@@ -26,6 +26,7 @@ import {
 const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
 const NEW_INVOICE_TAB_GUID = "new";
 const NEW_BILL_TAB_GUID = "new";
+const DEFAULT_AUTH_TAB_ID = "income-statement";
 
 const baseTabs = [
   { id: "login", label: "Login", component: LoginPage },
@@ -173,8 +174,8 @@ function loadAppTabsState() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     return {
-      activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : "books",
-      lastNonLedgerTab: typeof parsed.lastNonLedgerTab === "string" ? parsed.lastNonLedgerTab : "books",
+      activeTab: typeof parsed.activeTab === "string" ? parsed.activeTab : DEFAULT_AUTH_TAB_ID,
+      lastNonLedgerTab: typeof parsed.lastNonLedgerTab === "string" ? parsed.lastNonLedgerTab : DEFAULT_AUTH_TAB_ID,
       ledgerTargetAccountId:
         typeof parsed.ledgerTargetAccountId === "string" ? parsed.ledgerTargetAccountId : "",
       openInvoiceTabs: sanitizeInvoiceTabs(parsed.openInvoiceTabs),
@@ -190,10 +191,10 @@ export default function App() {
   const persistedTabsState = useMemo(() => loadAppTabsState(), []);
   const initialAuthSession = useMemo(() => getAuthSession(), []);
   const [activeTab, setActiveTab] = useState(() =>
-    initialAuthSession ? persistedTabsState?.activeTab || "books" : "login"
+    initialAuthSession ? persistedTabsState?.activeTab || DEFAULT_AUTH_TAB_ID : "login"
   );
   const [lastNonLedgerTab, setLastNonLedgerTab] = useState(
-    () => persistedTabsState?.lastNonLedgerTab || "books"
+    () => persistedTabsState?.lastNonLedgerTab || DEFAULT_AUTH_TAB_ID
   );
   const [ledgerTargetAccountId, setLedgerTargetAccountId] = useState(
     () => persistedTabsState?.ledgerTargetAccountId || ""
@@ -298,7 +299,7 @@ export default function App() {
 
   useEffect(() => {
     if (tabIds.has(activeTab)) return;
-    setActiveTab(hasAuthSession ? "books" : "login");
+    setActiveTab(hasAuthSession ? DEFAULT_AUTH_TAB_ID : "login");
   }, [activeTab, hasAuthSession, tabIds]);
 
   useEffect(() => {
@@ -482,14 +483,14 @@ export default function App() {
     if (user) {
       setHasAuthSession(true);
       setCurrentUser(user);
-      setActiveTab("books");
+      setActiveTab(DEFAULT_AUTH_TAB_ID);
       return;
     }
     const meRes = await api.get("/auth/me");
     if (meRes.ok) {
       setHasAuthSession(true);
       setCurrentUser(meRes.data);
-      setActiveTab("books");
+      setActiveTab(DEFAULT_AUTH_TAB_ID);
       return;
     }
     setHasAuthSession(false);
