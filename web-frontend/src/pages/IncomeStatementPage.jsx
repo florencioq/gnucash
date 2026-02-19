@@ -345,8 +345,6 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
                 </tr>
               </thead>
               <tbody>
-                {typeFilter !== "EXPENSE" ? renderSection("Receita", incomeRows, matrix.revenue_totals, "income") : null}
-                {typeFilter !== "INCOME" ? renderSection("Despesa", expenseRows, matrix.expense_totals, "expense") : null}
                 <tr className="dre-classic-total-row net">
                   <td className="dre-classic-sticky-col fw-bold">Resultado Líquido</td>
                   {reversedPeriodIndexes.map((index) => (
@@ -361,6 +359,8 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
                     {formatMoney(netIncomeGrandTotal, matrix.currency_mnemonic || "BRL")}
                   </td>
                 </tr>
+                {typeFilter !== "EXPENSE" ? renderSection("Receita", incomeRows, matrix.revenue_totals, "income") : null}
+                {typeFilter !== "INCOME" ? renderSection("Despesa", expenseRows, matrix.expense_totals, "expense") : null}
                 {filteredMatrixRows.length === 0 ? (
                   <tr>
                     <td colSpan={matrix.periods.length + 2} className="small-muted text-center py-3">
