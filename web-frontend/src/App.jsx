@@ -723,6 +723,7 @@ export default function App() {
     initialAccountId: ledgerTargetAccountId,
     returnTab: ledgerReturnTab,
     onReturnToTab: (tabId) => setActiveTab(tabId),
+    onLedgerAccountChange: (accountId) => setLedgerTargetAccountId(String(accountId || "")),
     onOpenInvoicing: handleOpenInvoicing,
     onOpenBilling: handleOpenBilling
   });

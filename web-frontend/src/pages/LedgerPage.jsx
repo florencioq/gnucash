@@ -77,6 +77,7 @@ export default function LedgerPage({
   initialAccountId = "",
   returnTab = "",
   onReturnToTab = () => {},
+  onLedgerAccountChange = () => {},
   onOpenInvoicing = () => {},
   onOpenBilling = () => {}
 }) {
@@ -288,6 +289,10 @@ export default function LedgerPage({
   }, [initialAccountId, accounts]);
 
   useEffect(() => {
+    onLedgerAccountChange(ledgerAccountId || "");
+  }, [ledgerAccountId, onLedgerAccountChange]);
+
+  useEffect(() => {
     const candidates = accounts.filter(
       (account) => account.type !== "ROOT" && account.id !== ledgerAccountId
     );
@@ -327,10 +332,17 @@ export default function LedgerPage({
       if (!ownSplit) continue;
 
       const contraSplits = tx.splits.filter((split) => split.account_guid !== ledgerAccountId);
-      const contraLabel =
-        contraSplits
-          .map((split) => accountsById.get(split.account_guid)?.name || split.account_guid)
-          .join(", ") || "-";
+      const contraAccounts = contraSplits.map((split) => {
+        const accountId = split.account_guid || "";
+        const account = accountsById.get(accountId) || null;
+        return {
+          accountId,
+          label: account
+            ? accountFullNameById.get(accountId) || account.name
+            : accountId
+        };
+      });
+      const contraLabel = contraAccounts.map((account) => account.label).join(", ") || "-";
       const amount = ownSplit.value_num / ownSplit.value_denom;
       const movementDate = tx.post_date || tx.enter_date;
       rows.push({
@@ -339,6 +351,7 @@ export default function LedgerPage({
         date: movementDate,
         history: tx.description || ownSplit.memo || "-",
         contra: contraLabel,
+        contraAccounts,
         debit: amount < 0 ? Math.abs(amount) : 0,
         credit: amount > 0 ? amount : 0,
         amount
@@ -357,7 +370,7 @@ export default function LedgerPage({
       runningBalance += row.amount;
       return { ...row, balance: runningBalance };
     });
-  }, [transactions, ledgerAccountId, accountsById]);
+  }, [transactions, ledgerAccountId, accountsById, accountFullNameById]);
 
   const selectedLedgerAccount = accountsById.get(ledgerAccountId) || null;
   const selectedCounterAccount = accountsById.get(ledgerForm.counterAccountId) || null;
@@ -849,7 +862,25 @@ export default function LedgerPage({
                   <tr key={row.key}>
                     <td>{formatDate(row.date)}</td>
                     <td>{row.history}</td>
-                    <td>{row.contra}</td>
+                    <td>
+                      {row.contraAccounts.length > 0 ? (
+                        row.contraAccounts.map((contraAccount, index) => (
+                          <React.Fragment key={`${row.key}:${contraAccount.accountId}:${index}`}>
+                            <button
+                              type="button"
+                              className="btn btn-link btn-sm p-0 align-baseline"
+                              onClick={() => selectLedgerAccount(contraAccount.accountId)}
+                              title={`Abrir razão da conta ${contraAccount.label}`}
+                            >
+                              {contraAccount.label}
+                            </button>
+                            {index < row.contraAccounts.length - 1 ? ", " : ""}
+                          </React.Fragment>
+                        ))
+                      ) : (
+                        row.contra
+                      )}
+                    </td>
                     <td className="text-end">{row.debit ? formatAmount(row.debit, ledgerCommodity?.mnemonic) : "-"}</td>
                     <td className="text-end">{row.credit ? formatAmount(row.credit, ledgerCommodity?.mnemonic) : "-"}</td>
                     <td className="text-end fw-semibold">{formatAmount(row.balance, ledgerCommodity?.mnemonic)}</td>
