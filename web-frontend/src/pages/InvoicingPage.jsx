@@ -10,14 +10,64 @@ function todayIsoDate() {
   return `${year}-${month}-${day}`;
 }
 
-function parseDecimal(input) {
-  const normalized = String(input ?? "").trim().replace(",", ".");
-  if (!normalized) return Number.NaN;
-  return Number(normalized);
+function parseDecimal(input, fractionDigits = null) {
+  const raw = String(input ?? "").trim();
+  if (!raw) return Number.NaN;
+
+  const compact = raw.replace(/\s+/g, "");
+  const commaCount = (compact.match(/,/g) || []).length;
+  const dotCount = (compact.match(/\./g) || []).length;
+  const commaIndex = compact.lastIndexOf(",");
+  const dotIndex = compact.lastIndexOf(".");
+  const hasComma = commaIndex >= 0;
+  const hasDot = dotIndex >= 0;
+
+  let decimalIndex = -1;
+  if (hasComma && hasDot) {
+    decimalIndex = Math.max(commaIndex, dotIndex);
+  } else if (hasComma) {
+    if (
+      fractionDigits !== null &&
+      commaCount === 1 &&
+      compact.slice(commaIndex + 1).replace(/[^\d]/g, "").length > fractionDigits
+    ) {
+      decimalIndex = -1;
+    } else {
+      decimalIndex = commaIndex;
+    }
+  } else if (hasDot) {
+    if (
+      dotCount > 1 ||
+      (
+        fractionDigits !== null &&
+        dotCount === 1 &&
+        compact.slice(dotIndex + 1).replace(/[^\d]/g, "").length > fractionDigits
+      )
+    ) {
+      decimalIndex = -1;
+    } else {
+      decimalIndex = dotIndex;
+    }
+  }
+
+  const sign = compact.startsWith("-") ? "-" : "";
+  const integerChunk = decimalIndex >= 0 ? compact.slice(0, decimalIndex) : compact;
+  const decimalChunk = decimalIndex >= 0 ? compact.slice(decimalIndex + 1) : "";
+
+  const integerDigits = integerChunk.replace(/[^\d]/g, "");
+  const decimalDigits = decimalChunk.replace(/[^\d]/g, "");
+  if (!integerDigits && !decimalDigits) return Number.NaN;
+
+  const normalized = decimalIndex >= 0
+    ? `${sign}${integerDigits || "0"}.${decimalDigits}`
+    : `${sign}${integerDigits}`;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : Number.NaN;
 }
 
 function decimalToRational(input, scale = 100) {
-  const value = parseDecimal(input);
+  const guessedFractionDigits = Number.isInteger(Math.log10(scale)) ? Math.log10(scale) : null;
+  const value = parseDecimal(input, guessedFractionDigits);
   if (!Number.isFinite(value)) return null;
   return {
     num: Math.round(value * scale),
@@ -27,7 +77,24 @@ function decimalToRational(input, scale = 100) {
 
 function decimalString(value, precision = 2) {
   if (!Number.isFinite(value)) return "";
-  return value.toFixed(precision).replace(/\.?0+$/, "");
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: precision
+  }).format(value);
+}
+
+function decimalFixedString(value, precision = 2) {
+  if (!Number.isFinite(value)) return "";
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision
+  }).format(value);
+}
+
+function formatDecimalInput(input, precision = 2, fixed = false) {
+  const value = parseDecimal(input, precision);
+  if (!Number.isFinite(value)) return String(input ?? "");
+  return fixed ? decimalFixedString(value, precision) : decimalString(value, precision);
 }
 
 function rationalToNumber(num, denom) {
@@ -167,6 +234,7 @@ export default function InvoicingPage({
   const [incomePickerOpen, setIncomePickerOpen] = useState(false);
   const [incomeSearch, setIncomeSearch] = useState("");
   const [postingAccountGuid, setPostingAccountGuid] = useState("");
+  const [postingDate, setPostingDate] = useState(todayIsoDate());
   const [retainedTaxAccountGuid, setRetainedTaxAccountGuid] = useState("");
   const [postingPickerOpen, setPostingPickerOpen] = useState(false);
   const [postingSearch, setPostingSearch] = useState("");
@@ -466,6 +534,18 @@ export default function InvoicingPage({
   }, [selectedInvoiceGuid]);
 
   useEffect(() => {
+    if (!selectedInvoice) {
+      setPostingDate(todayIsoDate());
+      return;
+    }
+    const resolvedPostingDate =
+      invoiceDateInput(selectedInvoice.date_posted) ||
+      invoiceDateInput(selectedInvoice.date_opened) ||
+      todayIsoDate();
+    setPostingDate(resolvedPostingDate);
+  }, [selectedInvoice?.guid, selectedInvoice?.date_posted, selectedInvoice?.date_opened]);
+
+  useEffect(() => {
     if (!selectedInvoice || editingEntryGuid) return;
     const defaultIncomeAccountGuid = resolveCustomerDefaultIncomeAccountGuid(selectedInvoice.customer_guid);
     if (!defaultIncomeAccountGuid) return;
@@ -507,7 +587,7 @@ export default function InvoicingPage({
 
     const suggestedAmount =
       isInvoicePosted && selectedInvoiceOpenAmount > 0
-        ? decimalString(selectedInvoiceOpenAmount, 2)
+        ? decimalFixedString(selectedInvoiceOpenAmount, 2)
         : "";
 
     setPaymentForm((current) => ({
@@ -735,11 +815,12 @@ export default function InvoicingPage({
       });
       return;
     }
-    const postingDate = invoiceDateInput(selectedInvoice.date_opened) || todayIsoDate();
+    const resolvedPostingDate =
+      postingDate || invoiceDateInput(selectedInvoice.date_opened) || todayIsoDate();
 
     const payload = {
       post_account_guid: postingAccountGuid,
-      post_date: `${postingDate}T00:00:00Z`
+      post_date: `${resolvedPostingDate}T00:00:00Z`
     };
     if (selectedInvoiceTaxAmount > 0 && retainedTaxAccountGuid) {
       payload.retained_tax_account_guid = retainedTaxAccountGuid;
@@ -1018,11 +1099,11 @@ export default function InvoicingPage({
       notes: entry.notes || "",
       income_account_guid: entry.income_account_guid || "",
       quantity: decimalString(rationalToNumber(entry.quantity_num, entry.quantity_denom), 3),
-      unit_price: decimalString(rationalToNumber(entry.unit_price_num, entry.unit_price_denom), 2),
-      discount: decimalString(discountValue, 2),
+      unit_price: decimalFixedString(rationalToNumber(entry.unit_price_num, entry.unit_price_denom), 2),
+      discount: discountType === "VALUE" ? decimalFixedString(discountValue, 2) : decimalString(discountValue, 2),
       discount_type: discountType,
       discount_how: entry.discount_how || "PRETAX",
-      tax_amount: decimalString(rationalToNumber(entry.tax_num, entry.tax_denom), 2),
+      tax_amount: decimalFixedString(rationalToNumber(entry.tax_num, entry.tax_denom), 2),
       tax_included: Boolean(entry.tax_included)
     });
   };
@@ -1055,7 +1136,7 @@ export default function InvoicingPage({
       return;
     }
 
-    const discountValue = parseDecimal(entryForm.discount);
+    const discountValue = parseDecimal(entryForm.discount, 2);
     if (!Number.isFinite(discountValue)) {
       setError({ code: "VALIDATION_ERROR", message: "Desconto inválido", details: {} });
       return;
@@ -1455,7 +1536,7 @@ export default function InvoicingPage({
                     }
                   />
                 </div>
-                <div className="col-md-6">
+                <div className="col-md-4">
                   <label className="form-label">Conta de postagem (A/R)</label>
                   <div className="tree-select">
                     <button
@@ -1484,6 +1565,16 @@ export default function InvoicingPage({
                       </div>
                     ) : null}
                   </div>
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Data da postagem</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={postingDate}
+                    disabled={isInvoicePosted}
+                    onChange={(event) => setPostingDate(event.target.value)}
+                  />
                 </div>
                 {selectedInvoiceTaxAmount > 0 ? (
                   <div className="col-md-6">
@@ -1607,6 +1698,12 @@ export default function InvoicingPage({
                         value={paymentForm.amount}
                         onChange={(event) =>
                           setPaymentForm((current) => ({ ...current, amount: event.target.value }))
+                        }
+                        onBlur={() =>
+                          setPaymentForm((current) => ({
+                            ...current,
+                            amount: formatDecimalInput(current.amount, 2, true)
+                          }))
                         }
                         placeholder="0,00"
                       />
@@ -1848,6 +1945,12 @@ export default function InvoicingPage({
                       className="form-control"
                       value={entryForm.quantity}
                       onChange={(event) => setEntryForm((current) => ({ ...current, quantity: event.target.value }))}
+                      onBlur={() =>
+                        setEntryForm((current) => ({
+                          ...current,
+                          quantity: formatDecimalInput(current.quantity, 3)
+                        }))
+                      }
                       required
                     />
                   </div>
@@ -1858,6 +1961,12 @@ export default function InvoicingPage({
                       value={entryForm.unit_price}
                       onChange={(event) =>
                         setEntryForm((current) => ({ ...current, unit_price: event.target.value }))
+                      }
+                      onBlur={() =>
+                        setEntryForm((current) => ({
+                          ...current,
+                          unit_price: formatDecimalInput(current.unit_price, 2, true)
+                        }))
                       }
                       required
                     />
@@ -1881,6 +1990,16 @@ export default function InvoicingPage({
                       className="form-control"
                       value={entryForm.discount}
                       onChange={(event) => setEntryForm((current) => ({ ...current, discount: event.target.value }))}
+                      onBlur={() =>
+                        setEntryForm((current) => ({
+                          ...current,
+                          discount: formatDecimalInput(
+                            current.discount,
+                            2,
+                            current.discount_type === "VALUE"
+                          )
+                        }))
+                      }
                     />
                   </div>
                   <div className="col-md-1">
@@ -1890,6 +2009,12 @@ export default function InvoicingPage({
                       value={entryForm.tax_amount}
                       onChange={(event) =>
                         setEntryForm((current) => ({ ...current, tax_amount: event.target.value }))
+                      }
+                      onBlur={() =>
+                        setEntryForm((current) => ({
+                          ...current,
+                          tax_amount: formatDecimalInput(current.tax_amount, 2, true)
+                        }))
                       }
                     />
                   </div>
