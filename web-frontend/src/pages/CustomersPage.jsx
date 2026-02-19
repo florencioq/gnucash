@@ -50,10 +50,17 @@ function reverseAccountPath(path) {
 }
 
 export default function CustomersPage() {
+  const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [accountTree, setAccountTree] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerActiveFilter, setCustomerActiveFilter] = useState("ALL");
+  const [customerSortDirection, setCustomerSortDirection] = useState("asc");
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerPageSize, setCustomerPageSize] = useState(25);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [incomePickerOpen, setIncomePickerOpen] = useState(false);
   const [incomeSearch, setIncomeSearch] = useState("");
   const [editingGuid, setEditingGuid] = useState("");
@@ -137,6 +144,42 @@ export default function CustomersPage() {
     () => filterTree(incomeTree, incomeSearch),
     [incomeTree, incomeSearch]
   );
+  const filteredSortedCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase();
+    const withSearch = customers.filter((customer) => {
+      if (!query) return true;
+      return String(customer.name || "").toLowerCase().includes(query);
+    });
+
+    const withStatus = withSearch.filter((customer) => {
+      if (customerActiveFilter === "ALL") return true;
+      if (customerActiveFilter === "ACTIVE") return Boolean(customer.active);
+      return !customer.active;
+    });
+
+    return [...withStatus].sort((left, right) => {
+      const leftName = String(left.name || "").toLowerCase();
+      const rightName = String(right.name || "").toLowerCase();
+      if (leftName === rightName) {
+        const leftGuid = String(left.guid || "");
+        const rightGuid = String(right.guid || "");
+        return customerSortDirection === "asc"
+          ? leftGuid.localeCompare(rightGuid)
+          : rightGuid.localeCompare(leftGuid);
+      }
+      return customerSortDirection === "asc"
+        ? leftName.localeCompare(rightName)
+        : rightName.localeCompare(leftName);
+    });
+  }, [customers, customerSearch, customerActiveFilter, customerSortDirection]);
+  const totalCustomerItems = filteredSortedCustomers.length;
+  const totalCustomerPages = totalCustomerItems === 0 ? 1 : Math.ceil(totalCustomerItems / customerPageSize);
+  const currentCustomerPage = totalCustomerItems === 0 ? 1 : Math.min(customerPage, totalCustomerPages);
+  const pagedCustomers = useMemo(() => {
+    const startIndex = (currentCustomerPage - 1) * customerPageSize;
+    return filteredSortedCustomers.slice(startIndex, startIndex + customerPageSize);
+  }, [filteredSortedCustomers, currentCustomerPage, customerPageSize]);
+  const customerSortIndicator = customerSortDirection === "asc" ? "↑" : "↓";
 
   const resetForm = (currencyGuid = "") => {
     setForm({
@@ -157,6 +200,19 @@ export default function CustomersPage() {
       shipaddr_phone: "",
       shipaddr_email: ""
     });
+  };
+
+  const closeCustomerModal = () => {
+    setCustomerModalOpen(false);
+    setIncomePickerOpen(false);
+    setIncomeSearch("");
+  };
+
+  const openCreateCustomerModal = () => {
+    setEditingGuid("");
+    resetForm(form.currency_guid || (commodities[0] || {}).id || "");
+    setError(null);
+    setCustomerModalOpen(true);
   };
 
   const loadCommodities = async () => {
@@ -222,12 +278,17 @@ export default function CustomersPage() {
     setIncomePickerOpen(false);
     setIncomeSearch("");
     setEditingGuid("");
+    setCustomerModalOpen(false);
   }, [activeBookId]);
 
   useEffect(() => {
     setIncomePickerOpen(false);
     setIncomeSearch("");
   }, [editingGuid, accountTree]);
+
+  useEffect(() => {
+    setCustomerPage(1);
+  }, [customerSearch, customerActiveFilter, customerSortDirection, customerPageSize]);
 
   const selectIncomeAccount = (accountId) => {
     setForm((current) => ({ ...current, income_account_guid: accountId }));
@@ -318,6 +379,7 @@ export default function CustomersPage() {
 
     setEditingGuid("");
     resetForm(form.currency_guid);
+    closeCustomerModal();
     await loadCustomers(activeBookId);
   };
 
@@ -342,11 +404,13 @@ export default function CustomersPage() {
       shipaddr_phone: customer.shipaddr_phone || "",
       shipaddr_email: customer.shipaddr_email || ""
     });
+    setCustomerModalOpen(true);
   };
 
   const cancelEdit = () => {
     setEditingGuid("");
     resetForm(form.currency_guid || (commodities[0] || {}).id || "");
+    closeCustomerModal();
   };
 
   const remove = async (customerGuid) => {
@@ -368,6 +432,9 @@ export default function CustomersPage() {
           <h2 className="mb-1">Clientes</h2>
           <div className="small-muted">Cadastro de clientes no estilo IgeosCash.</div>
         </div>
+        <button className="btn btn-accent" type="button" onClick={openCreateCustomerModal} disabled={!activeBookId}>
+          Novo cliente
+        </button>
       </div>
 
       {activeBook ? (
@@ -377,198 +444,6 @@ export default function CustomersPage() {
           Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
-
-      <form className="row g-2 align-items-end mb-4" onSubmit={submit}>
-        <div className="col-md-3">
-          <label className="form-label">Nome</label>
-          <input
-            className="form-control"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">ID</label>
-          <input
-            className="form-control"
-            value={form.id}
-            onChange={(event) => setForm({ ...form, id: event.target.value })}
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Moeda</label>
-          <select
-            className="form-select"
-            value={form.currency_guid}
-            onChange={(event) => setForm({ ...form, currency_guid: event.target.value })}
-            required
-          >
-            {commodities.map((commodity) => (
-              <option key={commodity.id} value={commodity.id}>
-                {commodity.mnemonic}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Ativo</label>
-          <select
-            className="form-select"
-            value={form.active ? "true" : "false"}
-            onChange={(event) => setForm({ ...form, active: event.target.value === "true" })}
-          >
-            <option value="true">Sim</option>
-            <option value="false">Não</option>
-          </select>
-        </div>
-        <div className="col-md-3">
-          <label className="form-label">Notas</label>
-          <input
-            className="form-control"
-            value={form.notes}
-            onChange={(event) => setForm({ ...form, notes: event.target.value })}
-          />
-        </div>
-
-        <div className="col-md-2">
-          <label className="form-label">Desconto Num</label>
-          <input
-            className="form-control"
-            type="number"
-            value={form.discount_num}
-            onChange={(event) => setForm({ ...form, discount_num: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Desconto Denom</label>
-          <input
-            className="form-control"
-            type="number"
-            min="1"
-            value={form.discount_denom}
-            onChange={(event) => setForm({ ...form, discount_denom: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Crédito Num</label>
-          <input
-            className="form-control"
-            type="number"
-            value={form.credit_num}
-            onChange={(event) => setForm({ ...form, credit_num: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Crédito Denom</label>
-          <input
-            className="form-control"
-            type="number"
-            min="1"
-            value={form.credit_denom}
-            onChange={(event) => setForm({ ...form, credit_denom: event.target.value })}
-          />
-        </div>
-        <div className="col-md-4">
-          <label className="form-label">Conta de Receita Padrão</label>
-          <div className="tree-select">
-            <button
-              type="button"
-              className="form-select tree-select-toggle"
-              onClick={toggleIncomePicker}
-            >
-              <span
-                className="tree-select-label"
-                title={
-                  selectedIncomeAccount
-                    ? `${selectedIncomeAccountPath} (${selectedIncomeAccount.type})`
-                    : incomeAccountLabel
-                }
-              >
-                {incomeAccountLabel}
-              </span>
-              <span className="tree-select-caret">{incomePickerOpen ? "▲" : "▼"}</span>
-            </button>
-            {incomePickerOpen ? (
-              <div className="tree-select-menu">
-                <input
-                  className="form-control mb-2"
-                  value={incomeSearch}
-                  onChange={(event) => setIncomeSearch(event.target.value)}
-                  placeholder="Filtrar conta de receita"
-                />
-                <div className="counter-tree-panel">
-                  {visibleIncomeTree.length > 0 ? (
-                    renderIncomeTreeNodes(visibleIncomeTree)
-                  ) : (
-                    <div className="small-muted">Nenhuma conta de receita encontrada para o filtro.</div>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Nome de cobrança</label>
-          <input
-            className="form-control"
-            value={form.addr_name}
-            onChange={(event) => setForm({ ...form, addr_name: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Telefone de cobrança</label>
-          <input
-            className="form-control"
-            value={form.addr_phone}
-            onChange={(event) => setForm({ ...form, addr_phone: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">E-mail de cobrança</label>
-          <input
-            className="form-control"
-            value={form.addr_email}
-            onChange={(event) => setForm({ ...form, addr_email: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Nome de entrega</label>
-          <input
-            className="form-control"
-            value={form.shipaddr_name}
-            onChange={(event) => setForm({ ...form, shipaddr_name: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Telefone de entrega</label>
-          <input
-            className="form-control"
-            value={form.shipaddr_phone}
-            onChange={(event) => setForm({ ...form, shipaddr_phone: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">E-mail de entrega</label>
-          <input
-            className="form-control"
-            value={form.shipaddr_email}
-            onChange={(event) => setForm({ ...form, shipaddr_email: event.target.value })}
-          />
-        </div>
-
-        <div className="col-md-12 d-flex justify-content-end gap-2 mt-2">
-          {editingGuid ? (
-            <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
-              Cancelar
-            </button>
-          ) : null}
-          <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
-            {editingGuid ? "Salvar cliente" : "Criar cliente"}
-          </button>
-        </div>
-      </form>
 
       {error ? (
         <div className="alert alert-danger" role="alert">
@@ -581,11 +456,45 @@ export default function CustomersPage() {
         </div>
       ) : null}
 
+      <div className="row g-2 align-items-end mb-3 mt-2">
+        <div className="col-md-4">
+          <label className="form-label">Buscar cliente</label>
+          <input
+            className="form-control"
+            value={customerSearch}
+            onChange={(event) => setCustomerSearch(event.target.value)}
+            placeholder="Digite o nome"
+            disabled={!activeBookId}
+          />
+        </div>
+        <div className="col-md-3">
+          <label className="form-label">Filtro de status</label>
+          <select
+            className="form-select"
+            value={customerActiveFilter}
+            onChange={(event) => setCustomerActiveFilter(event.target.value)}
+            disabled={!activeBookId}
+          >
+            <option value="ALL">Todos</option>
+            <option value="ACTIVE">Ativos</option>
+            <option value="INACTIVE">Inativos</option>
+          </select>
+        </div>
+      </div>
+
       <div className="table-responsive">
         <table className="table align-middle">
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => setCustomerSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                >
+                  Nome {customerSortIndicator}
+                </button>
+              </th>
               <th>ID</th>
               <th>Moeda</th>
               <th>E-mail</th>
@@ -597,14 +506,14 @@ export default function CustomersPage() {
             </tr>
           </thead>
           <tbody>
-            {customers.length === 0 ? (
+            {pagedCustomers.length === 0 ? (
               <tr>
                 <td colSpan={9} className="small-muted">
-                  Nenhum cliente cadastrado.
+                  Nenhum cliente encontrado para os filtros selecionados.
                 </td>
               </tr>
             ) : (
-              customers.map((customer) => (
+              pagedCustomers.map((customer) => (
                 <tr key={customer.guid}>
                   <td className="fw-semibold">{customer.name}</td>
                   <td>{customer.id}</td>
@@ -642,6 +551,267 @@ export default function CustomersPage() {
           </tbody>
         </table>
       </div>
+
+      <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
+        <div className="small-muted">
+          Mostrando {pagedCustomers.length} de {totalCustomerItems} clientes
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0 small-muted">Itens por página</label>
+          <select
+            className="form-select form-select-sm"
+            value={customerPageSize}
+            onChange={(event) => setCustomerPageSize(Number(event.target.value) || 25)}
+            disabled={!activeBookId}
+            style={{ width: "96px" }}
+          >
+            {CUSTOMER_PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setCustomerPage(1)}
+            disabled={!activeBookId || currentCustomerPage <= 1}
+          >
+            Primeira
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setCustomerPage((current) => Math.max(1, current - 1))}
+            disabled={!activeBookId || currentCustomerPage <= 1}
+          >
+            Anterior
+          </button>
+          <span className="small-muted">
+            Página {totalCustomerItems === 0 ? 0 : currentCustomerPage} de {totalCustomerItems === 0 ? 0 : totalCustomerPages}
+          </span>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setCustomerPage((current) => Math.min(totalCustomerPages, current + 1))}
+            disabled={!activeBookId || currentCustomerPage >= totalCustomerPages || totalCustomerItems === 0}
+          >
+            Próxima
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setCustomerPage(totalCustomerPages)}
+            disabled={!activeBookId || currentCustomerPage >= totalCustomerPages || totalCustomerItems === 0}
+          >
+            Última
+          </button>
+        </div>
+      </div>
+
+      {customerModalOpen ? (
+        <div className="modal d-block vendor-modal" tabIndex={-1} role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-xl vendor-modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{editingGuid ? "Editar cliente" : "Novo cliente"}</h5>
+                <button type="button" className="btn-close" aria-label="Fechar" onClick={cancelEdit} />
+              </div>
+              <form className="modal-body" onSubmit={submit}>
+                <div className="row g-2 align-items-end">
+                  <div className="col-md-3">
+                    <label className="form-label">Nome</label>
+                    <input
+                      className="form-control"
+                      value={form.name}
+                      onChange={(event) => setForm({ ...form, name: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">ID</label>
+                    <input
+                      className="form-control"
+                      value={form.id}
+                      onChange={(event) => setForm({ ...form, id: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Moeda</label>
+                    <select
+                      className="form-select"
+                      value={form.currency_guid}
+                      onChange={(event) => setForm({ ...form, currency_guid: event.target.value })}
+                      required
+                    >
+                      {commodities.map((commodity) => (
+                        <option key={commodity.id} value={commodity.id}>
+                          {commodity.mnemonic}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Ativo</label>
+                    <select
+                      className="form-select"
+                      value={form.active ? "true" : "false"}
+                      onChange={(event) => setForm({ ...form, active: event.target.value === "true" })}
+                    >
+                      <option value="true">Sim</option>
+                      <option value="false">Não</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Notas</label>
+                    <input
+                      className="form-control"
+                      value={form.notes}
+                      onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-2">
+                    <label className="form-label">Desconto Num</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      value={form.discount_num}
+                      onChange={(event) => setForm({ ...form, discount_num: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Desconto Denom</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="1"
+                      value={form.discount_denom}
+                      onChange={(event) => setForm({ ...form, discount_denom: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Crédito Num</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      value={form.credit_num}
+                      onChange={(event) => setForm({ ...form, credit_num: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Crédito Denom</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="1"
+                      value={form.credit_denom}
+                      onChange={(event) => setForm({ ...form, credit_denom: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Conta de Receita Padrão</label>
+                    <div className="tree-select">
+                      <button
+                        type="button"
+                        className="form-select tree-select-toggle"
+                        onClick={toggleIncomePicker}
+                      >
+                        <span
+                          className="tree-select-label"
+                          title={
+                            selectedIncomeAccount
+                              ? `${selectedIncomeAccountPath} (${selectedIncomeAccount.type})`
+                              : incomeAccountLabel
+                          }
+                        >
+                          {incomeAccountLabel}
+                        </span>
+                        <span className="tree-select-caret">{incomePickerOpen ? "▲" : "▼"}</span>
+                      </button>
+                      {incomePickerOpen ? (
+                        <div className="tree-select-menu">
+                          <input
+                            className="form-control mb-2"
+                            value={incomeSearch}
+                            onChange={(event) => setIncomeSearch(event.target.value)}
+                            placeholder="Filtrar conta de receita"
+                          />
+                          <div className="counter-tree-panel">
+                            {visibleIncomeTree.length > 0 ? (
+                              renderIncomeTreeNodes(visibleIncomeTree)
+                            ) : (
+                              <div className="small-muted">Nenhuma conta de receita encontrada para o filtro.</div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Nome de cobrança</label>
+                    <input
+                      className="form-control"
+                      value={form.addr_name}
+                      onChange={(event) => setForm({ ...form, addr_name: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Telefone de cobrança</label>
+                    <input
+                      className="form-control"
+                      value={form.addr_phone}
+                      onChange={(event) => setForm({ ...form, addr_phone: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">E-mail de cobrança</label>
+                    <input
+                      className="form-control"
+                      value={form.addr_email}
+                      onChange={(event) => setForm({ ...form, addr_email: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Nome de entrega</label>
+                    <input
+                      className="form-control"
+                      value={form.shipaddr_name}
+                      onChange={(event) => setForm({ ...form, shipaddr_name: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Telefone de entrega</label>
+                    <input
+                      className="form-control"
+                      value={form.shipaddr_phone}
+                      onChange={(event) => setForm({ ...form, shipaddr_phone: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">E-mail de entrega</label>
+                    <input
+                      className="form-control"
+                      value={form.shipaddr_email}
+                      onChange={(event) => setForm({ ...form, shipaddr_email: event.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer px-0 pb-0 mt-3">
+                  <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
+                    Cancelar
+                  </button>
+                  <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
+                    {editingGuid ? "Salvar cliente" : "Criar cliente"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {customerModalOpen ? <div className="modal-backdrop show" /> : null}
     </div>
   );
 }
