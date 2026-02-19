@@ -611,6 +611,79 @@ export default function App() {
       ? lastNonLedgerTab
       : "";
 
+  const buildLedgerProps = () => ({
+    initialAccountId: ledgerTargetAccountId,
+    returnTab: ledgerReturnTab,
+    onReturnToTab: (tabId) => setActiveTab(tabId),
+    onOpenInvoicing: handleOpenInvoicing,
+    onOpenBilling: handleOpenBilling
+  });
+
+  const buildInvoiceTabProps = (tabId) => {
+    const currentTab = openInvoiceTabs.find((tab) => tab.id === tabId) || null;
+    const openCreateOnMount = Boolean(currentTab?.openCreate);
+    return {
+      initialInvoiceGuid:
+        currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(tabId),
+      onOpenInvoicingList: () => closeDynamicTab(tabId, "invoicing-list"),
+      onOpenInvoiceTab: handleOpenInvoicing,
+      onInvoiceDeleted: () => closeDynamicTab(tabId, "invoicing-list"),
+      initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
+      openCreateOnMount,
+      onCreateMountHandled: openCreateOnMount
+        ? () =>
+            setOpenInvoiceTabs((current) =>
+              current.map((tab) =>
+                tab.id === tabId && tab.openCreate ? { ...tab, openCreate: false } : tab
+              )
+            )
+        : null
+    };
+  };
+
+  const buildBillTabProps = (tabId) => {
+    const currentTab = openBillTabs.find((tab) => tab.id === tabId) || null;
+    const openCreateOnMount = Boolean(currentTab?.openCreate);
+    return {
+      initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(tabId),
+      onOpenBillingList: () => closeDynamicTab(tabId, "billing-list"),
+      onOpenBillTab: handleOpenBilling,
+      onBillDeleted: () => closeDynamicTab(tabId, "billing-list"),
+      initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
+      openCreateOnMount,
+      onCreateMountHandled: openCreateOnMount
+        ? () =>
+            setOpenBillTabs((current) =>
+              current.map((tab) =>
+                tab.id === tabId && tab.openCreate ? { ...tab, openCreate: false } : tab
+              )
+            )
+        : null
+    };
+  };
+
+  const isActiveDetailTab = detailTabs.some((tab) => tab.id === activeTab);
+  const detailTabPropsById = detailTabs.reduce((acc, tab) => {
+    if (isInvoiceTab(tab.id)) {
+      acc[tab.id] = buildInvoiceTabProps(tab.id);
+      return acc;
+    }
+    if (isBillTab(tab.id)) {
+      acc[tab.id] = buildBillTabProps(tab.id);
+      return acc;
+    }
+    if (isLedgerDetailTab(tab.id)) {
+      acc[tab.id] = buildLedgerProps();
+      return acc;
+    }
+    if (isIncomeStatementDetailTab(tab.id)) {
+      acc[tab.id] = { onOpenLedger: handleOpenLedger };
+      return acc;
+    }
+    acc[tab.id] = {};
+    return acc;
+  }, {});
+
   const activeProps =
     activeTab === "login"
       ? { currentUser, onLoginSuccess: handleLoginSuccess }
@@ -635,13 +708,7 @@ export default function App() {
               handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
           }
       : activeTab === "ledger" || isLedgerDetailTab(activeTab)
-        ? {
-            initialAccountId: ledgerTargetAccountId,
-            returnTab: ledgerReturnTab,
-            onReturnToTab: (tabId) => setActiveTab(tabId),
-            onOpenInvoicing: handleOpenInvoicing,
-            onOpenBilling: handleOpenBilling
-          }
+        ? buildLedgerProps()
       : activeTab === "invoicing-list"
         ? {
             onOpenInvoicing: handleOpenInvoicing,
@@ -657,48 +724,9 @@ export default function App() {
               handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
           }
       : isInvoiceTab(activeTab)
-        ? (() => {
-            const currentTab = openInvoiceTabs.find((tab) => tab.id === activeTab) || null;
-            const openCreateOnMount = Boolean(currentTab?.openCreate);
-            return {
-              initialInvoiceGuid:
-                currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(activeTab),
-              onOpenInvoicingList: () => closeDynamicTab(activeTab, "invoicing-list"),
-              onOpenInvoiceTab: handleOpenInvoicing,
-              onInvoiceDeleted: () => closeDynamicTab(activeTab, "invoicing-list"),
-              initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
-              openCreateOnMount,
-              onCreateMountHandled: openCreateOnMount
-                ? () =>
-                    setOpenInvoiceTabs((current) =>
-                      current.map((tab) =>
-                        tab.id === activeTab && tab.openCreate ? { ...tab, openCreate: false } : tab
-                      )
-                    )
-                : null
-            };
-          })()
+        ? buildInvoiceTabProps(activeTab)
       : isBillTab(activeTab)
-        ? (() => {
-            const currentTab = openBillTabs.find((tab) => tab.id === activeTab) || null;
-            const openCreateOnMount = Boolean(currentTab?.openCreate);
-            return {
-              initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(activeTab),
-              onOpenBillingList: () => closeDynamicTab(activeTab, "billing-list"),
-              onOpenBillTab: handleOpenBilling,
-              onBillDeleted: () => closeDynamicTab(activeTab, "billing-list"),
-              initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
-              openCreateOnMount,
-              onCreateMountHandled: openCreateOnMount
-                ? () =>
-                    setOpenBillTabs((current) =>
-                      current.map((tab) =>
-                        tab.id === activeTab && tab.openCreate ? { ...tab, openCreate: false } : tab
-                      )
-                    )
-                : null
-            };
-          })()
+        ? buildBillTabProps(activeTab)
         : {};
 
   return (
@@ -826,7 +854,21 @@ export default function App() {
               ) : null}
 
               <div className="section-card">
-                <ActiveComponent key={activeTab} {...activeProps} />
+                {detailTabs.map((tab) => {
+                  const DetailComponent = tab.component;
+                  return (
+                    <div
+                      key={tab.id}
+                      style={{ display: activeTab === tab.id ? "block" : "none" }}
+                      aria-hidden={activeTab === tab.id ? "false" : "true"}
+                    >
+                      <DetailComponent {...(detailTabPropsById[tab.id] || {})} />
+                    </div>
+                  );
+                })}
+                {!isActiveDetailTab ? (
+                  <ActiveComponent key={activeTab} {...activeProps} />
+                ) : null}
               </div>
             </section>
           </div>
