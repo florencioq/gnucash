@@ -197,3 +197,4 @@ messages.mo
 .env
 web-frontend/node_modules/
 web-backend/.venv/
+web-backend/test.db
