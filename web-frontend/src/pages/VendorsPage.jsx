@@ -60,6 +60,7 @@ export default function VendorsPage() {
   const [vendorSortDirection, setVendorSortDirection] = useState("asc");
   const [vendorPage, setVendorPage] = useState(1);
   const [vendorPageSize, setVendorPageSize] = useState(25);
+  const [vendorModalOpen, setVendorModalOpen] = useState(false);
   const [expensePickerOpen, setExpensePickerOpen] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState("");
   const [editingGuid, setEditingGuid] = useState("");
@@ -189,6 +190,19 @@ export default function VendorsPage() {
       addr_email: "",
       tax_inc: ""
     });
+  };
+
+  const closeVendorModal = () => {
+    setVendorModalOpen(false);
+    setExpensePickerOpen(false);
+    setExpenseSearch("");
+  };
+
+  const openCreateVendorModal = () => {
+    setEditingGuid("");
+    resetForm(form.currency_guid || (commodities[0] || {}).id || "");
+    setError(null);
+    setVendorModalOpen(true);
   };
 
   const loadCommodities = async () => {
@@ -348,6 +362,7 @@ export default function VendorsPage() {
 
     setEditingGuid("");
     resetForm(form.currency_guid);
+    closeVendorModal();
     await loadVendors(activeBookId);
   };
 
@@ -367,11 +382,13 @@ export default function VendorsPage() {
       addr_email: vendor.addr_email || "",
       tax_inc: vendor.tax_inc || ""
     });
+    setVendorModalOpen(true);
   };
 
   const cancelEdit = () => {
     setEditingGuid("");
     resetForm(form.currency_guid || (commodities[0] || {}).id || "");
+    closeVendorModal();
   };
 
   const remove = async (vendorGuid) => {
@@ -393,6 +410,9 @@ export default function VendorsPage() {
           <h2 className="mb-1">Fornecedores</h2>
           <div className="small-muted">Cadastro de fornecedores no estilo IgeosCash.</div>
         </div>
+        <button className="btn btn-accent" type="button" onClick={openCreateVendorModal} disabled={!activeBookId}>
+          Novo fornecedor
+        </button>
       </div>
 
       {activeBook ? (
@@ -402,154 +422,6 @@ export default function VendorsPage() {
           Nenhum livro ativo. Defina um em Livros para continuar.
         </div>
       )}
-
-      <form className="row g-2 align-items-end mb-4" onSubmit={submit}>
-        <div className="col-md-3">
-          <label className="form-label">Nome</label>
-          <input
-            className="form-control"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">ID</label>
-          <input
-            className="form-control"
-            value={form.id}
-            onChange={(event) => setForm({ ...form, id: event.target.value })}
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Moeda</label>
-          <select
-            className="form-select"
-            value={form.currency_guid}
-            onChange={(event) => setForm({ ...form, currency_guid: event.target.value })}
-            required
-          >
-            {commodities.map((commodity) => (
-              <option key={commodity.id} value={commodity.id}>
-                {commodity.mnemonic}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Ativo</label>
-          <select
-            className="form-select"
-            value={form.active ? "true" : "false"}
-            onChange={(event) => setForm({ ...form, active: event.target.value === "true" })}
-          >
-            <option value="true">Sim</option>
-            <option value="false">Não</option>
-          </select>
-        </div>
-        <div className="col-md-3">
-          <label className="form-label">Notas</label>
-          <input
-            className="form-control"
-            value={form.notes}
-            onChange={(event) => setForm({ ...form, notes: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Sobrescrever imposto</label>
-          <select
-            className="form-select"
-            value={form.tax_override ? "true" : "false"}
-            onChange={(event) => setForm({ ...form, tax_override: event.target.value === "true" })}
-          >
-            <option value="false">Não</option>
-            <option value="true">Sim</option>
-          </select>
-        </div>
-        <div className="col-md-3">
-          <label className="form-label">Nome do endereço</label>
-          <input
-            className="form-control"
-            value={form.addr_name}
-            onChange={(event) => setForm({ ...form, addr_name: event.target.value })}
-          />
-        </div>
-        <div className="col-md-3">
-          <label className="form-label">Telefone do endereço</label>
-          <input
-            className="form-control"
-            value={form.addr_phone}
-            onChange={(event) => setForm({ ...form, addr_phone: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">E-mail do endereço</label>
-          <input
-            className="form-control"
-            value={form.addr_email}
-            onChange={(event) => setForm({ ...form, addr_email: event.target.value })}
-          />
-        </div>
-        <div className="col-md-2">
-          <label className="form-label">Inclui imposto</label>
-          <input
-            className="form-control"
-            value={form.tax_inc}
-            onChange={(event) => setForm({ ...form, tax_inc: event.target.value })}
-          />
-        </div>
-        <div className="col-md-4">
-          <label className="form-label">Conta de Despesa Padrão</label>
-          <div className="tree-select">
-            <button
-              type="button"
-              className="form-select tree-select-toggle"
-              onClick={toggleExpensePicker}
-            >
-              <span
-                className="tree-select-label"
-                title={
-                  selectedExpenseAccount
-                    ? `${selectedExpenseAccountPath} (${selectedExpenseAccount.type})`
-                    : expenseAccountLabel
-                }
-              >
-                {expenseAccountLabel}
-              </span>
-              <span className="tree-select-caret">{expensePickerOpen ? "▲" : "▼"}</span>
-            </button>
-            {expensePickerOpen ? (
-              <div className="tree-select-menu">
-                <input
-                  className="form-control mb-2"
-                  value={expenseSearch}
-                  onChange={(event) => setExpenseSearch(event.target.value)}
-                  placeholder="Filtrar conta de despesa"
-                />
-                <div className="counter-tree-panel">
-                  {visibleExpenseTree.length > 0 ? (
-                    renderExpenseTreeNodes(visibleExpenseTree)
-                  ) : (
-                    <div className="small-muted">Nenhuma conta de despesa encontrada para o filtro.</div>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="col-md-12 d-flex justify-content-end gap-2 mt-2">
-          {editingGuid ? (
-            <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
-              Cancelar
-            </button>
-          ) : null}
-          <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
-            {editingGuid ? "Salvar fornecedor" : "Criar fornecedor"}
-          </button>
-        </div>
-      </form>
 
       {error ? (
         <div className="alert alert-danger" role="alert">
@@ -712,6 +584,166 @@ export default function VendorsPage() {
           </button>
         </div>
       </div>
+
+      {vendorModalOpen ? (
+        <div className="modal d-block vendor-modal" tabIndex={-1} role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-xl vendor-modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{editingGuid ? "Editar fornecedor" : "Novo fornecedor"}</h5>
+                <button type="button" className="btn-close" aria-label="Fechar" onClick={cancelEdit} />
+              </div>
+              <form className="modal-body" onSubmit={submit}>
+                <div className="row g-2 align-items-end">
+                  <div className="col-md-3">
+                    <label className="form-label">Nome</label>
+                    <input
+                      className="form-control"
+                      value={form.name}
+                      onChange={(event) => setForm({ ...form, name: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">ID</label>
+                    <input
+                      className="form-control"
+                      value={form.id}
+                      onChange={(event) => setForm({ ...form, id: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Moeda</label>
+                    <select
+                      className="form-select"
+                      value={form.currency_guid}
+                      onChange={(event) => setForm({ ...form, currency_guid: event.target.value })}
+                      required
+                    >
+                      {commodities.map((commodity) => (
+                        <option key={commodity.id} value={commodity.id}>
+                          {commodity.mnemonic}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Ativo</label>
+                    <select
+                      className="form-select"
+                      value={form.active ? "true" : "false"}
+                      onChange={(event) => setForm({ ...form, active: event.target.value === "true" })}
+                    >
+                      <option value="true">Sim</option>
+                      <option value="false">Não</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Notas</label>
+                    <input
+                      className="form-control"
+                      value={form.notes}
+                      onChange={(event) => setForm({ ...form, notes: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Sobrescrever imposto</label>
+                    <select
+                      className="form-select"
+                      value={form.tax_override ? "true" : "false"}
+                      onChange={(event) => setForm({ ...form, tax_override: event.target.value === "true" })}
+                    >
+                      <option value="false">Não</option>
+                      <option value="true">Sim</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Nome do endereço</label>
+                    <input
+                      className="form-control"
+                      value={form.addr_name}
+                      onChange={(event) => setForm({ ...form, addr_name: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Telefone do endereço</label>
+                    <input
+                      className="form-control"
+                      value={form.addr_phone}
+                      onChange={(event) => setForm({ ...form, addr_phone: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">E-mail do endereço</label>
+                    <input
+                      className="form-control"
+                      value={form.addr_email}
+                      onChange={(event) => setForm({ ...form, addr_email: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label">Inclui imposto</label>
+                    <input
+                      className="form-control"
+                      value={form.tax_inc}
+                      onChange={(event) => setForm({ ...form, tax_inc: event.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Conta de Despesa Padrão</label>
+                    <div className="tree-select">
+                      <button
+                        type="button"
+                        className="form-select tree-select-toggle"
+                        onClick={toggleExpensePicker}
+                      >
+                        <span
+                          className="tree-select-label"
+                          title={
+                            selectedExpenseAccount
+                              ? `${selectedExpenseAccountPath} (${selectedExpenseAccount.type})`
+                              : expenseAccountLabel
+                          }
+                        >
+                          {expenseAccountLabel}
+                        </span>
+                        <span className="tree-select-caret">{expensePickerOpen ? "▲" : "▼"}</span>
+                      </button>
+                      {expensePickerOpen ? (
+                        <div className="tree-select-menu">
+                          <input
+                            className="form-control mb-2"
+                            value={expenseSearch}
+                            onChange={(event) => setExpenseSearch(event.target.value)}
+                            placeholder="Filtrar conta de despesa"
+                          />
+                          <div className="counter-tree-panel">
+                            {visibleExpenseTree.length > 0 ? (
+                              renderExpenseTreeNodes(visibleExpenseTree)
+                            ) : (
+                              <div className="small-muted">Nenhuma conta de despesa encontrada para o filtro.</div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer px-0 pb-0 mt-3">
+                  <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
+                    Cancelar
+                  </button>
+                  <button className="btn btn-accent" type="submit" disabled={!activeBookId}>
+                    {editingGuid ? "Salvar fornecedor" : "Criar fornecedor"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {vendorModalOpen ? <div className="modal-backdrop show" /> : null}
     </div>
   );
 }

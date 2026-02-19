@@ -350,6 +350,22 @@ body {
   padding: 0.5rem;
 }
 
+.vendor-modal .modal-dialog {
+  max-width: min(1320px, calc(100vw - 1rem));
+}
+
+.vendor-modal-dialog {
+  min-height: calc(100vh - 3rem);
+}
+
+.vendor-modal-dialog .modal-content {
+  min-height: calc(100vh - 3rem);
+}
+
+.vendor-modal-dialog .modal-body {
+  overflow: visible;
+}
+
 .counter-tree-panel {
   max-height: 340px;
   overflow: auto;
