@@ -349,7 +349,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
         </div>
       ) : null}
 
-      <div className="section-card">
+      <div className="section-card accounts-tree-shell">
         <h5 className="mb-3">Árvore de contas</h5>
         <div className="row g-2 align-items-end mb-3">
           <div className="col-md-5">

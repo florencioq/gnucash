@@ -73,31 +73,35 @@ function Node({
 
   return (
     <div className="tree-node">
-      <div className="d-flex align-items-center gap-2">
-        {hasChildren ? (
-          <button
-            type="button"
-            className="tree-node-toggle"
-            onClick={() => onToggleCollapse(node.id)}
-            title={isCollapsed ? "Expandir conta" : "Recolher conta"}
-            aria-label={isCollapsed ? "Expandir conta" : "Recolher conta"}
-            aria-expanded={!isCollapsed}
-          >
-            <span className={`tree-node-caret ${isCollapsed ? "is-collapsed" : ""}`} aria-hidden="true">
-              ▾
-            </span>
-          </button>
-        ) : (
-          <span className="tree-node-toggle-spacer" aria-hidden="true" />
-        )}
-        <span className="fw-semibold">{node.name}</span>
-        <span className="badge badge-soft text-uppercase">{node.type}</span>
-        {node.is_placeholder ? (
-          <span className="badge text-bg-secondary">marcador</span>
-        ) : null}
-        {node.code ? <span className="tree-node-code small-muted">Nº {node.code}</span> : null}
-        <span className="tree-node-balance">{formatAmount(balanceValue, mnemonic)}</span>
-        <div className="ms-auto d-flex gap-2">
+      <div className="account-tree-row">
+        <div className="account-tree-main">
+          {hasChildren ? (
+            <button
+              type="button"
+              className="tree-node-toggle"
+              onClick={() => onToggleCollapse(node.id)}
+              title={isCollapsed ? "Expandir conta" : "Recolher conta"}
+              aria-label={isCollapsed ? "Expandir conta" : "Recolher conta"}
+              aria-expanded={!isCollapsed}
+            >
+              <span className={`tree-node-caret ${isCollapsed ? "is-collapsed" : ""}`} aria-hidden="true">
+                ▾
+              </span>
+            </button>
+          ) : (
+            <span className="tree-node-toggle-spacer" aria-hidden="true" />
+          )}
+          <span className="fw-semibold">{node.name}</span>
+          <span className="badge badge-soft text-uppercase">{node.type}</span>
+          {node.is_placeholder ? (
+            <span className="badge text-bg-secondary">marcador</span>
+          ) : null}
+          {node.code ? <span className="tree-node-code small-muted">Nº {node.code}</span> : null}
+        </div>
+        <div className="account-tree-balance-wrap">
+          <span className="tree-node-balance">{formatAmount(balanceValue, mnemonic)}</span>
+        </div>
+        <div className="account-tree-actions d-flex gap-2">
           {onLedger && node.type !== "ROOT" ? (
             <IconButton title="Abrir razão" onClick={() => onLedger(node)}>
               <LedgerIcon />
