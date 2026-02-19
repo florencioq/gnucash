@@ -77,6 +77,8 @@ This document is a reference implementation profile and does not override normat
 - Dynamic document tabs (`Fatura <id>`, `Compra <id>`) SHOULD remain closable and SHOULD render in a secondary row/panel, separate from primary sidebar navigation.
 - Navigating from a dynamic detail tab back to its list (`Faturamentos`/`Compras`) SHOULD close the originating dynamic tab to avoid stale "Novo ..." tabs lingering in list context.
 - Account tree should be primary for account navigation.
+- Account master create/edit actions SHOULD open in modal dialogs instead of inline tree-adjacent forms.
+- Account master tree screen SHOULD provide name-based search/filter over the rendered hierarchy.
 - Tree selectors should hide synthetic `ROOT` where user must choose actionable accounts.
 - Books UI should expose active-book selection.
 - Books UI SHOULD expose setup account selectors backed by hierarchical account trees for:

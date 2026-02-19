@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.14 - 2026-02-19
+
+Account master UX synchronization:
+- documented modal-based create/edit behavior for account master forms in implementation profile
+- documented account-tree name search/filter expectation while keeping hierarchical navigation
+- extended acceptance coverage notes with account-master UI scenarios for modal workflow and tree filtering
+
 ## v0.4.13 - 2026-02-19
 
 Vendor master UX synchronization:

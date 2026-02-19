@@ -106,3 +106,5 @@ Primary suites:
 62. Vendor master create/edit workflow via modal dialog (open, save, cancel, close behavior).
 63. Vendor master list name search + active/inactive filter interaction.
 64. Vendor master list name sorting toggle and UI pagination behavior.
+65. Account master create/edit workflow via modal dialog (open, save, cancel, close behavior).
+66. Account master tree name search/filter behavior (hierarchy preserved for matching branches).
