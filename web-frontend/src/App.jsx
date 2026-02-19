@@ -28,6 +28,7 @@ const NEW_INVOICE_TAB_GUID = "new";
 const NEW_BILL_TAB_GUID = "new";
 const DEFAULT_AUTH_TAB_ID = "income-statement";
 const INCOME_STATEMENT_DETAIL_TAB_ID = "report:income-statement";
+const LEDGER_DETAIL_TAB_ID = "report:ledger";
 
 const baseTabs = [
   { id: "login", label: "Login", component: LoginPage },
@@ -111,6 +112,10 @@ function isIncomeStatementDetailTab(tabId) {
   return tabId === INCOME_STATEMENT_DETAIL_TAB_ID;
 }
 
+function isLedgerDetailTab(tabId) {
+  return tabId === LEDGER_DETAIL_TAB_ID;
+}
+
 function invoiceGuidFromTab(tabId) {
   return tabId.slice("invoice:".length);
 }
@@ -174,7 +179,7 @@ function sanitizeBillTabs(items) {
 function sanitizeReportTabs(items) {
   if (!Array.isArray(items)) return [];
   const sanitized = [];
-  let hasIncomeStatementTab = false;
+  const seenReportIds = new Set();
 
   for (const item of items) {
     const explicitReportId = String(item?.reportId || "").trim();
@@ -182,18 +187,21 @@ function sanitizeReportTabs(items) {
     const reportId =
       explicitReportId ||
       (rawId.startsWith("report:") ? rawId.slice("report:".length) : "");
-    if (reportId !== "income-statement") continue;
-    if (hasIncomeStatementTab) continue;
-    hasIncomeStatementTab = true;
+    if (reportId !== "income-statement" && reportId !== "ledger") continue;
+    if (seenReportIds.has(reportId)) continue;
+    seenReportIds.add(reportId);
+
+    const tabId = reportId === "ledger" ? LEDGER_DETAIL_TAB_ID : INCOME_STATEMENT_DETAIL_TAB_ID;
+    const fallbackLabel = reportId === "ledger" ? "Razão" : "DRE Mensal";
 
     const label =
       typeof item?.label === "string" && item.label.trim().length > 0
         ? item.label.trim()
-        : "DRE Mensal";
+        : fallbackLabel;
     sanitized.push({
-      id: INCOME_STATEMENT_DETAIL_TAB_ID,
+      id: tabId,
       label,
-      reportId: "income-statement"
+      reportId
     });
   }
 
@@ -252,7 +260,7 @@ export default function App() {
     () => [
       ...openReportTabs.map((tab) => ({
         ...tab,
-        component: IncomeStatementPage,
+        component: tab.reportId === "ledger" ? LedgerPage : IncomeStatementPage,
         closable: true
       })),
       ...openInvoiceTabs.map((tab) => ({ ...tab, component: InvoicingPage, closable: true })),
@@ -293,6 +301,8 @@ export default function App() {
     activeTab === "payables" ||
     activeTab === "invoicing-list" ||
     activeTab === "billing-list" ||
+    activeTab === "ledger" ||
+    isLedgerDetailTab(activeTab) ||
     isInvoiceTab(activeTab) ||
     isBillTab(activeTab);
 
@@ -335,7 +345,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "ledger") {
+    if (activeTab !== "ledger" && !isLedgerDetailTab(activeTab)) {
       setLastNonLedgerTab(activeTab);
     }
   }, [activeTab]);
@@ -380,18 +390,14 @@ export default function App() {
     sidebarCollapsed
   ]);
 
-  const handleOpenLedger = ({ accountId }) => {
-    setLedgerTargetAccountId(accountId || "");
-    setActiveTab("ledger");
-  };
-
-  const handleOpenIncomeStatementTab = () => {
-    const label = "DRE Mensal";
+  const handleOpenReportTab = ({ reportId, label }) => {
+    if (!reportId) return;
+    const tabId = reportId === "ledger" ? LEDGER_DETAIL_TAB_ID : INCOME_STATEMENT_DETAIL_TAB_ID;
     setOpenReportTabs((current) => {
-      const hasTab = current.some((tab) => tab.id === INCOME_STATEMENT_DETAIL_TAB_ID);
+      const hasTab = current.some((tab) => tab.id === tabId);
       if (hasTab) {
         return current.map((tab) =>
-          tab.id === INCOME_STATEMENT_DETAIL_TAB_ID && tab.label !== label
+          tab.id === tabId && tab.label !== label
             ? { ...tab, label }
             : tab
         );
@@ -399,13 +405,22 @@ export default function App() {
       return [
         ...current,
         {
-          id: INCOME_STATEMENT_DETAIL_TAB_ID,
+          id: tabId,
           label,
-          reportId: "income-statement"
+          reportId
         }
       ];
     });
-    setActiveTab(INCOME_STATEMENT_DETAIL_TAB_ID);
+    setActiveTab(tabId);
+  };
+
+  const handleOpenLedger = ({ accountId }) => {
+    setLedgerTargetAccountId(accountId || "");
+    handleOpenReportTab({ reportId: "ledger", label: "Razão" });
+  };
+
+  const handleOpenIncomeStatementTab = () => {
+    handleOpenReportTab({ reportId: "income-statement", label: "DRE Mensal" });
   };
 
   const handleOpenInvoicing = ({
@@ -551,7 +566,7 @@ export default function App() {
     if (isBillTab(tabId)) {
       setOpenBillTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
-    if (isIncomeStatementDetailTab(tabId)) {
+    if (isIncomeStatementDetailTab(tabId) || isLedgerDetailTab(tabId)) {
       setOpenReportTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
 
@@ -586,6 +601,7 @@ export default function App() {
   const ledgerReturnTab =
     (lastNonLedgerTab === "income-statement" ||
       isIncomeStatementDetailTab(lastNonLedgerTab) ||
+      lastNonLedgerTab === "ledger" ||
       lastNonLedgerTab === "payables" ||
       lastNonLedgerTab === "invoicing-list" ||
       lastNonLedgerTab === "billing-list" ||
@@ -618,7 +634,7 @@ export default function App() {
             onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
               handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
           }
-      : activeTab === "ledger"
+      : activeTab === "ledger" || isLedgerDetailTab(activeTab)
         ? {
             initialAccountId: ledgerTargetAccountId,
             returnTab: ledgerReturnTab,
@@ -743,9 +759,11 @@ export default function App() {
                     <div className="app-nav-links">
                       {section.items.map((tab) => {
                         const isIncomeStatementNav = tab.id === "income-statement";
+                        const isLedgerNav = tab.id === "ledger";
                         const isActive =
                           activeTab === tab.id ||
-                          (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab));
+                          (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab)) ||
+                          (isLedgerNav && isLedgerDetailTab(activeTab));
                         return (
                         <button
                           key={tab.id}
@@ -756,6 +774,10 @@ export default function App() {
                           onClick={() => {
                             if (isIncomeStatementNav) {
                               handleOpenIncomeStatementTab();
+                              return;
+                            }
+                            if (isLedgerNav) {
+                              handleOpenLedger({});
                               return;
                             }
                             setActiveTab(tab.id);
