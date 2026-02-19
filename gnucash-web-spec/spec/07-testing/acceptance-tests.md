@@ -115,3 +115,6 @@ Primary suites:
 71. Dynamic workspace/report tabs persist after browser refresh in-session and remain individually closable.
 72. Explicit `Atualizar` actions in `Razão`, `Faturamentos`, `Compras`, `Contas a Receber`, and `Contas a Pagar` trigger on-demand reload without closing active tabs.
 73. DRE monthly matrix period header uses `a` (not `para`) between start/end dates.
+74. `Razão` counterparty column provides direct navigation link to open the ledger of the selected `Contra-partida` account.
+75. After switching ledger account via `Contra-partida` link, browser refresh restores the same selected account in `Razão`.
+76. `Razão` amount column headers are rendered as `Saque` and `Depósito`.

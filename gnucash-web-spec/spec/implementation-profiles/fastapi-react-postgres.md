@@ -132,6 +132,9 @@ This document is a reference implementation profile and does not override normat
 - Ledger transaction grid should support pagination controls (first/previous/next/last + page size options) to keep navigation responsive.
 - Ledger transaction grid should default to newest-first chronological order and allow switching to oldest-first.
 - Ledger pagination default page size should be 10 items.
+- Ledger transaction grid SHOULD expose clickable `Contra-partida` account links that switch the current `Razão` view directly to the selected counterparty account.
+- Ledger selected account context SHOULD be persisted in-session so browser refresh restores the most recently selected account (including account changes performed via counterparty links).
+- Ledger transaction grid amount headers SHOULD use `Saque` and `Depósito`.
 - Ledger rows linked to invoice/bill workflows should not allow edit/delete actions; users should perform those operations in `Faturamentos` or `Compras`.
 - `Razão`, `Faturamentos`, `Compras`, `Contas a Receber`, and `Contas a Pagar` screens SHOULD expose an explicit `Atualizar` action to force data refresh on demand.
 - Monthly DRE matrix period headers SHOULD render date ranges using `a` between start and end dates (for example `01/02/2026` and `a 28/02/2026`).

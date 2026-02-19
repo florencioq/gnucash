@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.17 - 2026-02-19
+
+Ledger UX synchronization:
+- documented counterparty-account quick navigation from `Razão` rows (clickable `Contra-partida` account links)
+- documented persistence of the selected ledger account in-session so browser refresh restores the current `Razão` context
+- documented standardized `Razão` amount column headers as `Saque` and `Depósito`
+- extended acceptance coverage notes for counterparty navigation, ledger-account persistence, and ledger header wording
+
 ## v0.4.16 - 2026-02-19
 
 Workspace/report tab and refresh UX synchronization:
