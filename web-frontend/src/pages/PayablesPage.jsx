@@ -78,6 +78,7 @@ export default function PayablesPage({
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
 
   const [vendorFilterGuid, setVendorFilterGuid] = useState(() => String(persistedState?.vendorFilterGuid || ""));
@@ -217,12 +218,12 @@ export default function PayablesPage({
     setVendors([]);
     setVendorsLoaded(false);
     loadVendors(activeBookId);
-  }, [activeBookId]);
+  }, [activeBookId, refreshToken]);
 
   useEffect(() => {
     if (!activeBookId) return;
     loadBills(activeBookId);
-  }, [activeBookId, vendorFilterGuid, postedStartDate, postedEndDate, sortKey, sortDirection, page, pageSize]);
+  }, [activeBookId, refreshToken, vendorFilterGuid, postedStartDate, postedEndDate, sortKey, sortDirection, page, pageSize]);
 
   useEffect(() => {
     if (!activeBookId) {
@@ -246,7 +247,7 @@ export default function PayablesPage({
     return () => {
       cancelled = true;
     };
-  }, [activeBookId, vendorFilterGuid, postedStartDate, postedEndDate]);
+  }, [activeBookId, refreshToken, vendorFilterGuid, postedStartDate, postedEndDate]);
 
   useEffect(() => {
     if (!vendorsLoaded) return;
@@ -285,6 +286,7 @@ export default function PayablesPage({
     const first = bills[0];
     return commoditiesById.get(first.currency_guid)?.mnemonic || "BRL";
   }, [bills, commoditiesById]);
+  const refreshing = loading || loadingOpenAmountGrandTotal || !vendorsLoaded;
 
   return (
     <div>
@@ -293,16 +295,26 @@ export default function PayablesPage({
           <h2 className="mb-1">Contas a Pagar</h2>
           <div className="small-muted">Compras postadas e em aberto com acesso direto para edição.</div>
         </div>
-        {typeof onCreateBilling === "function" ? (
+        <div className="d-flex align-items-center gap-2">
           <button
             type="button"
-            className="btn btn-accent"
-            onClick={onCreateBilling}
-            disabled={!activeBookId}
+            className="btn btn-outline-secondary"
+            onClick={() => setRefreshToken((current) => current + 1)}
+            disabled={!activeBookId || refreshing}
           >
-            Nova Compra
+            {refreshing ? "Atualizando..." : "Atualizar"}
           </button>
-        ) : null}
+          {typeof onCreateBilling === "function" ? (
+            <button
+              type="button"
+              className="btn btn-accent"
+              onClick={onCreateBilling}
+              disabled={!activeBookId}
+            >
+              Nova Compra
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {activeBook ? (

@@ -78,6 +78,7 @@ export default function ReceivablesPage({
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
 
   const [customerFilterGuid, setCustomerFilterGuid] = useState(() => String(persistedState?.customerFilterGuid || ""));
@@ -217,13 +218,14 @@ export default function ReceivablesPage({
     setCustomers([]);
     setCustomersLoaded(false);
     loadCustomers(activeBookId);
-  }, [activeBookId]);
+  }, [activeBookId, refreshToken]);
 
   useEffect(() => {
     if (!activeBookId) return;
     loadInvoices(activeBookId);
   }, [
     activeBookId,
+    refreshToken,
     customerFilterGuid,
     postedStartDate,
     postedEndDate,
@@ -255,7 +257,7 @@ export default function ReceivablesPage({
     return () => {
       cancelled = true;
     };
-  }, [activeBookId, customerFilterGuid, postedStartDate, postedEndDate]);
+  }, [activeBookId, refreshToken, customerFilterGuid, postedStartDate, postedEndDate]);
 
   useEffect(() => {
     if (!customersLoaded) return;
@@ -302,6 +304,7 @@ export default function ReceivablesPage({
     const first = invoices[0];
     return commoditiesById.get(first.currency_guid)?.mnemonic || "BRL";
   }, [invoices, commoditiesById]);
+  const refreshing = loading || loadingOpenAmountGrandTotal || !customersLoaded;
 
   return (
     <div>
@@ -310,16 +313,26 @@ export default function ReceivablesPage({
           <h2 className="mb-1">Contas a Receber</h2>
           <div className="small-muted">Faturamentos postados e em aberto com acesso direto para edição.</div>
         </div>
-        {typeof onCreateInvoicing === "function" ? (
+        <div className="d-flex align-items-center gap-2">
           <button
             type="button"
-            className="btn btn-accent"
-            onClick={onCreateInvoicing}
-            disabled={!activeBookId}
+            className="btn btn-outline-secondary"
+            onClick={() => setRefreshToken((current) => current + 1)}
+            disabled={!activeBookId || refreshing}
           >
-            Nova Fatura
+            {refreshing ? "Atualizando..." : "Atualizar"}
           </button>
-        ) : null}
+          {typeof onCreateInvoicing === "function" ? (
+            <button
+              type="button"
+              className="btn btn-accent"
+              onClick={onCreateInvoicing}
+              disabled={!activeBookId}
+            >
+              Nova Fatura
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {activeBook ? (
