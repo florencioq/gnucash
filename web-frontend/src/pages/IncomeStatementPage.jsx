@@ -338,7 +338,7 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
                   {reversedPeriodIndexes.map((index) => (
                     <th key={matrix.periods[index]} className="text-center">
                       <div>{formatDateBR(monthStartDate(matrix.periods[index]))}</div>
-                      <div>para {formatDateBR(monthEndDate(matrix.periods[index]))}</div>
+                      <div>a {formatDateBR(monthEndDate(matrix.periods[index]))}</div>
                     </th>
                   ))}
                   <th className="text-end">Total</th>
