@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:16
-    container_name: gnucash_web_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-gnucash}
@@ -16,12 +15,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      app_net:
+        aliases:
+          - db
 
   web-backend:
     build:
       context: ./web-backend
       dockerfile: Dockerfile
-    container_name: gnucash_web_backend
     restart: unless-stopped
     depends_on:
       db:
@@ -37,6 +39,8 @@ services:
       SEED_ON_STARTUP: ${SEED_ON_STARTUP:-false}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - app_net
 
   web-frontend:
     build:
@@ -44,12 +48,17 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
-    container_name: gnucash_web_frontend
     restart: unless-stopped
     depends_on:
       - web-backend
     ports:
       - "${FRONTEND_PORT:-5173}:80"
+    networks:
+      - app_net
 
 volumes:
   pgdata:
+
+networks:
+  app_net:
+    driver: bridge
