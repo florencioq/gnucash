@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 function formatAmount(value, mnemonic) {
   const decimal = new Intl.NumberFormat("pt-BR", {
@@ -10,6 +10,79 @@ function formatAmount(value, mnemonic) {
     return `${mnemonic.trim()} ${decimal}`;
   }
   return decimal;
+}
+
+function gcdBigInt(a, b) {
+  let x = a < 0n ? -a : a;
+  let y = b < 0n ? -b : b;
+  while (y !== 0n) {
+    const t = x % y;
+    x = y;
+    y = t;
+  }
+  return x === 0n ? 1n : x;
+}
+
+function normalizeRational(value) {
+  let numerator = value.numerator;
+  let denominator = value.denominator;
+  if (denominator < 0n) {
+    numerator = -numerator;
+    denominator = -denominator;
+  }
+  const divisor = gcdBigInt(numerator, denominator);
+  return {
+    numerator: numerator / divisor,
+    denominator: denominator / divisor
+  };
+}
+
+function addRational(left, right) {
+  const l = normalizeRational(left);
+  const r = normalizeRational(right);
+  const divisor = gcdBigInt(l.denominator, r.denominator);
+  const lcm = (l.denominator / divisor) * r.denominator;
+  return normalizeRational({
+    numerator:
+      l.numerator * (lcm / l.denominator) +
+      r.numerator * (lcm / r.denominator),
+    denominator: lcm
+  });
+}
+
+function toRational(balanceNum, balanceDenom) {
+  const denominator = BigInt(Number(balanceDenom) || 1);
+  return normalizeRational({
+    numerator: BigInt(Number(balanceNum) || 0),
+    denominator: denominator === 0n ? 1n : denominator
+  });
+}
+
+function computeEffectiveBalances(nodes) {
+  const map = new Map();
+
+  const walk = (node) => {
+    const children = Array.isArray(node.children) ? node.children : [];
+    let childrenSum = { numerator: 0n, denominator: 1n };
+    for (const child of children) {
+      childrenSum = addRational(childrenSum, walk(child));
+    }
+
+    const own = toRational(node.balance_num, node.balance_denom);
+    // Parent accounts should show hierarchical balance in the tree view.
+    // Placeholder accounts keep strict children aggregation.
+    const effective = node.is_placeholder
+      ? childrenSum
+      : addRational(own, childrenSum);
+    map.set(node.id, effective);
+    return effective;
+  };
+
+  for (const node of nodes || []) {
+    walk(node);
+  }
+
+  return map;
 }
 
 function IconButton({ title, onClick, children }) {
@@ -60,6 +133,7 @@ function Node({
   node,
   collapsedIds,
   onToggleCollapse,
+  effectiveBalanceById,
   commodityMnemonicById,
   onLedger,
   onEdit,
@@ -67,8 +141,12 @@ function Node({
 }) {
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const isCollapsed = hasChildren && collapsedIds.has(node.id);
-  const balanceDenom = Number(node.balance_denom) || 1;
-  const balanceValue = Number(node.balance_num || 0) / balanceDenom;
+  const effectiveBalance = effectiveBalanceById.get(node.id) || {
+    numerator: BigInt(Number(node.balance_num) || 0),
+    denominator: BigInt(Number(node.balance_denom) || 1)
+  };
+  const balanceValue =
+    Number(effectiveBalance.numerator) / Number(effectiveBalance.denominator || 1n);
   const mnemonic = commodityMnemonicById?.get(node.commodity_id);
 
   return (
@@ -123,6 +201,7 @@ function Node({
               node={child}
               collapsedIds={collapsedIds}
               onToggleCollapse={onToggleCollapse}
+              effectiveBalanceById={effectiveBalanceById}
               commodityMnemonicById={commodityMnemonicById}
               onLedger={onLedger}
               onEdit={onEdit}
@@ -143,6 +222,10 @@ export default function AccountTree({
   onDelete
 }) {
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+  const effectiveBalanceById = useMemo(
+    () => computeEffectiveBalances(nodes || []),
+    [nodes]
+  );
 
   useEffect(() => {
     const validIds = new Set();
@@ -186,6 +269,7 @@ export default function AccountTree({
           node={node}
           collapsedIds={collapsedIds}
           onToggleCollapse={toggleCollapse}
+          effectiveBalanceById={effectiveBalanceById}
           commodityMnemonicById={commodityMnemonicById}
           onLedger={onLedger}
           onEdit={onEdit}
