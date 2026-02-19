@@ -85,6 +85,26 @@ function computeEffectiveBalances(nodes) {
   return map;
 }
 
+function pruneZeroBalanceNodes(nodes, effectiveBalanceById) {
+  const visit = (node) => {
+    const children = Array.isArray(node.children) ? node.children : [];
+    const visibleChildren = children.map(visit).filter(Boolean);
+    const effective = effectiveBalanceById.get(node.id) || {
+      numerator: 0n,
+      denominator: 1n
+    };
+    const isZero = effective.numerator === 0n;
+
+    // Keep non-zero nodes and keep zero parents that still have visible descendants.
+    if (isZero && visibleChildren.length === 0) return null;
+
+    if (visibleChildren.length === children.length) return node;
+    return { ...node, children: visibleChildren };
+  };
+
+  return (nodes || []).map(visit).filter(Boolean);
+}
+
 function IconButton({ title, onClick, children }) {
   return (
     <button
@@ -216,6 +236,7 @@ function Node({
 
 export default function AccountTree({
   nodes,
+  hideZeroBalances = false,
   commodityMnemonicById,
   onLedger,
   onEdit,
@@ -225,6 +246,10 @@ export default function AccountTree({
   const effectiveBalanceById = useMemo(
     () => computeEffectiveBalances(nodes || []),
     [nodes]
+  );
+  const renderedNodes = useMemo(
+    () => (hideZeroBalances ? pruneZeroBalanceNodes(nodes || [], effectiveBalanceById) : nodes || []),
+    [nodes, hideZeroBalances, effectiveBalanceById]
   );
 
   useEffect(() => {
@@ -237,13 +262,13 @@ export default function AccountTree({
         }
       });
     };
-    walk(nodes ?? []);
+    walk(renderedNodes ?? []);
 
     setCollapsedIds((prev) => {
       const next = new Set([...prev].filter((id) => validIds.has(id)));
       return next.size === prev.size ? prev : next;
     });
-  }, [nodes]);
+  }, [renderedNodes]);
 
   const toggleCollapse = (accountId) => {
     setCollapsedIds((prev) => {
@@ -257,13 +282,13 @@ export default function AccountTree({
     });
   };
 
-  if (!nodes || nodes.length === 0) {
+  if (!renderedNodes || renderedNodes.length === 0) {
     return <div className="small-muted">Nenhuma conta cadastrada.</div>;
   }
 
   return (
     <div>
-      {nodes.map((node) => (
+      {renderedNodes.map((node) => (
         <Node
           key={node.id}
           node={node}
