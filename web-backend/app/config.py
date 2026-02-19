@@ -42,7 +42,10 @@ _load_dotenv()
 class Settings:
     app_name: str = "IgeosCash Backend"
     app_version: str = "0.1.0"
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./gnucash.db")
+    database_url: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+psycopg://gnucash:gnucash@localhost:5433/gnucash_web",
+    )
     seed_on_startup: bool = _env_bool("SEED_ON_STARTUP", default=False)
     cors_origins: list[str] = [
         origin.strip()

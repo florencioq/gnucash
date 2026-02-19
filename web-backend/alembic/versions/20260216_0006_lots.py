@@ -33,7 +33,8 @@ def upgrade() -> None:
             sa.Column("account_guid", sa.String(length=36), sa.ForeignKey("accounts.id"), nullable=False),
             sa.Column("is_closed", sa.Boolean(), nullable=False, server_default=sa.false()),
         )
-        op.alter_column("lots", "is_closed", server_default=None)
+        if bind.dialect.name != "sqlite":
+            op.alter_column("lots", "is_closed", server_default=None)
         inspector = sa.inspect(bind)
 
     if inspector.has_table("lots") and not _index_exists(inspector, "lots", "ix_lots_account_guid"):

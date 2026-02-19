@@ -7,7 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Must be set before importing app modules that build the engine.
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
+os.environ.setdefault("DATABASE_URL_TEST", "sqlite:///./test.db")
+os.environ["DATABASE_URL"] = os.environ["DATABASE_URL_TEST"]
 
 from app.db import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402

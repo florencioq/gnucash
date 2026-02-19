@@ -37,7 +37,8 @@ def upgrade() -> None:
             "books",
             sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.false()),
         )
-        op.alter_column("books", "is_active", server_default=None)
+        if bind.dialect.name != "sqlite":
+            op.alter_column("books", "is_active", server_default=None)
         inspector = sa.inspect(bind)
 
     books_table = sa.table(

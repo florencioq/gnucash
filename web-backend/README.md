@@ -45,6 +45,16 @@ export DATABASE_URL=postgresql+psycopg://gnucash:gnucash@localhost:5433/gnucash_
 
 This backend also loads `.env` automatically at runtime (keys are applied only if not already set in the environment).
 
+You can start from the example env file:
+
+```bash
+cp .env.example .env
+```
+
+Recommended split:
+- `DATABASE_URL`: PostgreSQL for the main app and Alembic migrations
+- `DATABASE_URL_TEST`: SQLite for tests (`pytest`)
+
 Optional: seed minimum spec data on startup:
 
 ```bash
