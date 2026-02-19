@@ -94,6 +94,7 @@ export default function LedgerPage({
   const [counterPickerOpen, setCounterPickerOpen] = useState(false);
   const [counterSearch, setCounterSearch] = useState("");
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [editingTxGuid, setEditingTxGuid] = useState("");
   const [savingTxGuid, setSavingTxGuid] = useState("");
   const [deletingTxGuid, setDeletingTxGuid] = useState("");
@@ -251,18 +252,32 @@ export default function LedgerPage({
     setSourceByTxGuid(mapping);
   };
 
+  const refreshLedgerData = async (bookId, includeCommodities = false) => {
+    if (!bookId) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      if (includeCommodities) {
+        await loadCommodities();
+      }
+      await Promise.all([
+        loadAccounts(bookId),
+        loadAccountTree(bookId),
+        loadTransactions(bookId),
+        loadSourceLinks(bookId)
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     loadCommodities();
   }, []);
 
   useEffect(() => {
     if (activeBookId) {
-      Promise.all([
-        loadAccounts(activeBookId),
-        loadAccountTree(activeBookId),
-        loadTransactions(activeBookId),
-        loadSourceLinks(activeBookId)
-      ]);
+      refreshLedgerData(activeBookId);
     }
   }, [activeBookId]);
 
@@ -720,17 +735,27 @@ export default function LedgerPage({
           <h2 className="mb-1">Razão</h2>
           <div className="small-muted">Razão da conta com lançamento direto.</div>
         </div>
-        {returnToInvoice || returnToBilling ? (
+        <div className="d-flex align-items-center gap-2">
           <button
             type="button"
             className="btn btn-outline-secondary btn-sm"
-            onClick={() => onReturnToTab(returnTab)}
+            onClick={() => refreshLedgerData(activeBookId, true)}
+            disabled={!activeBookId || refreshing}
           >
-            {returnToInvoice
-              ? "Voltar para Faturamento"
-              : "Voltar para Compras/Cobrança"}
+            {refreshing ? "Atualizando..." : "Atualizar"}
           </button>
-        ) : null}
+          {returnToInvoice || returnToBilling ? (
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => onReturnToTab(returnTab)}
+            >
+              {returnToInvoice
+                ? "Voltar para Faturamento"
+                : "Voltar para Compras/Cobrança"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {activeBook ? (
