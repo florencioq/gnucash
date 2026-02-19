@@ -4,7 +4,7 @@ from enum import Enum as PyEnum
 from typing import Optional, List
 
 from sqlalchemy import (
-    String, Integer, Boolean, DateTime, ForeignKey, Enum, UniqueConstraint, Index, BigInteger, CheckConstraint
+    String, Integer, Boolean, DateTime, ForeignKey, Enum, UniqueConstraint, Index, BigInteger, CheckConstraint, text
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -43,6 +43,7 @@ class User(Base):
 
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
+        Index("ix_users_email", "email", unique=True),
     )
     book_accesses: Mapped[List["UserBookAccess"]] = relationship(
         back_populates="user",
@@ -102,6 +103,16 @@ class Book(Base):
     user_accesses: Mapped[List["UserBookAccess"]] = relationship(
         back_populates="book",
         cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index(
+            "ux_books_single_active",
+            "is_active",
+            unique=True,
+            sqlite_where=text("is_active = 1"),
+            postgresql_where=text("is_active = true"),
+        ),
     )
 
 
