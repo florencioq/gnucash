@@ -383,6 +383,8 @@ export default function LedgerPage({
   const ledgerCommodity = selectedLedgerAccount
     ? commoditiesById.get(selectedLedgerAccount.commodity_id) || null
     : null;
+  const debitHeaderLabel = "Saque";
+  const creditHeaderLabel = "Depósito";
   const currentBalance = ledgerRows.length > 0 ? ledgerRows[ledgerRows.length - 1].balance : 0;
   const orderedLedgerRows = useMemo(
     () => (chronologicalOrder === "asc" ? ledgerRows : [...ledgerRows].reverse()),
@@ -830,8 +832,8 @@ export default function LedgerPage({
               <th>Data</th>
               <th>Histórico</th>
               <th>Contra-partida</th>
-              <th className="text-end">Débito</th>
-              <th className="text-end">Crédito</th>
+              <th className="text-end">{debitHeaderLabel}</th>
+              <th className="text-end">{creditHeaderLabel}</th>
               <th className="text-end">Saldo</th>
               <th>Origem</th>
               <th className="text-end">Ações</th>
