@@ -50,10 +50,16 @@ function reverseAccountPath(path) {
 }
 
 export default function VendorsPage() {
+  const VENDOR_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [accountTree, setAccountTree] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [vendorActiveFilter, setVendorActiveFilter] = useState("ALL");
+  const [vendorSortDirection, setVendorSortDirection] = useState("asc");
+  const [vendorPage, setVendorPage] = useState(1);
+  const [vendorPageSize, setVendorPageSize] = useState(25);
   const [expensePickerOpen, setExpensePickerOpen] = useState(false);
   const [expenseSearch, setExpenseSearch] = useState("");
   const [editingGuid, setEditingGuid] = useState("");
@@ -132,6 +138,42 @@ export default function VendorsPage() {
     () => filterTree(expenseTree, expenseSearch),
     [expenseTree, expenseSearch]
   );
+  const filteredSortedVendors = useMemo(() => {
+    const query = vendorSearch.trim().toLowerCase();
+    const withSearch = vendors.filter((vendor) => {
+      if (!query) return true;
+      return String(vendor.name || "").toLowerCase().includes(query);
+    });
+
+    const withStatus = withSearch.filter((vendor) => {
+      if (vendorActiveFilter === "ALL") return true;
+      if (vendorActiveFilter === "ACTIVE") return Boolean(vendor.active);
+      return !vendor.active;
+    });
+
+    return [...withStatus].sort((left, right) => {
+      const leftName = String(left.name || "").toLowerCase();
+      const rightName = String(right.name || "").toLowerCase();
+      if (leftName === rightName) {
+        const leftGuid = String(left.guid || "");
+        const rightGuid = String(right.guid || "");
+        return vendorSortDirection === "asc"
+          ? leftGuid.localeCompare(rightGuid)
+          : rightGuid.localeCompare(leftGuid);
+      }
+      return vendorSortDirection === "asc"
+        ? leftName.localeCompare(rightName)
+        : rightName.localeCompare(leftName);
+    });
+  }, [vendors, vendorSearch, vendorActiveFilter, vendorSortDirection]);
+  const totalVendorItems = filteredSortedVendors.length;
+  const totalVendorPages = totalVendorItems === 0 ? 1 : Math.ceil(totalVendorItems / vendorPageSize);
+  const currentVendorPage = totalVendorItems === 0 ? 1 : Math.min(vendorPage, totalVendorPages);
+  const pagedVendors = useMemo(() => {
+    const startIndex = (currentVendorPage - 1) * vendorPageSize;
+    return filteredSortedVendors.slice(startIndex, startIndex + vendorPageSize);
+  }, [filteredSortedVendors, currentVendorPage, vendorPageSize]);
+  const vendorSortIndicator = vendorSortDirection === "asc" ? "↑" : "↓";
 
   const resetForm = (currencyGuid = "") => {
     setForm({
@@ -218,6 +260,10 @@ export default function VendorsPage() {
     setExpensePickerOpen(false);
     setExpenseSearch("");
   }, [editingGuid, accountTree]);
+
+  useEffect(() => {
+    setVendorPage(1);
+  }, [vendorSearch, vendorActiveFilter, vendorSortDirection, vendorPageSize]);
 
   const selectExpenseAccount = (accountId) => {
     setForm((current) => ({ ...current, expense_account_guid: accountId }));
@@ -516,11 +562,44 @@ export default function VendorsPage() {
         </div>
       ) : null}
 
+      <div className="row g-2 align-items-end mb-3 mt-2">
+        <div className="col-md-4">
+          <label className="form-label">Buscar fornecedor</label>
+          <input
+            className="form-control"
+            value={vendorSearch}
+            onChange={(event) => setVendorSearch(event.target.value)}
+            placeholder="Digite o nome"
+            disabled={!activeBookId}
+          />
+        </div>
+        <div className="col-md-3">
+          <label className="form-label">Filtro de status</label>
+          <select
+            className="form-select"
+            value={vendorActiveFilter}
+            onChange={(event) => setVendorActiveFilter(event.target.value)}
+            disabled={!activeBookId}
+          >
+            <option value="ALL">Todos</option>
+            <option value="ACTIVE">Ativos</option>
+            <option value="INACTIVE">Inativos</option>
+          </select>
+        </div>
+      </div>
       <div className="table-responsive">
         <table className="table align-middle">
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>
+                <button
+                  type="button"
+                  className="table-sort-btn"
+                  onClick={() => setVendorSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                >
+                  Nome {vendorSortIndicator}
+                </button>
+              </th>
               <th>ID</th>
               <th>Moeda</th>
               <th>E-mail</th>
@@ -532,14 +611,14 @@ export default function VendorsPage() {
             </tr>
           </thead>
           <tbody>
-            {vendors.length === 0 ? (
+            {pagedVendors.length === 0 ? (
               <tr>
                 <td colSpan={9} className="small-muted">
-                  Nenhum fornecedor cadastrado.
+                  Nenhum fornecedor encontrado para os filtros selecionados.
                 </td>
               </tr>
             ) : (
-              vendors.map((vendor) => (
+              pagedVendors.map((vendor) => (
                 <tr key={vendor.guid}>
                   <td className="fw-semibold">{vendor.name}</td>
                   <td>{vendor.id}</td>
@@ -576,6 +655,62 @@ export default function VendorsPage() {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="d-flex align-items-center justify-content-between mt-3 flex-wrap gap-2">
+        <div className="small-muted">
+          Mostrando {pagedVendors.length} de {totalVendorItems} fornecedores
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0 small-muted">Itens por página</label>
+          <select
+            className="form-select form-select-sm"
+            value={vendorPageSize}
+            onChange={(event) => setVendorPageSize(Number(event.target.value) || 25)}
+            disabled={!activeBookId}
+            style={{ width: "96px" }}
+          >
+            {VENDOR_PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setVendorPage(1)}
+            disabled={!activeBookId || currentVendorPage <= 1}
+          >
+            Primeira
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setVendorPage((current) => Math.max(1, current - 1))}
+            disabled={!activeBookId || currentVendorPage <= 1}
+          >
+            Anterior
+          </button>
+          <span className="small-muted">
+            Página {totalVendorItems === 0 ? 0 : currentVendorPage} de {totalVendorItems === 0 ? 0 : totalVendorPages}
+          </span>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setVendorPage((current) => Math.min(totalVendorPages, current + 1))}
+            disabled={!activeBookId || currentVendorPage >= totalVendorPages || totalVendorItems === 0}
+          >
+            Próxima
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setVendorPage(totalVendorPages)}
+            disabled={!activeBookId || currentVendorPage >= totalVendorPages || totalVendorItems === 0}
+          >
+            Última
+          </button>
+        </div>
       </div>
     </div>
   );
