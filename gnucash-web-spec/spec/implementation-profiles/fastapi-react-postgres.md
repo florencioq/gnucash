@@ -75,6 +75,7 @@ This document is a reference implementation profile and does not override normat
 - Sidebar navigation SHOULD support collapsed mode with icon-only actions that remain fully clickable.
 - Sidebar collapsed mode SHOULD keep feature parity (navigation behavior must be identical to expanded mode).
 - Dynamic document tabs (`Fatura <id>`, `Compra <id>`) SHOULD remain closable and SHOULD render in a secondary row/panel, separate from primary sidebar navigation.
+- Sidebar entries for `DRE Mensal`, `Razão`, `Faturamentos`, `Compras`, `Contas a Receber`, and `Contas a Pagar` SHOULD open/focus dynamic tabs in the secondary row/panel and SHOULD NOT implicitly close other open dynamic tabs.
 - Navigating from a dynamic detail tab back to its list (`Faturamentos`/`Compras`) SHOULD close the originating dynamic tab to avoid stale "Novo ..." tabs lingering in list context.
 - Account tree should be primary for account navigation.
 - Account master create/edit actions SHOULD open in modal dialogs instead of inline tree-adjacent forms.
@@ -125,12 +126,15 @@ This document is a reference implementation profile and does not override normat
 - Invoicing and purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
 - Detail screens should open as dynamic, closable tabs when launched from list actions.
 - Dynamic detail tabs should persist after browser refresh within the same session.
+- Open dynamic tabs SHOULD preserve mounted UI state/context while the session remains active (for example filters, current form context, and local view state) when switching between tabs.
 - Dynamic detail tab labels should prefer business document numbers (invoice/bill id) when available, with GUID fallback only when needed.
 - Deleting invoice/bill documents should require explicit user confirmation and close the corresponding dynamic detail tab after successful deletion.
 - Ledger transaction grid should support pagination controls (first/previous/next/last + page size options) to keep navigation responsive.
 - Ledger transaction grid should default to newest-first chronological order and allow switching to oldest-first.
 - Ledger pagination default page size should be 10 items.
 - Ledger rows linked to invoice/bill workflows should not allow edit/delete actions; users should perform those operations in `Faturamentos` or `Compras`.
+- `Razão`, `Faturamentos`, `Compras`, `Contas a Receber`, and `Contas a Pagar` screens SHOULD expose an explicit `Atualizar` action to force data refresh on demand.
+- Monthly DRE matrix period headers SHOULD render date ranges using `a` between start and end dates (for example `01/02/2026` and `a 28/02/2026`).
 
 ## Compliance note
 

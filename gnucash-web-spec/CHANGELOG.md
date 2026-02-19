@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.16 - 2026-02-19
+
+Workspace/report tab and refresh UX synchronization:
+- documented dynamic workspace tabs for `Contas a Receber`, `Contas a Pagar`, `Faturamentos`, and `Compras`, aligned with existing dynamic report/document tabs
+- documented tab-switch behavior to preserve mounted context/state for open dynamic tabs (avoiding implicit reload on every tab focus)
+- documented explicit `Atualizar` actions for `Razão`, `Contas a Receber`, `Contas a Pagar`, `Faturamentos`, and `Compras`
+- documented DRE matrix period label wording adjustment from `para` to `a`
+- extended acceptance coverage notes for dynamic workspace/report tabs, context preservation, and explicit refresh controls
+
 ## v0.4.15 - 2026-02-19
 
 Account-tree balance and readability synchronization:

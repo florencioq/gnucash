@@ -110,3 +110,8 @@ Primary suites:
 66. Account master tree name search/filter behavior (hierarchy preserved for matching branches).
 67. Account master tree shows hierarchical consolidated balances for parent and placeholder nodes.
 68. Account master tree row readability: right-aligned balance column, constrained width, and subtle row separators preserve account-to-action association.
+69. Sidebar operational/report entries (`DRE Mensal`, `Razão`, `Faturamentos`, `Compras`, `Contas a Receber`, `Contas a Pagar`) open/focus dynamic tabs without clearing other open tabs.
+70. Switching between open dynamic tabs preserves in-session UI context/state (for example filters and editor context) instead of reinitializing each view.
+71. Dynamic workspace/report tabs persist after browser refresh in-session and remain individually closable.
+72. Explicit `Atualizar` actions in `Razão`, `Faturamentos`, `Compras`, `Contas a Receber`, and `Contas a Pagar` trigger on-demand reload without closing active tabs.
+73. DRE monthly matrix period header uses `a` (not `para`) between start/end dates.
