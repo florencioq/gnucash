@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.12 - 2026-02-19
+
+Implementation profile synchronization:
+- documented single-stack local container orchestration expectation (`db` + `web-backend` + `web-frontend`) via `docker compose`
+- documented backend startup guidance to apply Alembic migrations before serving requests in containerized runtime
+- documented frontend build-time API base injection via `VITE_API_BASE_URL`
+- documented monthly DRE matrix UI ordering rule to render `Resultado Líquido` as first row (above `Receita` and `Despesa`)
+
 ## v0.4.11 - 2026-02-18
 
 Payables open-items synchronization:

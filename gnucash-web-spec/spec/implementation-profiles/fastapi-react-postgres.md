@@ -29,6 +29,9 @@ This document is a reference implementation profile and does not override normat
 6. SQLite MAY be used for lightweight local tests.
 7. Invoice/bill auto-number generation for blank IDs SHOULD use atomic server-side reservation per `(book_id, owner_type)` (counter row lock or equivalent `upsert-returning` strategy).
 8. Authenticated clients SHOULD centralize bearer-token storage/refresh and automatic `Authorization` header injection in `src/api/client.js`.
+9. Containerized local runtime SHOULD provide a single `docker compose` stack for `db` + `web-backend` + `web-frontend`.
+10. In containerized runtime, backend startup SHOULD run pending Alembic migrations before serving HTTP requests.
+11. Frontend container builds SHOULD inject backend base URL via `VITE_API_BASE_URL`.
 
 ## Suggested backend folder shape
 
@@ -110,6 +113,7 @@ This document is a reference implementation profile and does not override normat
 - "Contas a Receber" screen should consume `/invoices/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each faturamento.
 - "Contas a Pagar" screen should consume `/bills/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each compra.
 - "Prazo Quitação" report screen SHOULD consume `/reports/invoices/settlement-by-customer` with server-side filtering/sorting/pagination.
+- In the monthly DRE matrix table, `Resultado Líquido` SHOULD be rendered as the first row, above `Receita` and `Despesa`.
 - Invoicing and purchasing lists should persist filter/sort/page state when user switches tabs and after browser refresh within the same session.
 - Invoicing and purchasing pagination controls should include first/previous/next/last navigation and configurable page size options.
 - Detail screens should open as dynamic, closable tabs when launched from list actions.

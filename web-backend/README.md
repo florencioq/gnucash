@@ -37,6 +37,18 @@ To stop:
 docker compose stop db
 ```
 
+To run backend + frontend + database together from project root:
+
+```bash
+cd ..
+cp .env.example .env
+docker compose up --build
+```
+
+Endpoints:
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+
 Set `DATABASE_URL` for the app before running:
 
 ```bash

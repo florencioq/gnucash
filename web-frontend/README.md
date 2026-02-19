@@ -14,6 +14,18 @@ npm install
 npm run dev
 ```
 
+## Run with Docker Compose (backend + frontend + db)
+
+From project root:
+
+```bash
+docker compose up --build
+```
+
+URLs:
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+
 ## API base URL
 
 By default the UI calls `http://localhost:8000`. Override with:
