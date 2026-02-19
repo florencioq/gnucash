@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gnucash_web_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gnucash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gnucash}
+      POSTGRES_DB: ${POSTGRES_DB:-gnucash_web}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data-gnucash
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gnucash} -d ${POSTGRES_DB:-gnucash_web}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web-backend:
+    build:
+      context: ./web-backend
+      dockerfile: Dockerfile
+    container_name: gnucash_web_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://gnucash:gnucash@db:5432/gnucash_web}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-this-secret-in-production}
+      AUTH_ACCESS_TOKEN_TTL_MINUTES: ${AUTH_ACCESS_TOKEN_TTL_MINUTES:-30}
+      AUTH_REFRESH_TOKEN_TTL_MINUTES: ${AUTH_REFRESH_TOKEN_TTL_MINUTES:-10080}
+      AUTH_PASSWORD_ITERATIONS: ${AUTH_PASSWORD_ITERATIONS:-210000}
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-false}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+  web-frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: gnucash_web_frontend
+    restart: unless-stopped
+    depends_on:
+      - web-backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+
+volumes:
+  pgdata:
