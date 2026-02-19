@@ -108,3 +108,5 @@ Primary suites:
 64. Vendor master list name sorting toggle and UI pagination behavior.
 65. Account master create/edit workflow via modal dialog (open, save, cancel, close behavior).
 66. Account master tree name search/filter behavior (hierarchy preserved for matching branches).
+67. Account master tree shows hierarchical consolidated balances for parent and placeholder nodes.
+68. Account master tree row readability: right-aligned balance column, constrained width, and subtle row separators preserve account-to-action association.

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.15 - 2026-02-19
+
+Account-tree balance and readability synchronization:
+- documented hierarchical consolidated balance rendering for account-tree UI (including placeholder aggregation behavior)
+- documented account-tree readability constraints (right-aligned balance column, subtle row separators, constrained content width)
+- extended acceptance coverage notes with account-tree consolidated-balance and row-association scenarios
+
 ## v0.4.14 - 2026-02-19
 
 Account master UX synchronization:

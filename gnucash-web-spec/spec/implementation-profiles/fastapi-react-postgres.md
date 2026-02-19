@@ -79,6 +79,9 @@ This document is a reference implementation profile and does not override normat
 - Account tree should be primary for account navigation.
 - Account master create/edit actions SHOULD open in modal dialogs instead of inline tree-adjacent forms.
 - Account master tree screen SHOULD provide name-based search/filter over the rendered hierarchy.
+- Account tree balances SHOULD be rendered as hierarchical totals in the UI (parent balance aggregated from descendants; placeholder nodes aggregate children).
+- Account tree rows SHOULD use a dedicated right-aligned balance column and subtle row separators so balance/actions remain visually associated with the corresponding account.
+- Account tree container width SHOULD be constrained to avoid excessive horizontal spread between account labels and row actions.
 - Tree selectors should hide synthetic `ROOT` where user must choose actionable accounts.
 - Books UI should expose active-book selection.
 - Books UI SHOULD expose setup account selectors backed by hierarchical account trees for:
