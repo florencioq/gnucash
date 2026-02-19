@@ -29,6 +29,12 @@ const NEW_BILL_TAB_GUID = "new";
 const DEFAULT_AUTH_TAB_ID = "income-statement";
 const INCOME_STATEMENT_DETAIL_TAB_ID = "report:income-statement";
 const LEDGER_DETAIL_TAB_ID = "report:ledger";
+const WORKSPACE_DETAIL_TAB_BY_ID = {
+  receivables: "workspace:receivables",
+  payables: "workspace:payables",
+  "invoicing-list": "workspace:invoicing-list",
+  "billing-list": "workspace:billing-list"
+};
 
 const baseTabs = [
   { id: "login", label: "Login", component: LoginPage },
@@ -114,6 +120,20 @@ function isIncomeStatementDetailTab(tabId) {
 
 function isLedgerDetailTab(tabId) {
   return tabId === LEDGER_DETAIL_TAB_ID;
+}
+
+function workspaceIdFromDetailTabId(tabId) {
+  const entries = Object.entries(WORKSPACE_DETAIL_TAB_BY_ID);
+  const found = entries.find(([, detailTabId]) => detailTabId === tabId);
+  return found ? found[0] : "";
+}
+
+function detailTabIdFromWorkspaceId(workspaceId) {
+  return WORKSPACE_DETAIL_TAB_BY_ID[workspaceId] || "";
+}
+
+function isWorkspaceDetailTab(tabId) {
+  return Boolean(workspaceIdFromDetailTabId(tabId));
 }
 
 function invoiceGuidFromTab(tabId) {
@@ -208,6 +228,46 @@ function sanitizeReportTabs(items) {
   return sanitized;
 }
 
+function sanitizeWorkspaceTabs(items) {
+  if (!Array.isArray(items)) return [];
+  const seenWorkspaceIds = new Set();
+  const sanitized = [];
+
+  for (const item of items) {
+    const explicitWorkspaceId = String(item?.workspaceId || "").trim();
+    const rawId = String(item?.id || "").trim();
+    const workspaceId =
+      explicitWorkspaceId ||
+      (rawId.startsWith("workspace:") ? rawId.slice("workspace:".length) : "");
+    const detailTabId = detailTabIdFromWorkspaceId(workspaceId);
+    if (!detailTabId) continue;
+    if (seenWorkspaceIds.has(workspaceId)) continue;
+    seenWorkspaceIds.add(workspaceId);
+
+    const fallbackLabel =
+      workspaceId === "receivables"
+        ? "Contas a Receber"
+        : workspaceId === "payables"
+          ? "Contas a Pagar"
+          : workspaceId === "invoicing-list"
+            ? "Faturamentos"
+            : "Compras";
+
+    const label =
+      typeof item?.label === "string" && item.label.trim().length > 0
+        ? item.label.trim()
+        : fallbackLabel;
+
+    sanitized.push({
+      id: detailTabId,
+      label,
+      workspaceId
+    });
+  }
+
+  return sanitized;
+}
+
 function loadAppTabsState() {
   if (typeof window === "undefined") return null;
   try {
@@ -223,6 +283,7 @@ function loadAppTabsState() {
       openInvoiceTabs: sanitizeInvoiceTabs(parsed.openInvoiceTabs),
       openBillTabs: sanitizeBillTabs(parsed.openBillTabs),
       openReportTabs: sanitizeReportTabs(parsed.openReportTabs),
+      openWorkspaceTabs: sanitizeWorkspaceTabs(parsed.openWorkspaceTabs),
       sidebarCollapsed: Boolean(parsed.sidebarCollapsed)
     };
   } catch {
@@ -249,6 +310,9 @@ export default function App() {
   const [openReportTabs, setOpenReportTabs] = useState(
     () => persistedTabsState?.openReportTabs || []
   );
+  const [openWorkspaceTabs, setOpenWorkspaceTabs] = useState(
+    () => persistedTabsState?.openWorkspaceTabs || []
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => Boolean(persistedTabsState?.sidebarCollapsed)
   );
@@ -258,6 +322,18 @@ export default function App() {
 
   const detailTabs = useMemo(
     () => [
+      ...openWorkspaceTabs.map((tab) => ({
+        ...tab,
+        component:
+          tab.workspaceId === "receivables"
+            ? ReceivablesPage
+            : tab.workspaceId === "payables"
+              ? PayablesPage
+              : tab.workspaceId === "invoicing-list"
+                ? InvoicingListPage
+                : BillingListPage,
+        closable: true
+      })),
       ...openReportTabs.map((tab) => ({
         ...tab,
         component: tab.reportId === "ledger" ? LedgerPage : IncomeStatementPage,
@@ -266,7 +342,7 @@ export default function App() {
       ...openInvoiceTabs.map((tab) => ({ ...tab, component: InvoicingPage, closable: true })),
       ...openBillTabs.map((tab) => ({ ...tab, component: BillingPage, closable: true }))
     ],
-    [openBillTabs, openInvoiceTabs, openReportTabs]
+    [openBillTabs, openInvoiceTabs, openReportTabs, openWorkspaceTabs]
   );
   const navigationTabs = useMemo(() => {
     if (!hasAuthSession) return baseTabs.filter((tab) => tab.id === "login");
@@ -301,6 +377,7 @@ export default function App() {
     activeTab === "payables" ||
     activeTab === "invoicing-list" ||
     activeTab === "billing-list" ||
+    isWorkspaceDetailTab(activeTab) ||
     activeTab === "ledger" ||
     isLedgerDetailTab(activeTab) ||
     isInvoiceTab(activeTab) ||
@@ -360,6 +437,7 @@ export default function App() {
     setOpenInvoiceTabs([]);
     setOpenBillTabs([]);
     setOpenReportTabs([]);
+    setOpenWorkspaceTabs([]);
     setLedgerTargetAccountId("");
     if (activeTab !== "login") {
       setActiveTab("login");
@@ -377,6 +455,7 @@ export default function App() {
         openInvoiceTabs,
         openBillTabs,
         openReportTabs,
+        openWorkspaceTabs,
         sidebarCollapsed
       })
     );
@@ -387,6 +466,7 @@ export default function App() {
     openInvoiceTabs,
     openBillTabs,
     openReportTabs,
+    openWorkspaceTabs,
     sidebarCollapsed
   ]);
 
@@ -421,6 +501,29 @@ export default function App() {
 
   const handleOpenIncomeStatementTab = () => {
     handleOpenReportTab({ reportId: "income-statement", label: "DRE Mensal" });
+  };
+
+  const handleOpenWorkspaceTab = ({ workspaceId, label }) => {
+    if (!workspaceId) return;
+    const tabId = detailTabIdFromWorkspaceId(workspaceId);
+    if (!tabId) return;
+    setOpenWorkspaceTabs((current) => {
+      const hasTab = current.some((tab) => tab.id === tabId);
+      if (hasTab) {
+        return current.map((tab) =>
+          tab.id === tabId && tab.label !== label ? { ...tab, label } : tab
+        );
+      }
+      return [
+        ...current,
+        {
+          id: tabId,
+          label,
+          workspaceId
+        }
+      ];
+    });
+    setActiveTab(tabId);
   };
 
   const handleOpenInvoicing = ({
@@ -569,6 +672,9 @@ export default function App() {
     if (isIncomeStatementDetailTab(tabId) || isLedgerDetailTab(tabId)) {
       setOpenReportTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
+    if (isWorkspaceDetailTab(tabId)) {
+      setOpenWorkspaceTabs((current) => current.filter((tab) => tab.id !== tabId));
+    }
 
     setActiveTab((current) => (current === tabId ? fallbackTab : current));
   };
@@ -602,6 +708,8 @@ export default function App() {
     (lastNonLedgerTab === "income-statement" ||
       isIncomeStatementDetailTab(lastNonLedgerTab) ||
       lastNonLedgerTab === "ledger" ||
+      isWorkspaceDetailTab(lastNonLedgerTab) ||
+      lastNonLedgerTab === "receivables" ||
       lastNonLedgerTab === "payables" ||
       lastNonLedgerTab === "invoicing-list" ||
       lastNonLedgerTab === "billing-list" ||
@@ -619,15 +727,55 @@ export default function App() {
     onOpenBilling: handleOpenBilling
   });
 
+  const buildWorkspaceTabProps = (workspaceId) => {
+    if (workspaceId === "receivables") {
+      return {
+        onOpenInvoicing: handleOpenInvoicing,
+        onCreateInvoicing: handleCreateInvoicing,
+        onOpenBilling: ({ billGuid, billId }) =>
+          handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
+      };
+    }
+    if (workspaceId === "payables") {
+      return {
+        onOpenBilling: handleOpenBilling,
+        onCreateBilling: handleCreateBilling,
+        onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
+          handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
+      };
+    }
+    if (workspaceId === "invoicing-list") {
+      return {
+        onOpenInvoicing: handleOpenInvoicing,
+        onCreateInvoicing: handleCreateInvoicing,
+        onOpenBilling: ({ billGuid, billId }) =>
+          handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
+      };
+    }
+    if (workspaceId === "billing-list") {
+      return {
+        onOpenBilling: handleOpenBilling,
+        onCreateBilling: handleCreateBilling,
+        onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
+          handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
+      };
+    }
+    return {};
+  };
+
   const buildInvoiceTabProps = (tabId) => {
     const currentTab = openInvoiceTabs.find((tab) => tab.id === tabId) || null;
     const openCreateOnMount = Boolean(currentTab?.openCreate);
+    const invoicingListFallback =
+      detailTabIdFromWorkspaceId("invoicing-list") && tabIds.has(detailTabIdFromWorkspaceId("invoicing-list"))
+        ? detailTabIdFromWorkspaceId("invoicing-list")
+        : "invoicing-list";
     return {
       initialInvoiceGuid:
         currentTab?.invoiceGuid === NEW_INVOICE_TAB_GUID ? "" : invoiceGuidFromTab(tabId),
-      onOpenInvoicingList: () => closeDynamicTab(tabId, "invoicing-list"),
+      onOpenInvoicingList: () => closeDynamicTab(tabId, invoicingListFallback),
       onOpenInvoiceTab: handleOpenInvoicing,
-      onInvoiceDeleted: () => closeDynamicTab(tabId, "invoicing-list"),
+      onInvoiceDeleted: () => closeDynamicTab(tabId, invoicingListFallback),
       initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
       openCreateOnMount,
       onCreateMountHandled: openCreateOnMount
@@ -644,11 +792,15 @@ export default function App() {
   const buildBillTabProps = (tabId) => {
     const currentTab = openBillTabs.find((tab) => tab.id === tabId) || null;
     const openCreateOnMount = Boolean(currentTab?.openCreate);
+    const billingListFallback =
+      detailTabIdFromWorkspaceId("billing-list") && tabIds.has(detailTabIdFromWorkspaceId("billing-list"))
+        ? detailTabIdFromWorkspaceId("billing-list")
+        : "billing-list";
     return {
       initialBillGuid: currentTab?.billGuid === NEW_BILL_TAB_GUID ? "" : billGuidFromTab(tabId),
-      onOpenBillingList: () => closeDynamicTab(tabId, "billing-list"),
+      onOpenBillingList: () => closeDynamicTab(tabId, billingListFallback),
       onOpenBillTab: handleOpenBilling,
-      onBillDeleted: () => closeDynamicTab(tabId, "billing-list"),
+      onBillDeleted: () => closeDynamicTab(tabId, billingListFallback),
       initialPostingAccountGuid: currentTab?.initialPostingAccountGuid || "",
       openCreateOnMount,
       onCreateMountHandled: openCreateOnMount
@@ -664,6 +816,10 @@ export default function App() {
 
   const isActiveDetailTab = detailTabs.some((tab) => tab.id === activeTab);
   const detailTabPropsById = detailTabs.reduce((acc, tab) => {
+    if (isWorkspaceDetailTab(tab.id)) {
+      acc[tab.id] = buildWorkspaceTabProps(tab.workspaceId);
+      return acc;
+    }
     if (isInvoiceTab(tab.id)) {
       acc[tab.id] = buildInvoiceTabProps(tab.id);
       return acc;
@@ -694,35 +850,15 @@ export default function App() {
       : activeTab === "invoice-settlement-report"
         ? { onOpenInvoicing: handleOpenInvoicing }
       : activeTab === "receivables"
-        ? {
-            onOpenInvoicing: handleOpenInvoicing,
-            onCreateInvoicing: handleCreateInvoicing,
-            onOpenBilling: ({ billGuid, billId }) =>
-              handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
-          }
+        ? buildWorkspaceTabProps("receivables")
       : activeTab === "payables"
-        ? {
-            onOpenBilling: handleOpenBilling,
-            onCreateBilling: handleCreateBilling,
-            onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
-              handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
-          }
+        ? buildWorkspaceTabProps("payables")
       : activeTab === "ledger" || isLedgerDetailTab(activeTab)
         ? buildLedgerProps()
       : activeTab === "invoicing-list"
-        ? {
-            onOpenInvoicing: handleOpenInvoicing,
-            onCreateInvoicing: handleCreateInvoicing,
-            onOpenBilling: ({ billGuid, billId }) =>
-              handleOpenInvoicing({ invoiceGuid: billGuid, invoiceId: billId })
-          }
+        ? buildWorkspaceTabProps("invoicing-list")
       : activeTab === "billing-list"
-        ? {
-            onOpenBilling: handleOpenBilling,
-            onCreateBilling: handleCreateBilling,
-            onOpenInvoicing: ({ invoiceGuid, invoiceId }) =>
-              handleOpenBilling({ billGuid: invoiceGuid, billId: invoiceId })
-          }
+        ? buildWorkspaceTabProps("billing-list")
       : isInvoiceTab(activeTab)
         ? buildInvoiceTabProps(activeTab)
       : isBillTab(activeTab)
@@ -788,10 +924,13 @@ export default function App() {
                       {section.items.map((tab) => {
                         const isIncomeStatementNav = tab.id === "income-statement";
                         const isLedgerNav = tab.id === "ledger";
+                        const workspaceDetailTabId = detailTabIdFromWorkspaceId(tab.id);
+                        const isWorkspaceNav = Boolean(workspaceDetailTabId);
                         const isActive =
                           activeTab === tab.id ||
                           (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab)) ||
-                          (isLedgerNav && isLedgerDetailTab(activeTab));
+                          (isLedgerNav && isLedgerDetailTab(activeTab)) ||
+                          (isWorkspaceNav && activeTab === workspaceDetailTabId);
                         return (
                         <button
                           key={tab.id}
@@ -806,6 +945,13 @@ export default function App() {
                             }
                             if (isLedgerNav) {
                               handleOpenLedger({});
+                              return;
+                            }
+                            if (isWorkspaceNav) {
+                              handleOpenWorkspaceTab({
+                                workspaceId: tab.id,
+                                label: tab.label
+                              });
                               return;
                             }
                             setActiveTab(tab.id);
