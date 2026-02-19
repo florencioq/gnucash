@@ -57,6 +57,7 @@ export default function BillingListPage({
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
 
   const [vendorFilterGuid, setVendorFilterGuid] = useState(() => String(persistedState?.vendorFilterGuid || ""));
@@ -158,13 +159,14 @@ export default function BillingListPage({
     setVendors([]);
     setVendorsLoaded(false);
     loadVendors(activeBookId);
-  }, [activeBookId]);
+  }, [activeBookId, refreshToken]);
 
   useEffect(() => {
     if (!activeBookId) return;
     loadInvoices(activeBookId);
   }, [
     activeBookId,
+    refreshToken,
     vendorFilterGuid,
     postedFilter,
     paymentFilter,
@@ -175,6 +177,7 @@ export default function BillingListPage({
     page,
     pageSize
   ]);
+  const refreshing = loading || !vendorsLoaded;
 
   useEffect(() => {
     if (!vendorsLoaded) return;
@@ -216,16 +219,26 @@ export default function BillingListPage({
           <h2 className="mb-1">Compras</h2>
           <div className="small-muted">Lista de compras com filtros e ordenação.</div>
         </div>
-        {typeof onCreateBilling === "function" ? (
+        <div className="d-flex align-items-center gap-2">
           <button
             type="button"
-            className="btn btn-accent"
-            onClick={onCreateBilling}
-            disabled={!activeBookId}
+            className="btn btn-outline-secondary"
+            onClick={() => setRefreshToken((current) => current + 1)}
+            disabled={!activeBookId || refreshing}
           >
-            Nova Compra
+            {refreshing ? "Atualizando..." : "Atualizar"}
           </button>
-        ) : null}
+          {typeof onCreateBilling === "function" ? (
+            <button
+              type="button"
+              className="btn btn-accent"
+              onClick={onCreateBilling}
+              disabled={!activeBookId}
+            >
+              Nova Compra
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {activeBook ? (
