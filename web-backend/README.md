@@ -82,17 +82,19 @@ export CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 Authentication settings:
 
 ```bash
-# default: false (keeps backward compatibility, no auth required on business endpoints)
+# recommended for operation: true
 export AUTH_REQUIRED=true
 
-# set in production
-export AUTH_JWT_SECRET=change-me
+# set in production (at least 32 bytes for HS256)
+export AUTH_JWT_SECRET=change-this-secret-in-production-min-32-bytes
 
 # optional tuning
 export AUTH_ACCESS_TOKEN_TTL_MINUTES=30
 export AUTH_REFRESH_TOKEN_TTL_MINUTES=10080
 export AUTH_PASSWORD_ITERATIONS=210000
 ```
+
+Test runs keep `AUTH_REQUIRED=false` in `tests/conftest.py`.
 
 ## Run
 

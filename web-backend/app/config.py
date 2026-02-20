@@ -53,7 +53,10 @@ class Settings:
         if origin.strip()
     ]
     auth_required: bool = _env_bool("AUTH_REQUIRED", default=False)
-    auth_jwt_secret: str = os.getenv("AUTH_JWT_SECRET", "change-this-secret-in-production")
+    auth_jwt_secret: str = os.getenv(
+        "AUTH_JWT_SECRET",
+        "change-this-secret-in-production-min-32-bytes",
+    )
     auth_access_token_ttl_minutes: int = max(1, _env_int("AUTH_ACCESS_TOKEN_TTL_MINUTES", default=30))
     auth_refresh_token_ttl_minutes: int = max(1, _env_int("AUTH_REFRESH_TOKEN_TTL_MINUTES", default=60 * 24 * 7))
     auth_password_iterations: int = max(100_000, _env_int("AUTH_PASSWORD_ITERATIONS", default=210_000))
