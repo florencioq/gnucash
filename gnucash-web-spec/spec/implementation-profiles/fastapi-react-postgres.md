@@ -127,6 +127,10 @@ This document is a reference implementation profile and does not override normat
 - Detail screens should open as dynamic, closable tabs when launched from list actions.
 - Dynamic detail tabs should persist after browser refresh within the same session.
 - Open dynamic tabs SHOULD preserve mounted UI state/context while the session remains active (for example filters, current form context, and local view state) when switching between tabs.
+- React view-to-view synchronization SHOULD use idempotent state setters (for example `setState((prev) => prev === next ? prev : next)` when applicable) to avoid no-op re-render cascades.
+- Callback props passed to mounted dynamic/detail tabs SHOULD be referentially stable (for example `useCallback`) when consumed by effect dependencies.
+- Effects that synchronize parent/child state SHOULD guard equivalent payloads before dispatching updates to shared navigation state.
+- Repeated open/focus commands for the same tab and same context SHOULD be treated as no-op updates.
 - Dynamic detail tab labels should prefer business document numbers (invoice/bill id) when available, with GUID fallback only when needed.
 - Deleting invoice/bill documents should require explicit user confirmation and close the corresponding dynamic detail tab after successful deletion.
 - Ledger transaction grid should support pagination controls (first/previous/next/last + page size options) to keep navigation responsive.

@@ -19,3 +19,10 @@
 ## Observability
 
 11. Implementations SHOULD monitor endpoint latency, error rates, and regression trends.
+
+## UI stability
+
+12. UI actions that open/focus dynamic tabs MUST be idempotent: invoking the same action with equivalent payload MUST NOT create additional state transitions.
+13. Cross-view synchronization callbacks MUST ignore unchanged values and MUST NOT emit parent-state updates for equivalent state.
+14. Hidden/inactive tabs MUST NOT trigger navigation-state changes while not active.
+15. After drill-down navigation actions (for example `DRE Mensal` -> `Razão`), active tab and selected context SHOULD stabilize and remain unchanged until a new explicit user action.

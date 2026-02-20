@@ -118,3 +118,7 @@ Primary suites:
 74. `Razão` counterparty column provides direct navigation link to open the ledger of the selected `Contra-partida` account.
 75. After switching ledger account via `Contra-partida` link, browser refresh restores the same selected account in `Razão`.
 76. `Razão` amount column headers are rendered as `Saque` and `Depósito`.
+77. Clicking an account drill-down in `DRE Mensal` opens/focuses `Razão` exactly once and keeps the selected account stable (no tab/account oscillation) until the next user action.
+78. Re-triggering the same `DRE Mensal` drill-down for the same account does not duplicate report tabs and does not cause visible UI oscillation.
+79. When `Razão` emits a selected-account synchronization event with value equivalent to current app state, no global navigation-state mutation occurs.
+80. Inactive dynamic tabs do not emit side effects that change active tab or selected account context.
