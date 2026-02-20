@@ -375,6 +375,51 @@ export default function BillingPage({
     return account.id;
   };
 
+  const resolveVendorLastPaymentAccountGuid = (
+    vendorGuid,
+    {
+      invoiceList = invoices,
+      accountList = accounts,
+      blockedAccountGuid = ""
+    } = {}
+  ) => {
+    if (!vendorGuid) return "";
+
+    const isSelectableAccount = (accountGuid) => {
+      if (!accountGuid) return false;
+      if (blockedAccountGuid && accountGuid === blockedAccountGuid) return false;
+      const account = accountList.find((item) => item.id === accountGuid);
+      return Boolean(account && !account.is_placeholder);
+    };
+
+    const vendorPayments = [];
+    for (const invoice of invoiceList) {
+      if (invoice.vendor_guid !== vendorGuid) continue;
+      for (const payment of invoice.payments || []) {
+        vendorPayments.push({
+          transferAccountGuid: payment.transfer_account_guid || "",
+          paymentDate: payment.payment_date || "",
+          txGuid: payment.tx_guid || ""
+        });
+      }
+    }
+
+    vendorPayments.sort((left, right) => {
+      const byDate = String(left.paymentDate).localeCompare(String(right.paymentDate));
+      if (byDate !== 0) return byDate;
+      return String(left.txGuid).localeCompare(String(right.txGuid));
+    });
+
+    for (let index = vendorPayments.length - 1; index >= 0; index -= 1) {
+      const candidate = vendorPayments[index];
+      if (isSelectableAccount(candidate.transferAccountGuid)) {
+        return candidate.transferAccountGuid;
+      }
+    }
+
+    return "";
+  };
+
   const loadCommodities = async () => {
     const response = await api.get("/commodities?namespace=CURRENCY");
     if (!response.ok) {
@@ -570,14 +615,29 @@ export default function BillingPage({
         ? decimalFixedString(selectedInvoiceOpenAmount, 2)
         : "";
 
+    const suggestedPaymentAccountGuid = isInvoicePosted
+      ? resolveVendorLastPaymentAccountGuid(selectedInvoice.vendor_guid, {
+          blockedAccountGuid: selectedInvoice.post_account_guid || ""
+        })
+      : "";
+
     setPaymentForm((current) => ({
       ...current,
-      transfer_account_guid: "",
+      transfer_account_guid:
+        current.transfer_account_guid &&
+        current.transfer_account_guid !== selectedInvoice.post_account_guid &&
+        accounts.some(
+          (account) => account.id === current.transfer_account_guid && !account.is_placeholder
+        )
+          ? current.transfer_account_guid
+          : suggestedPaymentAccountGuid,
       amount: suggestedAmount,
       payment_date: current.payment_date || todayIsoDate()
     }));
   }, [
+    invoices,
     selectedInvoiceGuid,
+    selectedInvoice?.vendor_guid,
     selectedInvoice?.post_account_guid,
     selectedInvoice?.date_posted,
     selectedInvoice?.open_amount_num,
