@@ -122,3 +122,4 @@ Primary suites:
 78. Re-triggering the same `DRE Mensal` drill-down for the same account does not duplicate report tabs and does not cause visible UI oscillation.
 79. When `Razão` emits a selected-account synchronization event with value equivalent to current app state, no global navigation-state mutation occurs.
 80. Inactive dynamic tabs do not emit side effects that change active tab or selected account context.
+81. In `Compras`, payment account default suggestion uses the most recent prior payment account of the same vendor when a valid account exists.

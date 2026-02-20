@@ -111,6 +111,7 @@ This document is a reference implementation profile and does not override normat
 - `Nova Fatura` and `Nova Compra` detail tabs should open with clean state and must not render stale header/line data from previously selected documents.
 - Revenue/expense account selectors in entry editors should prioritize leaf-first path labels (`account / parent / ...`) and provide wider input columns to keep leaf names visible.
 - Payment account selection should use hierarchical account pickers.
+- In `Compras`, the payment form SHOULD auto-suggest the payment account from the most recent prior payment of the same vendor (when a valid account is available and differs from the bill posting account).
 - Hierarchical account pickers should provide a tall viewport to improve deep-tree navigation.
 - Invoicing navigation should be split into list (`Faturamentos`) and detail (`Fatura`).
 - Purchasing navigation should be split into list (`Compras`) and detail (`Compra`).
