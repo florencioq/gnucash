@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import BooksPage from "./pages/BooksPage.jsx";
 import CommoditiesPage from "./pages/CommoditiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
@@ -470,61 +470,80 @@ export default function App() {
     sidebarCollapsed
   ]);
 
-  const handleOpenReportTab = ({ reportId, label }) => {
+  const handleOpenReportTab = useCallback(({ reportId, label }) => {
     if (!reportId) return;
     const tabId = reportId === "ledger" ? LEDGER_DETAIL_TAB_ID : INCOME_STATEMENT_DETAIL_TAB_ID;
+    const fallbackLabel = reportId === "ledger" ? "Razão" : "DRE Mensal";
+    const normalizedLabel = String(label || "").trim() || fallbackLabel;
     setOpenReportTabs((current) => {
-      const hasTab = current.some((tab) => tab.id === tabId);
-      if (hasTab) {
-        return current.map((tab) =>
-          tab.id === tabId && tab.label !== label
-            ? { ...tab, label }
-            : tab
-        );
+      const existing = current.find((tab) => tab.id === tabId);
+      if (existing) {
+        if (existing.label === normalizedLabel) {
+          return current;
+        }
+        return current.map((tab) => (tab.id === tabId ? { ...tab, label: normalizedLabel } : tab));
       }
       return [
         ...current,
         {
           id: tabId,
-          label,
+          label: normalizedLabel,
           reportId
         }
       ];
     });
-    setActiveTab(tabId);
-  };
+    setActiveTab((current) => (current === tabId ? current : tabId));
+  }, []);
 
-  const handleOpenLedger = ({ accountId }) => {
-    setLedgerTargetAccountId(accountId || "");
+  const handleLedgerAccountChange = useCallback((accountId) => {
+    const nextAccountId = String(accountId || "");
+    setLedgerTargetAccountId((current) => (current === nextAccountId ? current : nextAccountId));
+  }, []);
+
+  const handleOpenLedger = useCallback(({ accountId } = {}) => {
+    const nextAccountId = String(accountId || "");
+    setLedgerTargetAccountId((current) => (current === nextAccountId ? current : nextAccountId));
     handleOpenReportTab({ reportId: "ledger", label: "Razão" });
-  };
+  }, [handleOpenReportTab]);
 
-  const handleOpenIncomeStatementTab = () => {
+  const handleOpenIncomeStatementTab = useCallback(() => {
     handleOpenReportTab({ reportId: "income-statement", label: "DRE Mensal" });
-  };
+  }, [handleOpenReportTab]);
 
-  const handleOpenWorkspaceTab = ({ workspaceId, label }) => {
+  const handleOpenWorkspaceTab = useCallback(({ workspaceId, label }) => {
     if (!workspaceId) return;
     const tabId = detailTabIdFromWorkspaceId(workspaceId);
     if (!tabId) return;
+    const normalizedLabel = String(label || "").trim();
+    const fallbackLabel =
+      workspaceId === "receivables"
+        ? "Contas a Receber"
+        : workspaceId === "payables"
+          ? "Contas a Pagar"
+          : workspaceId === "invoicing-list"
+            ? "Faturamentos"
+            : "Compras";
     setOpenWorkspaceTabs((current) => {
-      const hasTab = current.some((tab) => tab.id === tabId);
-      if (hasTab) {
+      const existing = current.find((tab) => tab.id === tabId);
+      if (existing) {
+        if (!normalizedLabel || existing.label === normalizedLabel) {
+          return current;
+        }
         return current.map((tab) =>
-          tab.id === tabId && tab.label !== label ? { ...tab, label } : tab
+          tab.id === tabId ? { ...tab, label: normalizedLabel } : tab
         );
       }
       return [
         ...current,
         {
           id: tabId,
-          label,
+          label: normalizedLabel || fallbackLabel,
           workspaceId
         }
       ];
     });
-    setActiveTab(tabId);
-  };
+    setActiveTab((current) => (current === tabId ? current : tabId));
+  }, []);
 
   const handleOpenInvoicing = ({
     invoiceGuid,
@@ -723,7 +742,7 @@ export default function App() {
     initialAccountId: ledgerTargetAccountId,
     returnTab: ledgerReturnTab,
     onReturnToTab: (tabId) => setActiveTab(tabId),
-    onLedgerAccountChange: (accountId) => setLedgerTargetAccountId(String(accountId || "")),
+    onLedgerAccountChange: handleLedgerAccountChange,
     onOpenInvoicing: handleOpenInvoicing,
     onOpenBilling: handleOpenBilling
   });
