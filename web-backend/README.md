@@ -96,6 +96,18 @@ export AUTH_PASSWORD_ITERATIONS=210000
 
 Test runs keep `AUTH_REQUIRED=false` in `tests/conftest.py`.
 
+## PostgreSQL Backup
+
+The repository includes `scripts/backup_pg.sh` to create PostgreSQL backups with `pg_dump`.
+
+From project root, run:
+
+```bash
+PGHOST=localhost PGPORT=5433 PGUSER=gnucash PGPASSWORD=gnucash ./scripts/backup_pg.sh gnucash_web ./backups
+```
+
+This command creates a backup of `gnucash_web` in `./backups`.
+
 ## Run
 
 ```bash
