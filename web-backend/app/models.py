@@ -406,9 +406,35 @@ class Transaction(Base):
         back_populates="transaction",
         cascade="all, delete-orphan",
     )
+    slots: Mapped[List["Slot"]] = relationship(
+        back_populates="transaction",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_transactions_post_date", "post_date"),
+    )
+
+
+class Slot(Base):
+    __tablename__ = "slots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    obj_guid: Mapped[str] = mapped_column(
+        ForeignKey("transactions.guid", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(4096), nullable=False, index=True)
+    slot_type: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    int64_val: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    string_val: Mapped[Optional[str]] = mapped_column(String(4096), nullable=True)
+    timespec_val: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    transaction: Mapped[Transaction] = relationship(back_populates="slots")
+
+    __table_args__ = (
+        Index("ix_slots_obj_guid_name", "obj_guid", "name"),
     )
 
 
