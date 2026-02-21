@@ -1,4 +1,4 @@
-# Estrutura do projeto
+# Estrutura do projeto IgeosCash
 
 - `gnucash-original`: contem o GnuCash original para referencia.
 - `web-frontend`: front-end web do projeto.
