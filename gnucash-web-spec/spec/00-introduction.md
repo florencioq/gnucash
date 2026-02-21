@@ -14,8 +14,8 @@ The specification:
 Includes:
 - User authentication and authorization baseline
 - Book, Commodity, Account, Customer, Vendor
-- Invoice/Bill lifecycle operations
-- Transaction/Split posting operations
+- Invoice/Bill lifecycle operations, including due-date tracking
+- Transaction/Split posting operations and transaction slot metadata
 - Account-tree balances and reporting APIs (income statement and invoice settlement lag by customer)
 
 Does not include:

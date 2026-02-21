@@ -15,12 +15,13 @@ Includes:
 - User authorization with `is_superuser` and per-book access grants
 - Account hierarchy and account tree balances
 - Customer and Vendor masters
-- Invoice and Bill workflows (entries, posting, unposting, payments, payment undo)
-- Paginated invoice/bill summary listing contracts (`/invoices/list`, `/bills/list`)
+- Invoice and Bill workflows (entries, posting, unposting, payments, payment undo, due-date tracking)
+- Paginated invoice/bill summary listing contracts (`/invoices/list`, `/bills/list`) with due-date filters/sorting
 - Operational open-items screens (`Contas a Receber` / `Contas a Pagar`) backed by posted+open filters
 - Book setup defaults for posting accounts (`payables`, `receivables`, `ISS a recuperar`)
 - Customer/vendor default account contracts (`income_account_guid`, `expense_account_guid`)
 - Transaction/Split posting and editing restrictions when linked to invoice/bill flows
+- Transaction slots (`slots`) for due-date metadata (`trans-date-due`)
 - Reporting endpoints (`DRE Mensal` and invoice settlement lag by customer)
 
 Out of scope:

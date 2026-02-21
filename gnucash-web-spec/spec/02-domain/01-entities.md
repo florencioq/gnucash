@@ -106,6 +106,7 @@ Fields:
 - `currency_guid: string(36)`
 - `date_opened: timestamp UTC | null`
 - `date_posted: timestamp UTC | null`
+- `date_due: timestamp UTC | null` (derived API field from posting transaction slot)
 - `active: boolean`
 - `terms: string(36) | null`
 - `billing_id: string(2048) | null`
@@ -143,6 +144,17 @@ Fields:
 - `post_date: timestamp UTC | null`
 - `enter_date: timestamp UTC | null`
 - `description: string(2048) | null`
+
+## Slot
+
+Fields:
+- `id: integer` auto-increment
+- `obj_guid: string(36)` (`Transaction.guid`)
+- `name: string(4096)`
+- `slot_type: integer`
+- `int64_val: integer | null`
+- `string_val: string(4096) | null`
+- `timespec_val: timestamp UTC | null`
 
 ## Split
 

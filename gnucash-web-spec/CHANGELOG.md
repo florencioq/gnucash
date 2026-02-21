@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.18 - 2026-02-21
+
+Due-date and transaction-slot synchronization:
+- documented invoice/bill due-date lifecycle (`due_date` on posting, computed `date_due` in responses, cleared on unpost)
+- documented due-date list filtering/sorting for `/invoices/list` and `/bills/list` (`due_start_date`, `due_end_date`, `sort_key=date_due`)
+- updated domain/data specs with `Slot` entity and transaction relationship for due-date metadata (`trans-date-due`)
+- updated runtime database baseline with migrations `20260219_0013_reconcile_model_schema_drift` and `20260221_0014_slots_due_dates`
+- extended acceptance coverage notes with due-date defaulting, ordering, and unpost-clearing scenarios
+
 ## v0.4.17 - 2026-02-19
 
 Ledger UX synchronization:

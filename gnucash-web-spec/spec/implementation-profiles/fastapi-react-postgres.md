@@ -107,6 +107,7 @@ This document is a reference implementation profile and does not override normat
 - Purchasing entry forms SHOULD auto-suggest vendor default expense account when available.
 - Invoicing posting form SHOULD auto-suggest book default receivables account when available.
 - Invoicing posting form SHOULD auto-suggest book default ISS recoverable account when retained tax is present.
+- Invoicing and purchasing posting forms SHOULD expose editable due-date inputs, defaulting to posting date.
 - Invoicing line editor SHOULD treat tax amount as informational/included value while retained-at-source behavior is resolved during posting/open-balance calculation.
 - `Nova Fatura` and `Nova Compra` detail tabs should open with clean state and must not render stale header/line data from previously selected documents.
 - Revenue/expense account selectors in entry editors should prioritize leaf-first path labels (`account / parent / ...`) and provide wider input columns to keep leaf names visible.
@@ -119,6 +120,7 @@ This document is a reference implementation profile and does not override normat
 - "Novo" actions (`Nova Fatura` / `Nova Compra`) should be initiated from list views, not from detail views.
 - List fallback labels should be explicit for missing owner references (`cliente não encontrado` / `fornecedor não encontrado`).
 - Invoicing and purchasing lists should use server-side pagination (`/invoices/list`, `/bills/list`) with filtering and sorting parameters.
+- Invoicing and purchasing list/open-items grids SHOULD render a `Vencimento` (`date_due`) column and allow sort by due date.
 - "Contas a Receber" screen should consume `/invoices/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each faturamento.
 - "Contas a Pagar" screen should consume `/bills/list` with `posted_filter=POSTED` and `payment_filter=OPEN`, exposing direct navigation links to each compra.
 - "Prazo Quitação" report screen SHOULD consume `/reports/invoices/settlement-by-customer` with server-side filtering/sorting/pagination.

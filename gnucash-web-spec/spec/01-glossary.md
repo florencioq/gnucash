@@ -51,6 +51,7 @@ Posting metadata:
 - `post_txn` (posting transaction)
 - `post_lot` (lot used to track open balance)
 - `post_acc` (posting account)
+- `date_due` (computed due date derived from posting transaction slot `trans-date-due`)
 
 ## Invoice Entry / Bill Entry
 
@@ -63,6 +64,13 @@ Grouping key for open-balance tracking across posting and payment splits.
 ## Transaction
 
 Accounting entry header grouping two or more `Split` records.
+
+## Slot
+
+Extensible key/value record linked to a `Transaction`.
+
+- `name=trans-date-due` stores due date in `timespec_val` for posted invoice/bill transactions.
+- due-date lookup for invoice/bill API payloads reads this slot by `post_txn`.
 
 ## Split
 

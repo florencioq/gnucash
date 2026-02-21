@@ -15,6 +15,7 @@ Current logical model includes:
 - `InvoiceEntry`
 - `Lot`
 - `Transaction`
+- `Slot`
 - `Split`
 
 ## Core relationships
@@ -37,6 +38,7 @@ Current logical model includes:
 - `Account` 1:N `InvoiceEntry`
 - `Account` 1:N `Lot`
 - `Transaction` 1:N `Split`
+- `Transaction` 1:N `Slot`
 - `Account` 1:N `Split`
 
 ## Business modeling notes
@@ -45,6 +47,7 @@ Current logical model includes:
 - Invoice/bill business-number sequencing uses per-book/per-owner-type counters (`DocumentNumberCounter`) for collision-safe auto-number reservation.
 - Authorization uses global user roles (`is_superuser`) plus book-scoped grants (`UserBookAccess.role`).
 - Open-balance control for invoice/bill posting uses lots (`post_lot`) and linked splits.
+- Invoice/bill due-date tracking uses `Slot` rows attached to posting transactions (`name=trans-date-due`).
 - Retained-at-source tax in invoicing is represented in posting splits via dedicated retained-tax asset account when applicable.
 - Income statement APIs are read models derived from `transactions` + `splits` + account types.
 

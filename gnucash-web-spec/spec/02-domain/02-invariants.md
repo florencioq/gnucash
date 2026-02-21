@@ -50,47 +50,51 @@
 31. Posted invoices/bills MUST block structural header edits until unposted.
 32. Deleting posted invoices/bills MUST be rejected.
 33. Entry create/patch/delete MUST be rejected for posted invoices/bills.
+34. Invoice/bill post requests MAY include `due_date`; when omitted, due date MUST default to `post_date`.
+35. Invoice/bill API outputs (`InvoiceOut`, `BillOut`, list items) MUST expose `date_due` from posting-transaction due-date slot (`trans-date-due`) when posted; otherwise `date_due` MUST be `null`.
 
 ## Posting and payments
 
-34. Invoice post account MUST be same-book, non-placeholder, `ASSET`, and currency-compatible.
-35. Bill post account MUST be same-book, non-placeholder, `LIABILITY`, and currency-compatible.
-36. Posting requires at least one entry and non-zero total.
-37. Posting MUST create balanced splits and posting lot metadata (`post_txn`, `post_lot`, `post_acc`).
-38. Invoice posting with non-zero retained tax amount MUST require `retained_tax_account_guid`.
-39. `retained_tax_account_guid`, when provided, MUST be same-book, non-placeholder, `ASSET`, currency-compatible, and different from posting account.
-40. When retained tax is posted at source, invoice open amount SHOULD be reduced at posting time (`status=PARTIAL` until payment settlement).
-41. Unpost MUST remove posting transaction and clear posting metadata.
-42. Unpost MUST be rejected when payment splits still exist in posting lot.
-43. Payment requires posted invoice/bill and existing posting lot/account consistency.
-44. Payment transfer account MUST be same-book, non-placeholder, not `ROOT`, currency-compatible, and different from posting account.
-45. Payment amount MUST be positive and MUST NOT exceed lot open balance.
-46. Payment undo MUST reject posting transaction and only accept transactions tied to the document lot.
+36. Invoice post account MUST be same-book, non-placeholder, `ASSET`, and currency-compatible.
+37. Bill post account MUST be same-book, non-placeholder, `LIABILITY`, and currency-compatible.
+38. Posting requires at least one entry and non-zero total.
+39. Posting MUST create balanced splits and posting lot metadata (`post_txn`, `post_lot`, `post_acc`).
+40. Invoice posting with non-zero retained tax amount MUST require `retained_tax_account_guid`.
+41. `retained_tax_account_guid`, when provided, MUST be same-book, non-placeholder, `ASSET`, currency-compatible, and different from posting account.
+42. When retained tax is posted at source, invoice open amount SHOULD be reduced at posting time (`status=PARTIAL` until payment settlement).
+43. Unpost MUST remove posting transaction and clear posting metadata.
+44. Unpost MUST be rejected when payment splits still exist in posting lot.
+45. Payment requires posted invoice/bill and existing posting lot/account consistency.
+46. Payment transfer account MUST be same-book, non-placeholder, not `ROOT`, currency-compatible, and different from posting account.
+47. Payment amount MUST be positive and MUST NOT exceed lot open balance.
+48. Payment undo MUST reject posting transaction and only accept transactions tied to the document lot.
+49. Because unpost deletes the posting transaction, the associated due-date slot is deleted and `date_due` becomes `null` in document outputs.
 
-## Transactions and splits
+## Transactions, splits, and slots
 
-47. `Transaction.currency_guid` MUST reference an existing commodity.
-48. A transaction MUST have at least two splits.
-49. All split accounts in a transaction MUST belong to one book.
-50. Exact rational sum of split values MUST be zero.
-51. `value_denom` and `quantity_denom` MUST be positive.
-52. Deleting a transaction MUST delete its splits atomically.
-53. Patching/deleting transactions linked to invoice/bill posting/payment flows MUST be rejected.
+50. `Transaction.currency_guid` MUST reference an existing commodity.
+51. A transaction MUST have at least two splits.
+52. All split accounts in a transaction MUST belong to one book.
+53. Exact rational sum of split values MUST be zero.
+54. `value_denom` and `quantity_denom` MUST be positive.
+55. Deleting a transaction MUST delete its splits atomically.
+56. Patching/deleting transactions linked to invoice/bill posting/payment flows MUST be rejected.
+57. Due-date slots used by invoice/bill posting MUST use `name=trans-date-due`; when multiple rows exist for the same transaction/name, API due-date resolution MUST use the latest effective value.
 
 ## Delete integrity
 
-54. Deleting a book MUST be rejected while accounts, invoices/bills, customers, or vendors exist in that book.
-55. Deleting a commodity MUST be rejected while referenced by accounts, transactions, customers, vendors, or invoices/bills.
-56. Deleting an account MUST be rejected while it has children, splits, or invoice/bill entries.
-57. When invoice/bill `id` is omitted or blank, server-side auto-numbering MUST reserve the next value atomically and avoid collisions under concurrent requests per `(book_id, owner_type)`.
+58. Deleting a book MUST be rejected while accounts, invoices/bills, customers, or vendors exist in that book.
+59. Deleting a commodity MUST be rejected while referenced by accounts, transactions, customers, vendors, or invoices/bills.
+60. Deleting an account MUST be rejected while it has children, splits, or invoice/bill entries.
+61. When invoice/bill `id` is omitted or blank, server-side auto-numbering MUST reserve the next value atomically and avoid collisions under concurrent requests per `(book_id, owner_type)`.
 
 ## Authentication and authorization
 
-58. User `email` MUST be unique after normalization (trim + lowercase).
-59. Passwords MUST be persisted only as salted iterative hashes (plaintext storage is forbidden).
-60. Bootstrap registration rule: when no users exist, the first registered user MUST be created as superuser.
-61. After bootstrap, user registration MUST require an authenticated superuser.
-62. `GET /auth/users` and user-book access management endpoints MUST require authenticated superuser.
-63. For authenticated non-superusers, book-scoped reads MUST be rejected when there is no `UserBookAccess` for the target book.
-64. For authenticated non-superusers, book-scoped writes MUST require `UserBookAccess.role = EDITOR`.
-65. Superusers MUST bypass per-book access checks.
+62. User `email` MUST be unique after normalization (trim + lowercase).
+63. Passwords MUST be persisted only as salted iterative hashes (plaintext storage is forbidden).
+64. Bootstrap registration rule: when no users exist, the first registered user MUST be created as superuser.
+65. After bootstrap, user registration MUST require an authenticated superuser.
+66. `GET /auth/users` and user-book access management endpoints MUST require authenticated superuser.
+67. For authenticated non-superusers, book-scoped reads MUST be rejected when there is no `UserBookAccess` for the target book.
+68. For authenticated non-superusers, book-scoped writes MUST require `UserBookAccess.role = EDITOR`.
+69. Superusers MUST bypass per-book access checks.

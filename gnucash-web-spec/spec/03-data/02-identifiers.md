@@ -2,7 +2,7 @@
 
 ## ID format
 
-The API uses UUID textual format (36-char canonical form) for primary identifiers, including:
+The API uses UUID textual format (36-char canonical form) for externally exposed primary identifiers, including:
 - `Book.id`
 - `User.id`
 - `Commodity.id`
@@ -15,6 +15,9 @@ The API uses UUID textual format (36-char canonical form) for primary identifier
 - `Transaction.guid`
 - `Split.guid`
 - `UserBookAccess.user_id + UserBookAccess.book_id` (composite key)
+
+Internal persistence note:
+- `Slot.id` is a numeric surrogate key used internally by storage and is not a first-class API route identifier.
 
 ## Polymorphic owner identifier
 

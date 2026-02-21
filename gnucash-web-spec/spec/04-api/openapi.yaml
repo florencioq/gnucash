@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: GnuCash Web Backend
+  title: IgeosCash Backend
   version: 0.1.0
 paths:
   /health:
@@ -1265,6 +1265,24 @@ paths:
             format: date
           - type: 'null'
           title: Posted End Date
+      - name: due_start_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due Start Date
+      - name: due_end_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due End Date
       - name: sort_key
         in: query
         required: false
@@ -1274,6 +1292,7 @@ paths:
           - customer
           - date_opened
           - date_posted
+          - date_due
           - posted_status
           - payment_status
           - total
@@ -1785,6 +1804,24 @@ paths:
             format: date
           - type: 'null'
           title: Posted End Date
+      - name: due_start_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due Start Date
+      - name: due_end_date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due End Date
       - name: sort_key
         in: query
         required: false
@@ -1794,6 +1831,7 @@ paths:
           - vendor
           - date_opened
           - date_posted
+          - date_due
           - posted_status
           - payment_status
           - total
@@ -2340,7 +2378,6 @@ paths:
         in: query
         required: false
         schema:
-          type: string
           enum:
           - customer
           - invoice_id
@@ -2348,16 +2385,17 @@ paths:
           - posted_month_end_date
           - settled_date
           - days_difference
+          type: string
           default: posted_month_end_date
           title: Sort Key
       - name: sort_direction
         in: query
         required: false
         schema:
-          type: string
           enum:
           - asc
           - desc
+          type: string
           default: asc
           title: Sort Direction
       - name: page
@@ -2373,8 +2411,8 @@ paths:
         required: false
         schema:
           type: integer
-          minimum: 1
           maximum: 200
+          minimum: 1
           default: 25
           title: Page Size
       responses:
@@ -2581,6 +2619,14 @@ components:
           type: integer
           title: Balance Denom
           default: 1
+        posting_count:
+          type: integer
+          title: Posting Count
+          default: 0
+        subtree_posting_count:
+          type: integer
+          title: Subtree Posting Count
+          default: 0
         children:
           items:
             $ref: '#/components/schemas/AccountTreeNode'
@@ -2804,6 +2850,12 @@ components:
             format: date-time
           - type: 'null'
           title: Date Posted
+        date_due:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Due
         currency_guid:
           type: string
           title: Currency Guid
@@ -2840,6 +2892,7 @@ components:
       - id
       - date_opened
       - date_posted
+      - date_due
       - currency_guid
       - vendor_guid
       - vendor_name
@@ -2900,6 +2953,11 @@ components:
           - type: string
           - type: 'null'
           title: Date Posted
+        date_due:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Due
         notes:
           type: string
           title: Notes
@@ -2998,6 +3056,7 @@ components:
       - id
       - date_opened
       - date_posted
+      - date_due
       - notes
       - active
       - currency_guid
@@ -3096,6 +3155,12 @@ components:
             format: date-time
           - type: 'null'
           title: Post Date
+        due_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Due Date
         memo:
           anyOf:
           - type: string
@@ -3378,6 +3443,12 @@ components:
           type: string
           format: uuid
           title: Currency Guid
+        income_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Income Account Guid
         tax_override:
           type: boolean
           title: Tax Override
@@ -3537,6 +3608,11 @@ components:
         currency_guid:
           type: string
           title: Currency Guid
+        income_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Income Account Guid
         tax_override:
           type: boolean
           title: Tax Override
@@ -3658,6 +3734,7 @@ components:
       - credit_num
       - credit_denom
       - currency_guid
+      - income_account_guid
       - tax_override
       - addr_name
       - addr_addr1
@@ -3734,6 +3811,12 @@ components:
             format: uuid
           - type: 'null'
           title: Currency Guid
+        income_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Income Account Guid
         tax_override:
           anyOf:
           - type: boolean
@@ -4320,6 +4403,15 @@ components:
           type: boolean
           title: Taxable
           default: false
+        tax_num:
+          type: integer
+          title: Tax Num
+          default: 0
+        tax_denom:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Tax Denom
+          default: 1
         tax_included:
           type: boolean
           title: Tax Included
@@ -4557,6 +4649,17 @@ components:
           - type: boolean
           - type: 'null'
           title: Taxable
+        tax_num:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tax Num
+        tax_denom:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Tax Denom
         tax_included:
           anyOf:
           - type: boolean
@@ -4593,6 +4696,12 @@ components:
             format: date-time
           - type: 'null'
           title: Date Posted
+        date_due:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date Due
         currency_guid:
           type: string
           title: Currency Guid
@@ -4629,6 +4738,7 @@ components:
       - id
       - date_opened
       - date_posted
+      - date_due
       - currency_guid
       - customer_guid
       - customer_name
@@ -4689,6 +4799,11 @@ components:
           - type: string
           - type: 'null'
           title: Date Posted
+        date_due:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Date Due
         notes:
           type: string
           title: Notes
@@ -4787,6 +4902,7 @@ components:
       - id
       - date_opened
       - date_posted
+      - date_due
       - notes
       - active
       - currency_guid
@@ -4960,6 +5076,12 @@ components:
             format: date-time
           - type: 'null'
           title: Post Date
+        due_date:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Due Date
         memo:
           anyOf:
           - type: string
@@ -5028,37 +5150,6 @@ components:
       - settled_date
       - days_difference
       title: InvoiceSettlementByCustomerItemOut
-    InvoiceSettlementByCustomerSummaryOut:
-      properties:
-        customer_guid:
-          type: string
-          title: Customer Guid
-        customer_name:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Customer Name
-        invoice_count:
-          type: integer
-          title: Invoice Count
-        avg_days_difference:
-          type: number
-          title: Avg Days Difference
-        min_days_difference:
-          type: integer
-          title: Min Days Difference
-        max_days_difference:
-          type: integer
-          title: Max Days Difference
-      type: object
-      required:
-      - customer_guid
-      - customer_name
-      - invoice_count
-      - avg_days_difference
-      - min_days_difference
-      - max_days_difference
-      title: InvoiceSettlementByCustomerSummaryOut
     InvoiceSettlementByCustomerReportOut:
       properties:
         book_id:
@@ -5096,6 +5187,37 @@ components:
       - total_items
       - total_pages
       title: InvoiceSettlementByCustomerReportOut
+    InvoiceSettlementByCustomerSummaryOut:
+      properties:
+        customer_guid:
+          type: string
+          title: Customer Guid
+        customer_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Customer Name
+        invoice_count:
+          type: integer
+          title: Invoice Count
+        avg_days_difference:
+          type: number
+          title: Avg Days Difference
+        min_days_difference:
+          type: integer
+          title: Min Days Difference
+        max_days_difference:
+          type: integer
+          title: Max Days Difference
+      type: object
+      required:
+      - customer_guid
+      - customer_name
+      - invoice_count
+      - avg_days_difference
+      - min_days_difference
+      - max_days_difference
+      title: InvoiceSettlementByCustomerSummaryOut
     InvoiceTypeSchema:
       type: string
       enum:
@@ -5394,6 +5516,11 @@ components:
         type:
           type: string
           title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
       type: object
       required:
       - loc
@@ -5429,6 +5556,12 @@ components:
           type: string
           format: uuid
           title: Currency Guid
+        expense_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Expense Account Guid
         active:
           type: boolean
           title: Active
@@ -5530,6 +5663,11 @@ components:
         currency_guid:
           type: string
           title: Currency Guid
+        expense_account_guid:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expense Account Guid
         active:
           type: boolean
           title: Active
@@ -5609,6 +5747,7 @@ components:
       - id
       - notes
       - currency_guid
+      - expense_account_guid
       - active
       - tax_override
       - addr_name
@@ -5651,6 +5790,12 @@ components:
             format: uuid
           - type: 'null'
           title: Currency Guid
+        expense_account_guid:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Expense Account Guid
         active:
           anyOf:
           - type: boolean

@@ -89,10 +89,12 @@
 
 - `POST /invoices`
 - `GET /invoices?book_id=&customer_guid=`
-- `GET /invoices/list?book_id=&customer_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&sort_key=&sort_direction=&page=&page_size=`
+- `GET /invoices/list?book_id=&customer_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&due_start_date=&due_end_date=&sort_key=&sort_direction=&page=&page_size=`
   - paginated summary list for invoicing listing screens.
   - supports server-side filtering and sorting.
   - `payment_filter=OPEN` returns only documents with non-zero open amount.
+  - `due_start_date`/`due_end_date` filter by computed due date (`date_due`).
+  - `sort_key` supports `date_due`.
   - returns `{items, page, page_size, total_items, total_pages}`.
 - `GET /invoices/{invoice_guid}`
 - `PATCH /invoices/{invoice_guid}`
@@ -109,12 +111,15 @@ Entries:
 Posting:
 - `POST /invoices/{invoice_guid}/post`
   - requires at least one entry and non-zero total.
+  - accepts optional `due_date`; when omitted, defaults to `post_date`.
+  - response exposes computed `date_due`.
   - post account must be same-book `ASSET`, non-placeholder, commodity-compatible.
   - when invoice has retained-at-source tax amount, `retained_tax_account_guid` is required.
   - retained tax account must be same-book `ASSET`, non-placeholder, commodity-compatible, and different from post account.
   - retained-at-source tax reduces receivable open amount at posting time, so initial status may be `PARTIAL`.
 - `POST /invoices/{invoice_guid}/unpost`
   - blocked if payment splits exist in posting lot.
+  - clears `date_due` (posting transaction and due-date slot are removed).
 
 Payments:
 - `POST /invoices/{invoice_guid}/payments`
@@ -127,10 +132,12 @@ Payments:
 
 - `POST /bills`
 - `GET /bills?book_id=&vendor_guid=`
-- `GET /bills/list?book_id=&vendor_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&sort_key=&sort_direction=&page=&page_size=`
+- `GET /bills/list?book_id=&vendor_guid=&posted_filter=&payment_filter=&posted_start_date=&posted_end_date=&due_start_date=&due_end_date=&sort_key=&sort_direction=&page=&page_size=`
   - paginated summary list for purchase listing screens.
   - supports server-side filtering and sorting.
   - `payment_filter=OPEN` returns only documents with non-zero open amount.
+  - `due_start_date`/`due_end_date` filter by computed due date (`date_due`).
+  - `sort_key` supports `date_due`.
   - returns `{items, page, page_size, total_items, total_pages}`.
 - `GET /bills/{bill_guid}`
 - `PATCH /bills/{bill_guid}`
@@ -148,9 +155,12 @@ Entries:
 Posting:
 - `POST /bills/{bill_guid}/post`
   - requires at least one entry and non-zero total.
+  - accepts optional `due_date`; when omitted, defaults to `post_date`.
+  - response exposes computed `date_due`.
   - post account must be same-book `LIABILITY`, non-placeholder, commodity-compatible.
 - `POST /bills/{bill_guid}/unpost`
   - blocked if payment splits exist in posting lot.
+  - clears `date_due` (posting transaction and due-date slot are removed).
 
 Payments:
 - `POST /bills/{bill_guid}/payments`

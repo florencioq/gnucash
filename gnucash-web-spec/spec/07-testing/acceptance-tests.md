@@ -123,3 +123,7 @@ Primary suites:
 79. When `Razão` emits a selected-account synchronization event with value equivalent to current app state, no global navigation-state mutation occurs.
 80. Inactive dynamic tabs do not emit side effects that change active tab or selected account context.
 81. In `Compras`, payment account default suggestion uses the most recent prior payment account of the same vendor when a valid account exists.
+82. Invoice posting without explicit `due_date` sets `date_due` equal to `post_date`.
+83. Bill posting without explicit `due_date` sets `date_due` equal to `post_date`.
+84. Invoice/bill list endpoints support due-date ordering (`sort_key=date_due`) with returned `date_due` values.
+85. Unposting invoice/bill clears `date_due` in document payloads.

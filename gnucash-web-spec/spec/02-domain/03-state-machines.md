@@ -26,6 +26,10 @@ Operational transitions:
 - `unpost` -> `UNPAID`
 - `patch active=false` -> `INACTIVE`
 
+Due-date transitions:
+- `post`: sets `date_due` from request `due_date` (or `post_date` when omitted).
+- `unpost`: clears `date_due` because posting transaction (and due-date slot) is removed.
+
 ## Transaction linkage guard
 
 Transactions linked to invoice/bill posting/payment flows are immutable through generic transaction patch/delete APIs.
