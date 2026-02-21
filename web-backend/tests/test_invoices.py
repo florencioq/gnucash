@@ -800,6 +800,14 @@ def test_invoice_post_and_unpost_flow(client):
     assert posted_payload["post_tx_guid"]
     assert posted_payload["post_lot_guid"]
     assert posted_payload["post_account_guid"] == receivable_account_guid
+    assert posted_payload["date_due"] == "2026-02-16T12:00:00Z"
+
+    listed = client.get(
+        f"/invoices/list?book_id={book_id}&sort_key=date_due&sort_direction=asc&page=1&page_size=25"
+    )
+    assert listed.status_code == 200
+    listed_item = next(item for item in listed.json()["items"] if item["guid"] == invoice_guid)
+    assert listed_item["date_due"].startswith("2026-02-16T12:00:00")
 
     tx = client.get(f"/transactions/{posted_payload['post_tx_guid']}")
     assert tx.status_code == 200
@@ -844,6 +852,7 @@ def test_invoice_post_and_unpost_flow(client):
     assert unposted_payload["post_lot_guid"] is None
     assert unposted_payload["post_account_guid"] is None
     assert unposted_payload["date_posted"] is None
+    assert unposted_payload["date_due"] is None
 
     tx_after_unpost = client.get(f"/transactions/{posted_payload['post_tx_guid']}")
     assert tx_after_unpost.status_code == 404

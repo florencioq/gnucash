@@ -437,6 +437,11 @@ export default function ReceivablesPage({
                 </button>
               </th>
               <th>
+                <button type="button" className="table-sort-btn" onClick={() => setSort("date_due")}>
+                  Vencimento {sortIndicator("date_due")}
+                </button>
+              </th>
+              <th>
                 <button type="button" className="table-sort-btn" onClick={() => setSort("payment_status")}>
                   Status Pagamento {sortIndicator("payment_status")}
                 </button>
@@ -457,7 +462,7 @@ export default function ReceivablesPage({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="small-muted">
+                <td colSpan={9} className="small-muted">
                   Carregando contas a receber...
                 </td>
               </tr>
@@ -481,6 +486,7 @@ export default function ReceivablesPage({
                   <td>{customerName || "cliente não encontrado"}</td>
                   <td>{formatDateDisplay(invoice.date_opened)}</td>
                   <td>{formatDateDisplay(invoice.date_posted)}</td>
+                  <td>{formatDateDisplay(invoice.date_due)}</td>
                   <td>{paymentStateLabel(paymentState)}</td>
                   <td className="text-end">{formatMoney(invoice.total_num, invoice.total_denom, mnemonic)}</td>
                   <td className="text-end">{formatMoney(invoice.open_amount_num, invoice.open_amount_denom, mnemonic)}</td>
@@ -502,7 +508,7 @@ export default function ReceivablesPage({
             }) : null}
             {!loading && invoices.length === 0 ? (
               <tr>
-                <td colSpan={8} className="small-muted">
+                <td colSpan={9} className="small-muted">
                   Nenhum faturamento em aberto para os filtros selecionados.
                 </td>
               </tr>

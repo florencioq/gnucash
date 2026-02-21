@@ -30,6 +30,7 @@ from app.schemas import (
     InvoicePatch,
 )
 from app.services.authorization import ensure_book_read_access, ensure_book_write_access
+from app.services.due_dates import load_due_dates_by_tx_guid, normalize_datetime_utc, set_transaction_due_date
 from app.services.document_numbers import observe_manual_document_number, reserve_next_document_number
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
@@ -476,7 +477,22 @@ def _invoice_status(invoice: Invoice, *, total_amount: Fraction, open_amount: Fr
     return "POSTED"
 
 
-def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
+def _invoice_due_date(invoice: Invoice, *, due_dates_by_tx_guid: dict[str, datetime]) -> datetime | None:
+    if not invoice.post_txn:
+        return None
+    return due_dates_by_tx_guid.get(invoice.post_txn)
+
+
+def _invoice_to_out(
+    db: Session,
+    invoice: Invoice,
+    *,
+    due_dates_by_tx_guid: dict[str, datetime] | None = None,
+) -> dict:
+    due_date_map = due_dates_by_tx_guid or {}
+    if invoice.post_txn and invoice.post_txn not in due_date_map:
+        due_date_map.update(load_due_dates_by_tx_guid(db, tx_guids={invoice.post_txn}))
+    date_due = _invoice_due_date(invoice, due_dates_by_tx_guid=due_date_map)
     sorted_entries = sorted(
         invoice.entries,
         key=lambda item: (item.date or datetime.min.replace(tzinfo=UTC), item.guid),
@@ -512,6 +528,7 @@ def _invoice_to_out(db: Session, invoice: Invoice) -> dict:
         "id": invoice.id,
         "date_opened": invoice.date_opened,
         "date_posted": invoice.date_posted,
+        "date_due": date_due,
         "notes": invoice.notes or "",
         "active": bool(invoice.active),
         "currency_guid": invoice.currency_guid,
@@ -562,7 +579,13 @@ def _payment_state_from_amounts(*, total_amount: Fraction, open_amount: Fraction
     return "UNPAID"
 
 
-def _invoice_to_list_item(db: Session, invoice: Invoice, *, customer_name: str | None) -> dict:
+def _invoice_to_list_item(
+    db: Session,
+    invoice: Invoice,
+    *,
+    customer_name: str | None,
+    due_dates_by_tx_guid: dict[str, datetime],
+) -> dict:
     total_sum, signed_total, open_amount = _invoice_amounts(db, invoice)
     return InvoiceListItemOut(
         guid=invoice.guid,
@@ -570,6 +593,7 @@ def _invoice_to_list_item(db: Session, invoice: Invoice, *, customer_name: str |
         id=invoice.id,
         date_opened=invoice.date_opened,
         date_posted=invoice.date_posted,
+        date_due=_invoice_due_date(invoice, due_dates_by_tx_guid=due_dates_by_tx_guid),
         currency_guid=invoice.currency_guid,
         customer_guid=invoice.owner_guid,
         customer_name=customer_name,
@@ -591,6 +615,8 @@ def _invoice_sort_value(item: dict, *, sort_key: str) -> tuple:
         return (item.get("date_opened") or datetime.min.replace(tzinfo=UTC),)
     if sort_key == "date_posted":
         return (item.get("date_posted") or datetime.min.replace(tzinfo=UTC),)
+    if sort_key == "date_due":
+        return (item.get("date_due") or datetime.min.replace(tzinfo=UTC),)
     if sort_key == "posted_status":
         return (1 if item.get("date_posted") else 0,)
     if sort_key == "payment_status":
@@ -622,6 +648,35 @@ def _apply_posted_filters(
         end_at = datetime.combine(posted_end_date, time.max, tzinfo=UTC)
         stmt = stmt.where(Invoice.date_posted <= end_at)
     return stmt
+
+
+def _datetime_to_utc_date(value: datetime | None) -> date | None:
+    if value is None:
+        return None
+    return normalize_datetime_utc(value).date()
+
+
+def _apply_due_filters(
+    items: list[dict],
+    *,
+    due_start_date: date | None,
+    due_end_date: date | None,
+) -> list[dict]:
+    if due_start_date is None and due_end_date is None:
+        return items
+
+    filtered: list[dict] = []
+    for item in items:
+        due_value = item.get("date_due")
+        due_day = _datetime_to_utc_date(due_value if isinstance(due_value, datetime) else None)
+        if due_day is None:
+            continue
+        if due_start_date is not None and due_day < due_start_date:
+            continue
+        if due_end_date is not None and due_day > due_end_date:
+            continue
+        filtered.append(item)
+    return filtered
 
 
 def _load_invoice(db: Session, *, invoice_guid: str) -> Invoice:
@@ -703,7 +758,11 @@ def list_invoices(
     if customer_guid is not None:
         stmt = stmt.where(Invoice.owner_guid == str(customer_guid))
     invoices = db.execute(stmt).scalars().all()
-    return [_invoice_to_out(db, invoice) for invoice in invoices]
+    due_dates_by_tx_guid = load_due_dates_by_tx_guid(
+        db,
+        tx_guids={invoice.post_txn for invoice in invoices if invoice.post_txn},
+    )
+    return [_invoice_to_out(db, invoice, due_dates_by_tx_guid=due_dates_by_tx_guid) for invoice in invoices]
 
 
 @router.get("/list", response_model=InvoiceListPageOut)
@@ -714,7 +773,9 @@ def list_invoices_paginated(
     payment_filter: Literal["ALL", "PAID", "UNPAID", "PARTIAL", "OPEN"] = Query(default="ALL"),
     posted_start_date: date | None = Query(default=None),
     posted_end_date: date | None = Query(default=None),
-    sort_key: Literal["id", "customer", "date_opened", "date_posted", "posted_status", "payment_status", "total", "open"] = Query(default="date_opened"),
+    due_start_date: date | None = Query(default=None),
+    due_end_date: date | None = Query(default=None),
+    sort_key: Literal["id", "customer", "date_opened", "date_posted", "date_due", "posted_status", "payment_status", "total", "open"] = Query(default="date_opened"),
     sort_direction: Literal["asc", "desc"] = Query(default="desc"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=200),
@@ -732,7 +793,12 @@ def list_invoices_paginated(
         posted_end_date=posted_end_date,
     )
 
-    needs_python_filter_or_sort = payment_filter != "ALL" or sort_key in {"customer", "payment_status", "total", "open"}
+    needs_python_filter_or_sort = (
+        payment_filter != "ALL"
+        or due_start_date is not None
+        or due_end_date is not None
+        or sort_key in {"customer", "payment_status", "total", "open", "date_due"}
+    )
 
     if not needs_python_filter_or_sort:
         total_items = int(db.execute(select(func.count()).select_from(base_stmt.subquery())).scalar_one())
@@ -758,13 +824,22 @@ def list_invoices_paginated(
             .limit(page_size)
         )
         invoices = db.execute(page_stmt).scalars().all()
+        due_dates_by_tx_guid = load_due_dates_by_tx_guid(
+            db,
+            tx_guids={invoice.post_txn for invoice in invoices if invoice.post_txn},
+        )
         customer_ids = {invoice.owner_guid for invoice in invoices}
         customers_by_guid = {
             guid: name
             for guid, name in db.execute(select(Customer.guid, Customer.name).where(Customer.guid.in_(customer_ids))).all()
         } if customer_ids else {}
         items = [
-            _invoice_to_list_item(db, invoice, customer_name=customers_by_guid.get(invoice.owner_guid))
+            _invoice_to_list_item(
+                db,
+                invoice,
+                customer_name=customers_by_guid.get(invoice.owner_guid),
+                due_dates_by_tx_guid=due_dates_by_tx_guid,
+            )
             for invoice in invoices
         ]
         return {
@@ -781,6 +856,10 @@ def list_invoices_paginated(
         Invoice.guid.asc(),
     )
     invoices = db.execute(stmt).scalars().all()
+    due_dates_by_tx_guid = load_due_dates_by_tx_guid(
+        db,
+        tx_guids={invoice.post_txn for invoice in invoices if invoice.post_txn},
+    )
 
     customer_ids = {invoice.owner_guid for invoice in invoices}
     customers_by_guid = {
@@ -789,9 +868,19 @@ def list_invoices_paginated(
     } if customer_ids else {}
 
     items = [
-        _invoice_to_list_item(db, invoice, customer_name=customers_by_guid.get(invoice.owner_guid))
+        _invoice_to_list_item(
+            db,
+            invoice,
+            customer_name=customers_by_guid.get(invoice.owner_guid),
+            due_dates_by_tx_guid=due_dates_by_tx_guid,
+        )
         for invoice in invoices
     ]
+    items = _apply_due_filters(
+        items,
+        due_start_date=due_start_date,
+        due_end_date=due_end_date,
+    )
     if payment_filter == "OPEN":
         items = [
             item
@@ -995,8 +1084,9 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
         )
 
     post_date = payload.post_date or datetime.now(UTC)
-    if post_date.tzinfo is None:
-        post_date = post_date.replace(tzinfo=UTC)
+    post_date = normalize_datetime_utc(post_date)
+    due_date = payload.due_date or post_date
+    due_date = normalize_datetime_utc(due_date)
 
     tx_guid = str(uuid4())
     lot_guid = str(uuid4())
@@ -1094,6 +1184,7 @@ def post_invoice(invoice_guid: UUID, payload: InvoicePostRequest, db: Session = 
     transaction.splits = split_payloads
     db.add(lot)
     db.add(transaction)
+    set_transaction_due_date(db, transaction_guid=transaction.guid, due_date=due_date)
 
     invoice.date_posted = post_date
     invoice.post_txn = transaction.guid

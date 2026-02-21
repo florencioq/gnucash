@@ -575,6 +575,14 @@ def test_bill_post_payment_and_undo_flow(client):
     assert posted_payload["post_account_guid"] == payable_account_guid
     assert posted_payload["open_amount_num"] == 100
     assert posted_payload["open_amount_denom"] == 1
+    assert posted_payload["date_due"] == "2026-02-16T12:00:00Z"
+
+    listed = client.get(
+        f"/bills/list?book_id={book_id}&sort_key=date_due&sort_direction=asc&page=1&page_size=25"
+    )
+    assert listed.status_code == 200
+    listed_item = next(item for item in listed.json()["items"] if item["guid"] == bill_guid)
+    assert listed_item["date_due"].startswith("2026-02-16T12:00:00")
 
     tx = client.get(f"/transactions/{posted_payload['post_tx_guid']}")
     assert tx.status_code == 200
@@ -658,6 +666,7 @@ def test_bill_post_payment_and_undo_flow(client):
     unpost = client.post(f"/bills/{bill_guid}/unpost", json={})
     assert unpost.status_code == 200
     assert unpost.json()["status"] == "UNPAID"
+    assert unpost.json()["date_due"] is None
 
 
 def test_vendor_delete_rejected_when_has_bills(client):

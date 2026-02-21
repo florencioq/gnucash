@@ -235,6 +235,7 @@ export default function InvoicingPage({
   const [incomeSearch, setIncomeSearch] = useState("");
   const [postingAccountGuid, setPostingAccountGuid] = useState("");
   const [postingDate, setPostingDate] = useState(todayIsoDate());
+  const [dueDate, setDueDate] = useState(todayIsoDate());
   const [retainedTaxAccountGuid, setRetainedTaxAccountGuid] = useState("");
   const [postingPickerOpen, setPostingPickerOpen] = useState(false);
   const [postingSearch, setPostingSearch] = useState("");
@@ -536,14 +537,19 @@ export default function InvoicingPage({
   useEffect(() => {
     if (!selectedInvoice) {
       setPostingDate(todayIsoDate());
+      setDueDate(todayIsoDate());
       return;
     }
     const resolvedPostingDate =
       invoiceDateInput(selectedInvoice.date_posted) ||
       invoiceDateInput(selectedInvoice.date_opened) ||
       todayIsoDate();
+    const resolvedDueDate =
+      invoiceDateInput(selectedInvoice.date_due) ||
+      resolvedPostingDate;
     setPostingDate(resolvedPostingDate);
-  }, [selectedInvoice?.guid, selectedInvoice?.date_posted, selectedInvoice?.date_opened]);
+    setDueDate(resolvedDueDate);
+  }, [selectedInvoice?.guid, selectedInvoice?.date_due, selectedInvoice?.date_posted, selectedInvoice?.date_opened]);
 
   useEffect(() => {
     if (!selectedInvoice || editingEntryGuid) return;
@@ -817,10 +823,12 @@ export default function InvoicingPage({
     }
     const resolvedPostingDate =
       postingDate || invoiceDateInput(selectedInvoice.date_opened) || todayIsoDate();
+    const resolvedDueDate = dueDate || resolvedPostingDate;
 
     const payload = {
       post_account_guid: postingAccountGuid,
-      post_date: `${resolvedPostingDate}T00:00:00Z`
+      post_date: `${resolvedPostingDate}T00:00:00Z`,
+      due_date: `${resolvedDueDate}T00:00:00Z`
     };
     if (selectedInvoiceTaxAmount > 0 && retainedTaxAccountGuid) {
       payload.retained_tax_account_guid = retainedTaxAccountGuid;
@@ -1574,6 +1582,16 @@ export default function InvoicingPage({
                     value={postingDate}
                     disabled={isInvoicePosted}
                     onChange={(event) => setPostingDate(event.target.value)}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Data de vencimento</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={dueDate}
+                    disabled={isInvoicePosted}
+                    onChange={(event) => setDueDate(event.target.value)}
                   />
                 </div>
                 {selectedInvoiceTaxAmount > 0 ? (

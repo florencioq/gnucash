@@ -35,6 +35,7 @@ class BaseOut(BaseModel):
         "date_entered",
         "date_opened",
         "date_posted",
+        "date_due",
         "payment_date",
         check_fields=False,
     )
@@ -448,6 +449,7 @@ class InvoicePostRequest(BaseModel):
     post_account_guid: UUID
     retained_tax_account_guid: UUID | None = None
     post_date: datetime | None = None
+    due_date: datetime | None = None
     memo: str | None = Field(default=None, max_length=2048)
 
 
@@ -476,6 +478,7 @@ class InvoiceOut(BaseOut):
     id: str
     date_opened: datetime | None
     date_posted: datetime | None
+    date_due: datetime | None
     notes: str
     active: bool
     currency_guid: str
@@ -508,6 +511,7 @@ class InvoiceListItemOut(BaseModel):
     id: str
     date_opened: datetime | None
     date_posted: datetime | None
+    date_due: datetime | None
     currency_guid: str
     customer_guid: str
     customer_name: str | None
@@ -557,6 +561,7 @@ class BillPatch(BaseModel):
 class BillPostRequest(BaseModel):
     post_account_guid: UUID
     post_date: datetime | None = None
+    due_date: datetime | None = None
     memo: str | None = Field(default=None, max_length=2048)
 
 
@@ -567,6 +572,7 @@ class BillOut(BaseOut):
     id: str
     date_opened: datetime | None
     date_posted: datetime | None
+    date_due: datetime | None
     notes: str
     active: bool
     currency_guid: str
@@ -599,6 +605,7 @@ class BillListItemOut(BaseModel):
     id: str
     date_opened: datetime | None
     date_posted: datetime | None
+    date_due: datetime | None
     currency_guid: str
     vendor_guid: str
     vendor_name: str | None

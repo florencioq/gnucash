@@ -366,6 +366,11 @@ export default function InvoicingListPage({
                 </button>
               </th>
               <th>
+                <button type="button" className="table-sort-btn" onClick={() => setSort("date_due")}>
+                  Vencimento {sortIndicator("date_due")}
+                </button>
+              </th>
+              <th>
                 <button type="button" className="table-sort-btn" onClick={() => setSort("posted_status")}>
                   Status Postagem {sortIndicator("posted_status")}
                 </button>
@@ -391,7 +396,7 @@ export default function InvoicingListPage({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="small-muted">
+                <td colSpan={10} className="small-muted">
                   Carregando faturas...
                 </td>
               </tr>
@@ -407,6 +412,7 @@ export default function InvoicingListPage({
                   <td>{customerName || "cliente não encontrado"}</td>
                   <td>{formatDateDisplay(invoice.date_opened)}</td>
                   <td>{formatDateDisplay(invoice.date_posted)}</td>
+                  <td>{formatDateDisplay(invoice.date_due)}</td>
                   <td>{invoice.date_posted ? "Postada" : "Não postada"}</td>
                   <td>{paymentStateLabel(paymentState)}</td>
                   <td className="text-end">{formatMoney(invoice.total_num, invoice.total_denom, mnemonic)}</td>
@@ -440,7 +446,7 @@ export default function InvoicingListPage({
             }) : null}
             {!loading && invoices.length === 0 ? (
               <tr>
-                <td colSpan={9} className="small-muted">
+                <td colSpan={10} className="small-muted">
                   Nenhuma fatura para os filtros selecionados.
                 </td>
               </tr>

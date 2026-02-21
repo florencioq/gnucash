@@ -419,6 +419,11 @@ export default function PayablesPage({
                 </button>
               </th>
               <th>
+                <button type="button" className="table-sort-btn" onClick={() => setSort("date_due")}>
+                  Vencimento {sortIndicator("date_due")}
+                </button>
+              </th>
+              <th>
                 <button type="button" className="table-sort-btn" onClick={() => setSort("payment_status")}>
                   Status Pagamento {sortIndicator("payment_status")}
                 </button>
@@ -439,7 +444,7 @@ export default function PayablesPage({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="small-muted">
+                <td colSpan={9} className="small-muted">
                   Carregando contas a pagar...
                 </td>
               </tr>
@@ -463,6 +468,7 @@ export default function PayablesPage({
                   <td>{vendorName || "fornecedor não encontrado"}</td>
                   <td>{formatDateDisplay(bill.date_opened)}</td>
                   <td>{formatDateDisplay(bill.date_posted)}</td>
+                  <td>{formatDateDisplay(bill.date_due)}</td>
                   <td>{paymentStateLabel(paymentState)}</td>
                   <td className="text-end">{formatMoney(bill.total_num, bill.total_denom, mnemonic)}</td>
                   <td className="text-end">{formatMoney(bill.open_amount_num, bill.open_amount_denom, mnemonic)}</td>
@@ -481,7 +487,7 @@ export default function PayablesPage({
             }) : null}
             {!loading && bills.length === 0 ? (
               <tr>
-                <td colSpan={8} className="small-muted">
+                <td colSpan={9} className="small-muted">
                   Nenhuma compra em aberto para os filtros selecionados.
                 </td>
               </tr>
