@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.19 - 2026-02-23
+
+Account master type-filter synchronization:
+- documented account-type filtering options in `Contas` tree UX (`ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, `EQUITY`) with default all-types behavior
+- documented hierarchy-preserving behavior when applying account-type filter in the account tree
+- extended acceptance coverage notes with account-master account-type filtering scenario
+
 ## v0.4.18 - 2026-02-21
 
 Due-date and transaction-slot synchronization:

@@ -127,3 +127,4 @@ Primary suites:
 83. Bill posting without explicit `due_date` sets `date_due` equal to `post_date`.
 84. Invoice/bill list endpoints support due-date ordering (`sort_key=date_due`) with returned `date_due` values.
 85. Unposting invoice/bill clears `date_due` in document payloads.
+86. Account master tree supports account-type filtering (`ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, `EQUITY`) with default "all types" behavior and preserved hierarchy for matching branches.
