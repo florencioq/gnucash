@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.22 - 2026-02-23
+
+Account-tree nested-pruning clarification:
+- refined acceptance scenario for combined account-type + visibility filters to explicitly cover nested recursive pruning (preventing child/grandchild reappearance after parent-level reconstruction)
+
 ## v0.4.21 - 2026-02-23
 
 Account-tree combined-filter synchronization:
