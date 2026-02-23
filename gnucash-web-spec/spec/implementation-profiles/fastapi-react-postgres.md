@@ -81,6 +81,7 @@ This document is a reference implementation profile and does not override normat
 - Account master create/edit actions SHOULD open in modal dialogs instead of inline tree-adjacent forms.
 - Account master tree screen SHOULD provide name-based search/filter over the rendered hierarchy.
 - Account master tree screen SHOULD provide account-type filter options (`ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, `EQUITY`) with a default "all types" state while preserving branch hierarchy for matching descendants.
+- Account master tree visibility checkboxes (`Ocultar contas com saldo zerado`, `Ocultar contas sem lançamentos`) SHOULD compose with name/type filters; applying type filter MUST NOT disable visibility filtering behavior.
 - Account tree balances SHOULD be rendered as hierarchical totals in the UI (parent balance aggregated from descendants; placeholder nodes aggregate children).
 - Account tree rows SHOULD use a dedicated right-aligned balance column and subtle row separators so balance/actions remain visually associated with the corresponding account.
 - Account tree container width SHOULD be constrained to avoid excessive horizontal spread between account labels and row actions.

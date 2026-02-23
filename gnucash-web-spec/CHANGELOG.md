@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.21 - 2026-02-23
+
+Account-tree combined-filter synchronization:
+- documented composition rule between account-type filter and account-visibility checkboxes in `Contas` tree UX
+- extended acceptance coverage notes with explicit combined type + visibility filtering scenario in account master tree
+
 ## v0.4.20 - 2026-02-23
 
 Immediate backlog planning sync:

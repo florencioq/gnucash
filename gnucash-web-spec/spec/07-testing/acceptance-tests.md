@@ -128,3 +128,4 @@ Primary suites:
 84. Invoice/bill list endpoints support due-date ordering (`sort_key=date_due`) with returned `date_due` values.
 85. Unposting invoice/bill clears `date_due` in document payloads.
 86. Account master tree supports account-type filtering (`ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, `EQUITY`) with default "all types" behavior and preserved hierarchy for matching branches.
+87. Account master tree keeps visibility filtering active when combined with account-type filter (for example: selecting `ASSET` while `Ocultar contas com saldo zerado` and/or `Ocultar contas sem lançamentos` is enabled still prunes matching leaf nodes correctly).

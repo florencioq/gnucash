@@ -246,6 +246,7 @@ function Node({
 
 export default function AccountTree({
   nodes,
+  balanceSourceNodes,
   hideZeroBalances = false,
   hideWithoutPostings = false,
   commodityMnemonicById,
@@ -254,9 +255,10 @@ export default function AccountTree({
   onDelete
 }) {
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+  const effectiveBalanceNodes = balanceSourceNodes || nodes || [];
   const effectiveBalanceById = useMemo(
-    () => computeEffectiveBalances(nodes || []),
-    [nodes]
+    () => computeEffectiveBalances(effectiveBalanceNodes),
+    [effectiveBalanceNodes]
   );
   const renderedNodes = useMemo(
     () => {
