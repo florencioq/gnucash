@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.20 - 2026-02-23
+
+Immediate backlog planning sync:
+- added dedicated immediate backlog document under release plans (`spec/08-release-plans/immediate-backlog.md`)
+- added near-term UX backlog item to show vendor name alongside bill number in payment-history entries
+
 ## v0.4.19 - 2026-02-23
 
 Account master type-filter synchronization:

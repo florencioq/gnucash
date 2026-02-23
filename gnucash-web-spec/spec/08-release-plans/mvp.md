@@ -19,3 +19,7 @@
 1. Automated backend test suite MUST pass.
 2. Invariants MUST be enforced across create/update/delete/post/payment flows.
 3. Human endpoint guide and OpenAPI contract MUST reflect runtime behavior.
+
+## Immediate backlog
+
+Near-term implementation items that do not change this baseline scope are tracked in `spec/08-release-plans/immediate-backlog.md`.
