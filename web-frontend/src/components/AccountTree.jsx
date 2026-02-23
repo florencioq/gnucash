@@ -95,24 +95,33 @@ function pruneNodesByVisibilityOptions(
 ) {
   const visit = (node) => {
     const children = Array.isArray(node.children) ? node.children : [];
-    const visibleChildren = children.map(visit).filter(Boolean);
+    const visibleChildResults = children.map(visit).filter(Boolean);
+    const visibleChildren = visibleChildResults.map((result) => result.node);
+    const visibleSubtreePostingCount =
+      Number(node.posting_count ?? 0) +
+      visibleChildResults.reduce((sum, result) => sum + result.visibleSubtreePostingCount, 0);
+    const hasDirectChildPruning = visibleChildren.length !== children.length;
+    const hasNestedChildPruning = visibleChildResults.some((result) => result.isModified);
     const effective = effectiveBalanceById.get(node.id) || {
       numerator: 0n,
       denominator: 1n
     };
     const isZeroBalance = effective.numerator === 0n;
-    const subtreePostingCount = Number(node.subtree_posting_count ?? node.posting_count ?? 0);
-    const hasNoPostings = subtreePostingCount <= 0;
+    const hasNoPostings = visibleSubtreePostingCount <= 0;
 
     const shouldHideByZero = hideZeroBalances && isZeroBalance && visibleChildren.length === 0;
     const shouldHideByPostings = hideWithoutPostings && hasNoPostings && visibleChildren.length === 0;
     if (shouldHideByZero || shouldHideByPostings) return null;
 
-    if (visibleChildren.length === children.length) return node;
-    return { ...node, children: visibleChildren };
+    const isModified = hasDirectChildPruning || hasNestedChildPruning;
+    const nextNode = isModified ? { ...node, children: visibleChildren } : node;
+    return { node: nextNode, visibleSubtreePostingCount, isModified };
   };
 
-  return (nodes || []).map(visit).filter(Boolean);
+  return (nodes || [])
+    .map(visit)
+    .filter(Boolean)
+    .map((result) => result.node);
 }
 
 function IconButton({ title, onClick, children }) {
@@ -246,7 +255,6 @@ function Node({
 
 export default function AccountTree({
   nodes,
-  balanceSourceNodes,
   hideZeroBalances = false,
   hideWithoutPostings = false,
   commodityMnemonicById,
@@ -255,10 +263,9 @@ export default function AccountTree({
   onDelete
 }) {
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
-  const effectiveBalanceNodes = balanceSourceNodes || nodes || [];
   const effectiveBalanceById = useMemo(
-    () => computeEffectiveBalances(effectiveBalanceNodes),
-    [effectiveBalanceNodes]
+    () => computeEffectiveBalances(nodes || []),
+    [nodes]
   );
   const renderedNodes = useMemo(
     () => {

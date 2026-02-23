@@ -424,7 +424,6 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
         </div>
         <AccountTree
           nodes={visibleAccountTree}
-          balanceSourceNodes={tree}
           hideZeroBalances={hideZeroBalances}
           hideWithoutPostings={hideWithoutPostings}
           commodityMnemonicById={commodityMnemonicById}
