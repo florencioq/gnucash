@@ -3,14 +3,25 @@ import { api } from "../api/client.js";
 import AccountTree from "../components/AccountTree.jsx";
 import useActiveBook from "../hooks/useActiveBook.js";
 
-function filterTree(nodes, query) {
+const ACCOUNT_TYPE_FILTER_OPTIONS = [
+  "ASSET",
+  "LIABILITY",
+  "INCOME",
+  "EXPENSE",
+  "EQUITY"
+];
+
+function filterTree(nodes, query, typeFilter = "ALL") {
   const q = query.trim().toLowerCase();
-  if (!q) return nodes;
+  const hasTypeFilter = typeFilter !== "ALL";
 
   const visit = (node) => {
-    const selfMatch =
+    const queryMatch =
+      !q ||
       (node.name || "").toLowerCase().includes(q) ||
       (node.type || "").toLowerCase().includes(q);
+    const typeMatch = !hasTypeFilter || node.type === typeFilter;
+    const selfMatch = queryMatch && typeMatch;
     const children = (node.children || []).map(visit).filter(Boolean);
     if (selfMatch || children.length > 0) {
       return { ...node, children };
@@ -26,6 +37,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
   const [accounts, setAccounts] = useState([]);
   const [tree, setTree] = useState([]);
   const [accountSearch, setAccountSearch] = useState("");
+  const [accountTypeFilter, setAccountTypeFilter] = useState("ALL");
   const [hideZeroBalances, setHideZeroBalances] = useState(false);
   const [hideWithoutPostings, setHideWithoutPostings] = useState(false);
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
@@ -93,8 +105,8 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     [tree, parentSearch]
   );
   const visibleAccountTree = useMemo(
-    () => filterTree(tree, accountSearch),
-    [tree, accountSearch]
+    () => filterTree(tree, accountSearch, accountTypeFilter),
+    [tree, accountSearch, accountTypeFilter]
   );
 
   const loadCommodities = async () => {
@@ -145,6 +157,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     setAccountModalOpen(false);
     setEditing(null);
     setAccountSearch("");
+    setAccountTypeFilter("ALL");
   }, [activeBookId]);
 
   useEffect(() => {
@@ -354,7 +367,7 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
       <div className="section-card accounts-tree-shell">
         <h5 className="mb-3">Árvore de contas</h5>
         <div className="row g-2 align-items-end mb-3">
-          <div className="col-md-5">
+          <div className="col-md-4">
             <label className="form-label">Buscar por nome</label>
             <input
               className="form-control"
@@ -364,7 +377,23 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
               disabled={!activeBookId}
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
+            <label className="form-label">Tipo da conta</label>
+            <select
+              className="form-select"
+              value={accountTypeFilter}
+              onChange={(event) => setAccountTypeFilter(event.target.value)}
+              disabled={!activeBookId}
+            >
+              <option value="ALL">Todos os tipos</option>
+              {ACCOUNT_TYPE_FILTER_OPTIONS.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-5">
             <div className="form-check mt-4">
               <input
                 id="accounts-hide-zero-balances"
