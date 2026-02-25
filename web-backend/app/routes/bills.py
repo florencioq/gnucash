@@ -16,6 +16,7 @@ from app.errors import api_error
 from app.models import Account, AccountType, Book, Commodity, Vendor, Invoice, InvoiceEntry, Lot, Split, Transaction
 from app.schemas import (
     BillCreate,
+    DocumentSourceLinkOut,
     InvoiceEntryCreate,
     InvoiceEntryDiscountHowSchema,
     InvoiceEntryDiscountTypeSchema,
@@ -707,6 +708,77 @@ def list_bills(
         tx_guids={invoice.post_txn for invoice in invoices if invoice.post_txn},
     )
     return [_bill_to_out(db, invoice, due_dates_by_tx_guid=due_dates_by_tx_guid) for invoice in invoices]
+
+
+@router.get("/source-links", response_model=list[DocumentSourceLinkOut])
+def list_bill_source_links(
+    book_id: UUID = Query(...),
+    vendor_guid: UUID | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+
+    stmt = (
+        select(Invoice.guid, Invoice.id, Invoice.post_txn, Invoice.post_lot, Invoice.post_acc)
+        .where(Invoice.book_id == book_id_str, Invoice.owner_type == "VENDOR")
+        .order_by(Invoice.date_opened.asc(), Invoice.id.asc(), Invoice.guid.asc())
+    )
+    if vendor_guid is not None:
+        stmt = stmt.where(Invoice.owner_guid == str(vendor_guid))
+
+    rows = db.execute(stmt).all()
+    if not rows:
+        return []
+
+    links_by_guid: dict[str, dict] = {}
+    pair_to_invoice_guid: dict[tuple[str, str], str] = {}
+    post_tx_by_guid: dict[str, str | None] = {}
+    lot_guids: set[str] = set()
+    account_guids: set[str] = set()
+
+    for guid, invoice_id, post_txn, post_lot, post_acc in rows:
+        guid_str = str(guid)
+        post_tx = str(post_txn) if post_txn else None
+        links_by_guid[guid_str] = {
+            "guid": guid_str,
+            "id": invoice_id or "",
+            "post_tx_guid": post_tx,
+            "payment_tx_guids": set(),
+        }
+        post_tx_by_guid[guid_str] = post_tx
+        if post_lot and post_acc:
+            lot = str(post_lot)
+            acc = str(post_acc)
+            pair_to_invoice_guid[(lot, acc)] = guid_str
+            lot_guids.add(lot)
+            account_guids.add(acc)
+
+    if pair_to_invoice_guid:
+        split_rows = db.execute(
+            select(Split.lot_guid, Split.account_guid, Split.tx_guid)
+            .where(Split.lot_guid.in_(lot_guids), Split.account_guid.in_(account_guids))
+        ).all()
+        for lot_guid, account_guid, tx_guid in split_rows:
+            if not lot_guid or not account_guid or not tx_guid:
+                continue
+            invoice_guid = pair_to_invoice_guid.get((str(lot_guid), str(account_guid)))
+            if not invoice_guid:
+                continue
+            tx_guid_str = str(tx_guid)
+            if tx_guid_str == post_tx_by_guid.get(invoice_guid):
+                continue
+            links_by_guid[invoice_guid]["payment_tx_guids"].add(tx_guid_str)
+
+    return [
+        {
+            "guid": link["guid"],
+            "id": link["id"],
+            "post_tx_guid": link["post_tx_guid"],
+            "payment_tx_guids": sorted(link["payment_tx_guids"]),
+        }
+        for link in links_by_guid.values()
+    ]
 
 
 @router.get("/list", response_model=BillListPageOut)

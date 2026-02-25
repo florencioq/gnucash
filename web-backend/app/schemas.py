@@ -471,6 +471,13 @@ class InvoicePaymentOut(BaseOut):
     amount_denom: int
 
 
+class DocumentSourceLinkOut(BaseModel):
+    guid: str
+    id: str
+    post_tx_guid: str | None
+    payment_tx_guids: list[str]
+
+
 class InvoiceOut(BaseOut):
     guid: str
     book_id: str

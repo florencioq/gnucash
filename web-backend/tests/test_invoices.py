@@ -1277,3 +1277,79 @@ def test_invoice_unpost_rejected_when_lot_has_payment_split(client):
 
 def uuid_entry_like() -> str:
     return "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+
+
+def test_invoice_source_links_include_post_and_payment_transactions(client):
+    book_id = create_book(client, "Invoices Source Links")
+    currency_guid = create_currency(client, "BRL")
+    customer_guid = create_customer(client, book_id=book_id, currency_guid=currency_guid, customer_id="CLINK")
+
+    root_id = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Root",
+        account_type="ROOT",
+        is_placeholder=True,
+    )
+    receivable_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Contas a Receber",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+    income_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Receita",
+        account_type="INCOME",
+        parent_id=root_id,
+    )
+    cash_account_guid = create_account(
+        client,
+        book_id=book_id,
+        commodity_id=currency_guid,
+        name="Caixa",
+        account_type="ASSET",
+        parent_id=root_id,
+    )
+
+    invoice_guid = create_invoice_with_entry(
+        client,
+        book_id=book_id,
+        currency_guid=currency_guid,
+        customer_guid=customer_guid,
+        income_account_guid=income_account_guid,
+        invoice_id="I-LINK-1",
+        date_opened="2026-02-20T00:00:00Z",
+        unit_price_num=10000,
+    )
+
+    posted = client.post(
+        f"/invoices/{invoice_guid}/post",
+        json={"post_account_guid": receivable_account_guid},
+    )
+    assert posted.status_code == 200
+    post_tx_guid = posted.json()["post_tx_guid"]
+
+    paid = client.post(
+        f"/invoices/{invoice_guid}/payments",
+        json={
+            "transfer_account_guid": cash_account_guid,
+            "amount_num": 10000,
+            "amount_denom": 100,
+            "payment_date": "2026-02-21T00:00:00Z",
+        },
+    )
+    assert paid.status_code == 200
+    payment_tx_guid = paid.json()["payments"][0]["tx_guid"]
+
+    source_links_response = client.get(f"/invoices/source-links?book_id={book_id}")
+    assert source_links_response.status_code == 200
+    source_links = source_links_response.json()
+    link = next(item for item in source_links if item["guid"] == invoice_guid)
+    assert link["post_tx_guid"] == post_tx_guid
+    assert payment_tx_guid in link["payment_tx_guids"]

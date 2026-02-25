@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
 
@@ -229,6 +229,7 @@ export default function BillingPage({
   const [accountTree, setAccountTree] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoiceGuid, setSelectedInvoiceGuid] = useState("");
+  const loadInvoicesRequestRef = useRef(0);
   const [editingEntryGuid, setEditingEntryGuid] = useState("");
   const [entryForm, setEntryForm] = useState(defaultEntryForm());
   const [incomePickerOpen, setIncomePickerOpen] = useState(false);
@@ -461,33 +462,79 @@ export default function BillingPage({
     return response.data;
   };
 
-  const loadInvoices = async (
-    bookId,
+  const applyLoadedInvoices = (
+    items,
     preferredGuid = "",
     {
       preserveCurrentSelection = true,
       fallbackToFirstSelection = true
     } = {}
   ) => {
-    const response = await api.get(`/bills?book_id=${bookId}`);
-    if (!response.ok) {
-      setError(response.error);
-      return [];
-    }
-    setError(null);
-    setInvoices(response.data);
+    setInvoices(items);
     setSelectedInvoiceGuid((current) => {
-      const preferred = preferredGuid && response.data.some((item) => item.guid === preferredGuid)
+      const preferred = preferredGuid && items.some((item) => item.guid === preferredGuid)
         ? preferredGuid
         : "";
       if (preferred) return preferred;
-      if (preserveCurrentSelection && current && response.data.some((item) => item.guid === current)) return current;
+      if (preserveCurrentSelection && current && items.some((item) => item.guid === current)) return current;
       if (fallbackToFirstSelection) {
-        return response.data.length > 0 ? response.data[0].guid : "";
+        return items.length > 0 ? items[0].guid : "";
       }
       return "";
     });
+  };
+
+  const loadBillsList = async (
+    bookId,
+    preferredGuid = "",
+    invoiceSelectionOptions = {},
+    requestId = null
+  ) => {
+    const response = await api.get(`/bills?book_id=${bookId}`);
+    if (!response.ok) {
+      if (requestId === null || requestId === loadInvoicesRequestRef.current) {
+        setError(response.error);
+      }
+      return [];
+    }
+    if (requestId !== null && requestId !== loadInvoicesRequestRef.current) {
+      return response.data;
+    }
+    setError(null);
+    applyLoadedInvoices(response.data, preferredGuid, invoiceSelectionOptions);
     return response.data;
+  };
+
+  const loadInvoices = async (
+    bookId,
+    preferredGuid = "",
+    invoiceSelectionOptions = {}
+  ) => {
+    const requestId = loadInvoicesRequestRef.current + 1;
+    loadInvoicesRequestRef.current = requestId;
+
+    if (preferredGuid) {
+      const responseByGuid = await api.get(`/bills/${preferredGuid}`);
+      if (requestId !== loadInvoicesRequestRef.current) {
+        return [];
+      }
+      if (responseByGuid.ok) {
+        setError(null);
+        applyLoadedInvoices(
+          [responseByGuid.data],
+          preferredGuid,
+          {
+            ...invoiceSelectionOptions,
+            preserveCurrentSelection: false,
+            fallbackToFirstSelection: true
+          }
+        );
+        void loadBillsList(bookId, preferredGuid, invoiceSelectionOptions, requestId);
+        return [responseByGuid.data];
+      }
+    }
+
+    return loadBillsList(bookId, preferredGuid, invoiceSelectionOptions, requestId);
   };
 
   const loadBookData = async (bookId, preferredGuid = "", invoiceSelectionOptions) => {

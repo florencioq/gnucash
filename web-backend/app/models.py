@@ -334,6 +334,9 @@ class Invoice(Base):
 
     __table_args__ = (
         Index("ix_invoices_book_date_opened", "book_id", "date_opened"),
+        Index("ix_invoices_post_txn", "post_txn"),
+        Index("ix_invoices_post_lot", "post_lot"),
+        Index("ix_invoices_book_owner_type_date_posted", "book_id", "owner_type", "date_posted"),
     )
 
 
@@ -458,6 +461,7 @@ class Split(Base):
     account: Mapped[Account] = relationship(back_populates="splits")
 
     __table_args__ = (
+        Index("ix_splits_lot_guid_account_guid", "lot_guid", "account_guid"),
         CheckConstraint("value_denom > 0", name="ck_splits_value_denom_positive"),
         CheckConstraint("quantity_denom > 0", name="ck_splits_quantity_denom_positive"),
     )

@@ -203,8 +203,8 @@ export default function LedgerPage({
   const loadSourceLinks = async (bookId) => {
     if (!bookId) return;
     const [invoicesRes, billsRes] = await Promise.all([
-      api.get(`/invoices?book_id=${bookId}`),
-      api.get(`/bills?book_id=${bookId}`)
+      api.get(`/invoices/source-links?book_id=${bookId}`),
+      api.get(`/bills/source-links?book_id=${bookId}`)
     ]);
 
     const mapping = {};
@@ -218,8 +218,8 @@ export default function LedgerPage({
             relation: "post"
           };
         }
-        for (const payment of invoice.payments || []) {
-          mapping[payment.tx_guid] = {
+        for (const paymentTxGuid of invoice.payment_tx_guids || []) {
+          mapping[paymentTxGuid] = {
             sourceType: "invoicing",
             documentGuid: invoice.guid,
             documentId: invoice.id,
@@ -239,8 +239,8 @@ export default function LedgerPage({
             relation: "post"
           };
         }
-        for (const payment of bill.payments || []) {
-          mapping[payment.tx_guid] = {
+        for (const paymentTxGuid of bill.payment_tx_guids || []) {
+          mapping[paymentTxGuid] = {
             sourceType: "billing",
             documentGuid: bill.guid,
             documentId: bill.id,
