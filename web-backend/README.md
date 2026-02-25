@@ -108,6 +108,15 @@ PGHOST=localhost PGPORT=5433 PGUSER=gnucash PGPASSWORD=gnucash ./scripts/backup_
 
 This command creates a backup of `gnucash_web` in `./backups`.
 
+Example execution:
+
+```bash
+(.venv) (base) jose@latitude:~/projects/gnucash$ PGHOST=localhost PGPORT=5433 PGUSER=gnucash PGPASSWORD=gnucash ./scripts/backup_pg.sh gnucash_web ./backups
+[backup_pg] Iniciando backup do banco 'gnucash_web'...
+[backup_pg] Backup salvo em: ./backups/gnucash_web_20260225_143724.dump
+[backup_pg] Concluído.
+```
+
 ## Run
 
 ```bash

@@ -6,7 +6,8 @@ umask 077
 usage() {
   cat <<'USAGE'
 Usage:
-  backup_pg.sh <db_name> [output_dir]
+  backup_pg.sh <db_name> [output_dir] [port]
+  backup_pg.sh <db_name> [port]
 
 Environment variables:
   PGHOST, PGPORT, PGUSER, PGPASSWORD  Connection settings (or use ~/.pgpass)
@@ -16,17 +17,45 @@ Environment variables:
 
 Examples:
   PGHOST=localhost PGUSER=postgres ./backup_pg.sh mydb ./backups
+  ./backup_pg.sh mydb 5433
+  ./backup_pg.sh mydb ./backups 5433
   PGDUMP_FORMAT=p PGDUMP_EXTRA='--no-owner --no-privileges' ./backup_pg.sh mydb
   KEEP_DAYS=14 ./backup_pg.sh mydb /var/backups/pg
 USAGE
 }
 
 DB_NAME="${1:-}"
-OUT_DIR="${2:-./backups}"
+OUT_DIR="./backups"
+PORT_ARG=""
+
+if (( $# > 3 )); then
+  usage
+  exit 2
+fi
+
+if [[ -n "${2:-}" ]]; then
+  if [[ "$2" =~ ^[0-9]+$ ]]; then
+    PORT_ARG="$2"
+  else
+    OUT_DIR="$2"
+  fi
+fi
+
+if [[ -n "${3:-}" ]]; then
+  PORT_ARG="$3"
+fi
 
 if [[ -z "$DB_NAME" ]]; then
   usage
   exit 2
+fi
+
+if [[ -n "$PORT_ARG" ]]; then
+  if ! [[ "$PORT_ARG" =~ ^[0-9]+$ ]] || (( PORT_ARG < 1 || PORT_ARG > 65535 )); then
+    echo "Porta invalida: '$PORT_ARG' (use um numero entre 1 e 65535)" >&2
+    exit 2
+  fi
+  export PGPORT="$PORT_ARG"
 fi
 
 if ! command -v pg_dump >/dev/null 2>&1; then
