@@ -30,6 +30,7 @@ const DEFAULT_AUTH_TAB_ID = "income-statement";
 const INCOME_STATEMENT_DETAIL_TAB_ID = "report:income-statement";
 const LEDGER_DETAIL_TAB_ID = "report:ledger";
 const WORKSPACE_DETAIL_TAB_BY_ID = {
+  accounts: "workspace:accounts",
   receivables: "workspace:receivables",
   payables: "workspace:payables",
   "invoicing-list": "workspace:invoicing-list",
@@ -245,7 +246,9 @@ function sanitizeWorkspaceTabs(items) {
     seenWorkspaceIds.add(workspaceId);
 
     const fallbackLabel =
-      workspaceId === "receivables"
+      workspaceId === "accounts"
+        ? "Contas"
+        : workspaceId === "receivables"
         ? "Contas a Receber"
         : workspaceId === "payables"
           ? "Contas a Pagar"
@@ -325,7 +328,9 @@ export default function App() {
       ...openWorkspaceTabs.map((tab) => ({
         ...tab,
         component:
-          tab.workspaceId === "receivables"
+          tab.workspaceId === "accounts"
+            ? AccountsPage
+            : tab.workspaceId === "receivables"
             ? ReceivablesPage
             : tab.workspaceId === "payables"
               ? PayablesPage
@@ -516,7 +521,9 @@ export default function App() {
     if (!tabId) return;
     const normalizedLabel = String(label || "").trim();
     const fallbackLabel =
-      workspaceId === "receivables"
+      workspaceId === "accounts"
+        ? "Contas"
+        : workspaceId === "receivables"
         ? "Contas a Receber"
         : workspaceId === "payables"
           ? "Contas a Pagar"
@@ -748,6 +755,11 @@ export default function App() {
   });
 
   const buildWorkspaceTabProps = (workspaceId) => {
+    if (workspaceId === "accounts") {
+      return {
+        onOpenLedger: handleOpenLedger
+      };
+    }
     if (workspaceId === "receivables") {
       return {
         onOpenInvoicing: handleOpenInvoicing,
