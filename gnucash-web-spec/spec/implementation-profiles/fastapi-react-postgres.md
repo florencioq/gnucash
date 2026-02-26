@@ -140,6 +140,7 @@ This document is a reference implementation profile and does not override normat
 - Deleting invoice/bill documents should require explicit user confirmation and close the corresponding dynamic detail tab after successful deletion.
 - Ledger transaction grid should support pagination controls (first/previous/next/last + page size options) to keep navigation responsive.
 - Ledger transaction grid should default to newest-first chronological order and allow switching to oldest-first.
+- In `Razão`, row ordering SHOULD use movement date (`post_date`, fallback `enter_date`), and for same-day entries MUST preserve posting sequence using `enter_date` (not random identifiers such as GUID).
 - Ledger pagination default page size should be 10 items.
 - Ledger transaction grid SHOULD expose clickable `Contra-partida` account links that switch the current `Razão` view directly to the selected counterparty account.
 - Ledger selected account context SHOULD be persisted in-session so browser refresh restores the most recently selected account (including account changes performed via counterparty links).

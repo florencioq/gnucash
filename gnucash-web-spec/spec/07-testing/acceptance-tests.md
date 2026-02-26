@@ -129,3 +129,4 @@ Primary suites:
 85. Unposting invoice/bill clears `date_due` in document payloads.
 86. Account master tree supports account-type filtering (`ASSET`, `LIABILITY`, `INCOME`, `EXPENSE`, `EQUITY`) with default "all types" behavior and preserved hierarchy for matching branches.
 87. Account master tree keeps visibility filtering active when combined with account-type filter (for example: selecting `ASSET` while `Ocultar contas com saldo zerado` and/or `Ocultar contas sem lançamentos` is enabled still prunes matching leaf nodes correctly), including nested-branch pruning where ancestors MUST keep already-pruned descendants hidden (no child/grandchild reappearance after recursive traversal).
+88. `Razão` ordering uses movement date (`post_date` fallback `enter_date`); when multiple entries share the same date, the list preserves posting sequence by `enter_date` (stable tie-break, not GUID-based random ordering).

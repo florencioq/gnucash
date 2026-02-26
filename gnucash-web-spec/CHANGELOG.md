@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.23 - 2026-02-26
+
+Ledger ordering tie-break synchronization:
+- documented `Razão` ordering tie-break rule to preserve posting sequence for same-date rows (`enter_date`), avoiding GUID-based random ordering
+- extended acceptance coverage notes with explicit same-date ordering scenario for `Razão`
+
 ## v0.4.22 - 2026-02-23
 
 Account-tree nested-pruning clarification:
