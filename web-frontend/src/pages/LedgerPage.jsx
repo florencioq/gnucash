@@ -327,9 +327,9 @@ export default function LedgerPage({
     if (!ledgerAccountId) return [];
 
     const rows = [];
-    for (const tx of transactions) {
+    transactions.forEach((tx, txOrder) => {
       const ownSplit = tx.splits.find((split) => split.account_guid === ledgerAccountId);
-      if (!ownSplit) continue;
+      if (!ownSplit) return;
 
       const contraSplits = tx.splits.filter((split) => split.account_guid !== ledgerAccountId);
       const contraAccounts = contraSplits.map((split) => {
@@ -349,6 +349,8 @@ export default function LedgerPage({
         key: `${tx.guid}:${ownSplit.guid}`,
         txGuid: tx.guid,
         date: movementDate,
+        enterDate: tx.enter_date || "",
+        txOrder,
         history: tx.description || ownSplit.memo || "-",
         contra: contraLabel,
         contraAccounts,
@@ -356,13 +358,18 @@ export default function LedgerPage({
         credit: amount > 0 ? amount : 0,
         amount
       });
-    }
+    });
 
     rows.sort((a, b) => {
       const da = a.date || "";
       const db = b.date || "";
-      if (da === db) return a.txGuid.localeCompare(b.txGuid);
-      return da.localeCompare(db);
+      if (da !== db) return da.localeCompare(db);
+      const ea = a.enterDate || "";
+      const eb = b.enterDate || "";
+      if (ea !== eb) return ea.localeCompare(eb);
+      if (a.txOrder !== b.txOrder) return a.txOrder - b.txOrder;
+      if (a.txGuid !== b.txGuid) return a.txGuid.localeCompare(b.txGuid);
+      return a.key.localeCompare(b.key);
     });
 
     let runningBalance = 0;
