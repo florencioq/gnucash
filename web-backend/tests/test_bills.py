@@ -613,6 +613,8 @@ def test_bill_post_payment_and_undo_flow(client):
     assert partial_payload["paid_amount_num"] == 30
     assert partial_payload["open_amount_num"] == 70
     assert len(partial_payload["payments"]) == 1
+    assert partial_payload["payments"][0]["memo"].startswith("Pagamento parcial")
+    assert "Fornecedor" in partial_payload["payments"][0]["memo"]
     first_payment_tx_guid = partial_payload["payments"][0]["tx_guid"]
 
     patch_payment_tx = client.patch(f"/transactions/{first_payment_tx_guid}", json={"description": "Nao permitido"})
@@ -645,6 +647,7 @@ def test_bill_post_payment_and_undo_flow(client):
     assert final_payload["paid_amount_num"] == 100
     assert final_payload["open_amount_num"] == 0
     assert len(final_payload["payments"]) == 2
+    assert "Fornecedor" in final_payload["payments"][1]["memo"]
     second_payment_tx_guid = final_payload["payments"][1]["tx_guid"]
 
     undo_last = client.post(f"/bills/{bill_guid}/payments/{second_payment_tx_guid}/undo", json={})

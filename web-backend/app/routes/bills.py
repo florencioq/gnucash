@@ -420,6 +420,21 @@ def _bill_status(invoice: Invoice, *, total_amount: Fraction, open_amount: Fract
     return "POSTED"
 
 
+def _bill_payment_description(*, bill_id: str | None, vendor_name: str | None, memo: str | None) -> str:
+    normalized_memo = (memo or "").strip()
+    normalized_vendor_name = (vendor_name or "").strip()
+
+    if normalized_memo:
+        if normalized_vendor_name and normalized_vendor_name.casefold() not in normalized_memo.casefold():
+            return f"{normalized_memo} - {normalized_vendor_name}"
+        return normalized_memo
+
+    base_description = f"Payment bill {bill_id}" if bill_id else "Payment bill"
+    if normalized_vendor_name:
+        return f"{base_description} - {normalized_vendor_name}"
+    return base_description
+
+
 def _bill_due_date(invoice: Invoice, *, due_dates_by_tx_guid: dict[str, datetime]) -> datetime | None:
     if not invoice.post_txn:
         return None
@@ -1313,8 +1328,13 @@ def create_bill_payment(bill_guid: UUID, payload: InvoicePaymentCreate, db: Sess
     if payment_date.tzinfo is None:
         payment_date = payment_date.replace(tzinfo=UTC)
 
+    vendor = db.get(Vendor, invoice.owner_guid) if invoice.owner_guid else None
     tx_guid = str(uuid4())
-    description = (payload.memo or "").strip() or f"Payment bill {invoice.id}"
+    description = _bill_payment_description(
+        bill_id=invoice.id,
+        vendor_name=vendor.name if vendor else None,
+        memo=payload.memo,
+    )
     payment_tx = Transaction(
         guid=tx_guid,
         currency_guid=invoice.currency_guid,
