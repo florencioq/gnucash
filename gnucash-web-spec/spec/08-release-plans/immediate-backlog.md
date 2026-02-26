@@ -7,7 +7,7 @@ Track near-term implementation items that are planned for upcoming cycles and do
 ## Prioritized items
 
 1. Payment history should show vendor context for bill references.
-   - `Status`: planned
+   - `Status`: done
    - `Priority`: high
    - `Scope`: payment-history UI entries linked to bill documents.
    - `Requirement`: when rendering payment-history entries for bill payments, the UI SHOULD display vendor name together with bill number.
