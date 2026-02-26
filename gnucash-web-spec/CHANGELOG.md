@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.24 - 2026-02-26
+
+Bill-payment memo and backlog status synchronization:
+- documented runtime bill-payment memo composition to include vendor context when missing from user-provided memo
+- documented fallback bill-payment description generation when memo is empty (`Payment bill {id}` with optional vendor suffix)
+- marked immediate backlog item for vendor-context payment-history entries as done in release plans
+
 ## v0.4.23 - 2026-02-26
 
 Ledger ordering tie-break synchronization:
