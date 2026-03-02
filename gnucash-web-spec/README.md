@@ -34,7 +34,12 @@ Out of scope:
 1. Read `spec/00-introduction.md` and `spec/01-glossary.md`.
 2. Implement data and invariants from `spec/02-domain/**` and `spec/03-data/**`.
 3. Implement API behavior from `spec/04-api/openapi.yaml` and clarifications in `spec/04-api/endpoints.md`.
-4. Validate behavior against `spec/07-testing/acceptance-tests.md` and automated backend tests.
+4. Implement frontend behavior from `spec/05-ux/**`.
+5. Validate behavior against `spec/07-testing/acceptance-tests.md` and automated backend tests.
+
+For stack-specific guidance (FastAPI + React + PostgreSQL), see
+`spec/implementation-profiles/fastapi-react-postgres.md` and
+`spec/implementation-profiles/database-baseline.md`.
 
 ## Versioning
 

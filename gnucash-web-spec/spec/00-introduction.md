@@ -17,6 +17,7 @@ Includes:
 - Invoice/Bill lifecycle operations, including due-date tracking
 - Transaction/Split posting operations and transaction slot metadata
 - Account-tree balances and reporting APIs (income statement and invoice settlement lag by customer)
+- Frontend UX behavioral requirements (navigation, screens, ledger, cadastros, reports) in `spec/05-ux/**`
 
 Does not include:
 - tax-table calculation rules
@@ -29,4 +30,5 @@ An implementation is conformant if it:
 - enforces invariants in `spec/02-domain/02-invariants.md`;
 - exposes behavior equivalent to `spec/04-api/openapi.yaml`;
 - follows endpoint semantics in `spec/04-api/endpoints.md`;
+- satisfies UX behavioral requirements in `spec/05-ux/**`;
 - passes acceptance scenarios and automated tests described in `spec/07-testing/acceptance-tests.md`.
