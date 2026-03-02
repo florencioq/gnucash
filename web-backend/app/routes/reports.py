@@ -11,6 +11,7 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Account, AccountType, Book
 from app.schemas import (
+    FinancialDashboardOut,
     IncomeStatementAccountEntriesOut,
     IncomeStatementMatrixOut,
     IncomeStatementOut,
@@ -18,6 +19,7 @@ from app.schemas import (
 )
 from app.services.authorization import ensure_book_read_access
 from app.services.reports import (
+    build_financial_dashboard,
     build_income_statement,
     build_income_statement_matrix,
     build_invoice_settlement_by_customer_report,
@@ -141,6 +143,19 @@ def get_income_statement_account_entries(
         year=year,
         month=month_number,
     )
+
+
+@router.get("/financial-dashboard", response_model=FinancialDashboardOut)
+def get_financial_dashboard(
+    book_id: UUID = Query(...),
+    year: int = Query(..., ge=1900, le=3000),
+    db: Session = Depends(get_db),
+) -> dict:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    if db.get(Book, book_id_str) is None:
+        raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id_str})
+    return build_financial_dashboard(db, book_id=book_id_str, year=year)
 
 
 @router.get(

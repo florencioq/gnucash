@@ -681,3 +681,119 @@ def build_invoice_settlement_by_customer_report(
         "total_items": total_items,
         "total_pages": total_pages,
     }
+
+
+def build_financial_dashboard(
+    db: Session,
+    *,
+    book_id: str,
+    year: int,
+) -> dict:
+    accounts = db.execute(
+        select(Account).where(
+            Account.book_id == book_id,
+            Account.type.in_([AccountType.INCOME, AccountType.EXPENSE]),
+        )
+    ).scalars().all()
+    account_ids = [account.id for account in accounts]
+    accounts_by_id = {account.id: account for account in accounts}
+
+    # Query window: Jan(year-1) to Dec(year)
+    query_start = _month_start(year - 1, 1)
+    _, query_end = _month_window(year, 12)
+
+    # Accumulate by (year, month)
+    monthly: dict[tuple[int, int], dict[str, Fraction]] = defaultdict(
+        lambda: {"revenue": Fraction(0, 1), "expenses": Fraction(0, 1)}
+    )
+
+    if account_ids:
+        movement_date = func.coalesce(Transaction.post_date, Transaction.enter_date)
+        rows = db.execute(
+            select(
+                Split.account_guid,
+                Split.value_num,
+                Split.value_denom,
+                movement_date.label("movement_date"),
+            )
+            .join(Transaction, Transaction.guid == Split.tx_guid)
+            .where(Split.account_guid.in_(account_ids))
+            .where(movement_date >= query_start)
+            .where(movement_date < query_end)
+        ).all()
+
+        for row in rows:
+            account = accounts_by_id.get(row.account_guid)
+            if account is None or row.movement_date is None:
+                continue
+            mv: datetime = row.movement_date
+            if mv.tzinfo is None:
+                mv = mv.replace(tzinfo=UTC)
+            key = (mv.year, mv.month)
+            normalized = _normalized_amount(account.type, _as_fraction(row.value_num, row.value_denom))
+            account_type_value = account.type.value if isinstance(account.type, AccountType) else str(account.type)
+            if account_type_value == "INCOME":
+                monthly[key]["revenue"] += normalized
+            elif account_type_value == "EXPENSE":
+                monthly[key]["expenses"] += normalized
+
+    def annual_totals(y: int) -> tuple[Fraction, Fraction]:
+        rev = sum((monthly[(y, m)]["revenue"] for m in range(1, 13)), Fraction(0, 1))
+        exp = sum((monthly[(y, m)]["expenses"] for m in range(1, 13)), Fraction(0, 1))
+        return rev, exp
+
+    def quarter_totals(y: int, q: int) -> tuple[Fraction, Fraction]:
+        start_month = (q - 1) * 3 + 1
+        rev = sum((monthly[(y, m)]["revenue"] for m in range(start_month, start_month + 3)), Fraction(0, 1))
+        exp = sum((monthly[(y, m)]["expenses"] for m in range(start_month, start_month + 3)), Fraction(0, 1))
+        return rev, exp
+
+    cur_rev, cur_exp = annual_totals(year)
+    cur_net = cur_rev - cur_exp
+    prev_rev, prev_exp = annual_totals(year - 1)
+    prev_net = prev_rev - prev_exp
+
+    margin_percent: float | None = None if cur_rev == 0 else _as_float((cur_net / cur_rev) * 100)
+    annual_growth_percent: float | None = None if prev_net == 0 else _as_float(((cur_net - prev_net) / abs(prev_net)) * 100)
+
+    quarters = []
+    for q in range(1, 5):
+        qr, qe = quarter_totals(year, q)
+        qn = qr - qe
+        pqr, pqe = quarter_totals(year - 1, q)
+        pqn = pqr - pqe
+        qm: float | None = None if qr == 0 else _as_float((qn / qr) * 100)
+        qg: float | None = None if pqn == 0 else _as_float(((qn - pqn) / abs(pqn)) * 100)
+        quarters.append({
+            "quarter": q,
+            "label": f"{q}º Tri/{year}",
+            "revenue": _as_float(qr),
+            "expenses": _as_float(qe),
+            "net_income": _as_float(qn),
+            "margin_percent": qm,
+            "prev_year_net_income": _as_float(pqn),
+            "growth_percent": qg,
+        })
+
+    positive_quarters_count = sum(1 for qt in quarters if qt["net_income"] > 0)
+
+    currency_mnemonic = None
+    if accounts:
+        currency_mnemonic = db.execute(
+            select(Commodity.mnemonic).where(Commodity.id == accounts[0].commodity_id)
+        ).scalar_one_or_none()
+
+    return {
+        "book_id": book_id,
+        "year": year,
+        "currency_mnemonic": currency_mnemonic,
+        "revenue": _as_float(cur_rev),
+        "expenses": _as_float(cur_exp),
+        "net_income": _as_float(cur_net),
+        "margin_percent": margin_percent,
+        "prev_year_net_income": _as_float(prev_net),
+        "annual_growth_percent": annual_growth_percent,
+        "quarters": quarters,
+        "all_quarters_positive": positive_quarters_count == 4,
+        "positive_quarters_count": positive_quarters_count,
+    }

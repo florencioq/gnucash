@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.25 - 2026-03-02
+
+Financial Dashboard (Painel Financeiro):
+- documented `GET /reports/financial-dashboard?book_id=&year=YYYY` endpoint with annual and quarterly KPI response schema
+- documented Painel Financeiro UX: year selector, 6 KPI cards (Receita Líquida, Crescimento em Todos os Trimestres banner, Resultado Líquido, Margem Líquida, Total Despesas, Variação Anual), quarterly breakdown row
+- documented Portuguese singular/plural scale rules for abbreviated monetary values (Milhão/Milhões, Bilhão/Bilhões, Mil invariable)
+- documented superuser-only access restriction for Painel Financeiro in navigation and UX specs
+- added Painel Financeiro (superuser only) to `Relatórios` section in navigation spec
+
 ## v0.4.24 - 2026-02-26
 
 Bill-payment memo and backlog status synchronization:

@@ -191,7 +191,17 @@ Protection rule:
   - includes posted invoices that are `PAID` and `OPEN`.
   - for `PAID` rows, day-difference reference is settlement date; for `OPEN` rows, reference is current date.
   - default ordering is `posted_month_end_date` ascending.
+- `GET /reports/financial-dashboard?book_id=&year=YYYY`
+  - returns annual and quarterly financial indicators for the selected year.
+  - response fields: `book_id`, `year`, `currency_mnemonic`, `revenue`, `expenses`,
+    `net_income`, `margin_percent`, `prev_year_net_income`, `annual_growth_percent`,
+    `quarters` (array of 4), `all_quarters_positive`, `positive_quarters_count`.
+  - each quarter item: `quarter` (1–4), `label` (e.g. `1º Tri/2025`), `revenue`, `expenses`,
+    `net_income`, `margin_percent`, `prev_year_net_income`, `growth_percent`.
+  - `margin_percent` and `growth_percent` are `null` when denominator is zero.
+  - query window covers the selected year and the previous year (for YoY comparisons).
 
 Validation notes:
 - month format and range limits are enforced.
 - drill-down account must belong to selected book and be `INCOME` or `EXPENSE`.
+- `year` must be in range 1900–3000.

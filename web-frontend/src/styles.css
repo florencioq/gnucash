@@ -842,3 +842,153 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Painel Financeiro (FinancialDashboardPage) ─────────────────── */
+
+.fin-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.fin-kpi-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 1.1rem 1.2rem;
+}
+
+.fin-kpi-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.fin-kpi-label {
+  color: #625a4f;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+
+.fin-kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.fin-kpi-value.positive {
+  color: #1f5f47;
+}
+
+.fin-kpi-value.negative {
+  color: #8c2f2f;
+}
+
+.fin-kpi-symbol {
+  font-size: 0.9em;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-right: 0.1em;
+}
+
+.fin-kpi-scale {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #888;
+  margin-top: 0.05rem;
+  text-transform: capitalize;
+}
+
+.fin-kpi-sub {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+.fin-kpi-sub.positive {
+  color: #1f5f47;
+}
+
+.fin-kpi-sub.negative {
+  color: #8c2f2f;
+}
+
+.fin-banner-card {
+  border-radius: 14px;
+  background: #0a1f44;
+  color: #fff;
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.fin-banner-card.neutral {
+  background: #2d3748;
+}
+
+.fin-banner-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.fin-banner-arrow {
+  font-size: 2rem;
+  color: #4ade80;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.fin-banner-arrow.down {
+  color: #f87171;
+}
+
+.fin-quarters-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.fin-quarter-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8f7f4;
+  padding: 0.75rem 0.9rem;
+  text-align: center;
+}
+
+.fin-quarter-label {
+  font-size: 0.78rem;
+  color: #888;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.fin-quarter-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.fin-quarter-value.positive {
+  color: #1f5f47;
+}
+
+.fin-quarter-value.negative {
+  color: #8c2f2f;
+}
+
+@media (max-width: 768px) {
+  .fin-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fin-quarters-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

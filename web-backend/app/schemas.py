@@ -817,6 +817,31 @@ class InvoiceSettlementByCustomerReportOut(BaseModel):
     total_pages: int
 
 
+class FinancialDashboardQuarterOut(BaseModel):
+    quarter: int
+    label: str
+    revenue: float
+    expenses: float
+    net_income: float
+    margin_percent: float | None
+    prev_year_net_income: float | None
+    growth_percent: float | None
+
+
+class FinancialDashboardOut(BaseModel):
+    book_id: str
+    year: int
+    currency_mnemonic: str | None
+    revenue: float
+    expenses: float
+    net_income: float
+    margin_percent: float | None
+    prev_year_net_income: float | None
+    annual_growth_percent: float | None
+    quarters: list[FinancialDashboardQuarterOut]
+    all_quarters_positive: bool
+    positive_quarters_count: int
+
 class AuthRegisterRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=256)

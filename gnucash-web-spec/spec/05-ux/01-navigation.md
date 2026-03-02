@@ -7,7 +7,7 @@
 - Required sections and items:
   - `Operações`: Faturamentos, Compras, Contas a Receber, Contas a Pagar
   - `Contábil`: Razão
-  - `Relatórios`: DRE Mensal, Prazo Quitação
+  - `Relatórios`: DRE Mensal, Prazo Quitação, Painel Financeiro (superuser only)
   - `Cadastros`: Livros, Moedas, Contas, Clientes, Fornecedores
   - `Administração`: Usuários (superuser only)
 - Section order MUST be: Operações → Contábil → Relatórios → Cadastros → Administração.

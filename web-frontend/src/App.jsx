@@ -13,6 +13,7 @@ import BillingListPage from "./pages/BillingListPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import InvoiceSettlementReportPage from "./pages/InvoiceSettlementReportPage.jsx";
+import FinancialDashboardPage from "./pages/FinancialDashboardPage.jsx";
 import ReceivablesPage from "./pages/ReceivablesPage.jsx";
 import PayablesPage from "./pages/PayablesPage.jsx";
 import {
@@ -52,6 +53,7 @@ const baseTabs = [
     label: "Prazo Quitação",
     component: InvoiceSettlementReportPage
   },
+  { id: "financial-dashboard", label: "Painel Financeiro", component: FinancialDashboardPage },
   { id: "receivables", label: "Contas a Receber", component: ReceivablesPage },
   { id: "payables", label: "Contas a Pagar", component: PayablesPage },
   { id: "invoicing-list", label: "Faturamentos", component: InvoicingListPage },
@@ -72,7 +74,7 @@ const primaryNavSectionsConfig = [
   {
     id: "reports",
     label: "Relatórios",
-    itemIds: ["income-statement", "invoice-settlement-report"]
+    itemIds: ["income-statement", "invoice-settlement-report", "financial-dashboard"]
   },
   {
     id: "masters",
@@ -94,6 +96,7 @@ const navIconByTabId = {
   ledger: "📒",
   "income-statement": "📈",
   "invoice-settlement-report": "⏱",
+  "financial-dashboard": "🏦",
   books: "📚",
   commodities: "💱",
   accounts: "🏦",
@@ -354,6 +357,7 @@ export default function App() {
     return baseTabs.filter((tab) => {
       if (tab.id === "login") return false;
       if (tab.id === "users" && !canManageUsers) return false;
+      if (tab.id === "financial-dashboard" && !canManageUsers) return false;
       return true;
     });
   }, [canManageUsers, hasAuthSession]);
