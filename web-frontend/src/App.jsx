@@ -910,9 +910,19 @@ export default function App() {
     <div className="app-shell">
       <header className="brand-bar">
         <div className="container d-flex align-items-center justify-content-between gap-3 flex-wrap">
-          <div>
-            <h1 className="brand-title">IgeosCash</h1>
-            <div className="small-muted">API: {apiBase()}</div>
+          <div className="d-flex align-items-center gap-3">
+            <button
+              type="button"
+              className="brand-logo-btn"
+              onClick={() => setActiveTab(hasAuthSession ? DEFAULT_AUTH_TAB_ID : "login")}
+              aria-label="Ir para início"
+            >
+              <img src="/LOGO - Vertical-Preto.png" alt="IgeosCash" className="brand-logo" />
+            </button>
+            <div>
+              <h1 className="brand-title">IgeosCash</h1>
+              <div className="small-muted">API: {apiBase()}</div>
+            </div>
           </div>
           <div className="d-flex align-items-center gap-2">
             {hasAuthSession && currentUser ? (
