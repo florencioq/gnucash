@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api/client.js";
 
 const INITIAL_FORM = {
@@ -8,10 +8,18 @@ const INITIAL_FORM = {
 };
 
 export default function ChangePasswordPage({ currentUser = null }) {
+  const formAnchorRef = useRef(null);
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    formAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -56,7 +64,7 @@ export default function ChangePasswordPage({ currentUser = null }) {
   };
 
   return (
-    <div>
+    <div ref={formAnchorRef}>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h2 className="mb-1">Alterar senha</h2>
