@@ -143,6 +143,95 @@ def test_register_requires_superuser_after_bootstrap(client):
     assert created_by_admin.json()["is_superuser"] is False
 
 
+def test_change_password_requires_valid_current_password(client):
+    registered = client.post(
+        "/auth/register",
+        json={"email": "user@example.com", "password": "12345678", "full_name": "User"},
+    )
+    assert registered.status_code == 201, registered.text
+
+    login = client.post("/auth/login", json={"email": "user@example.com", "password": "12345678"})
+    assert login.status_code == 200, login.text
+    token = login.json()["access_token"]
+
+    wrong_current = client.post(
+        "/auth/change-password",
+        json={"current_password": "wrong-password", "new_password": "87654321"},
+        headers=_bearer(token),
+    )
+    assert wrong_current.status_code == 401, wrong_current.text
+    assert wrong_current.json()["code"] == "INVALID_CREDENTIALS"
+
+    same_password = client.post(
+        "/auth/change-password",
+        json={"current_password": "12345678", "new_password": "12345678"},
+        headers=_bearer(token),
+    )
+    assert same_password.status_code == 400, same_password.text
+    assert same_password.json()["code"] == "PASSWORD_REUSE"
+
+    changed = client.post(
+        "/auth/change-password",
+        json={"current_password": "12345678", "new_password": "87654321"},
+        headers=_bearer(token),
+    )
+    assert changed.status_code == 204, changed.text
+
+    old_login = client.post("/auth/login", json={"email": "user@example.com", "password": "12345678"})
+    assert old_login.status_code == 401, old_login.text
+    assert old_login.json()["code"] == "INVALID_CREDENTIALS"
+
+    new_login = client.post("/auth/login", json={"email": "user@example.com", "password": "87654321"})
+    assert new_login.status_code == 200, new_login.text
+
+
+def test_superuser_can_reset_other_user_password(client):
+    admin = client.post(
+        "/auth/register",
+        json={"email": "admin@example.com", "password": "12345678", "full_name": "Admin"},
+    )
+    assert admin.status_code == 201, admin.text
+    admin_user = admin.json()
+
+    admin_login = client.post("/auth/login", json={"email": "admin@example.com", "password": "12345678"})
+    assert admin_login.status_code == 200, admin_login.text
+    admin_token = admin_login.json()["access_token"]
+
+    user = client.post(
+        "/auth/register",
+        json={"email": "user@example.com", "password": "12345678", "full_name": "User"},
+        headers=_bearer(admin_token),
+    )
+    assert user.status_code == 201, user.text
+    regular_user = user.json()
+
+    regular_login = client.post("/auth/login", json={"email": "user@example.com", "password": "12345678"})
+    assert regular_login.status_code == 200, regular_login.text
+    regular_token = regular_login.json()["access_token"]
+
+    forbidden = client.post(
+        f"/auth/users/{admin_user['id']}/reset-password",
+        json={"new_password": "99999999"},
+        headers=_bearer(regular_token),
+    )
+    assert forbidden.status_code == 403, forbidden.text
+    assert forbidden.json()["code"] == "FORBIDDEN"
+
+    reset = client.post(
+        f"/auth/users/{regular_user['id']}/reset-password",
+        json={"new_password": "87654321"},
+        headers=_bearer(admin_token),
+    )
+    assert reset.status_code == 204, reset.text
+
+    old_login = client.post("/auth/login", json={"email": "user@example.com", "password": "12345678"})
+    assert old_login.status_code == 401, old_login.text
+    assert old_login.json()["code"] == "INVALID_CREDENTIALS"
+
+    new_login = client.post("/auth/login", json={"email": "user@example.com", "password": "87654321"})
+    assert new_login.status_code == 200, new_login.text
+
+
 def test_book_access_roles_and_superuser_rules(client, monkeypatch):
     monkeypatch.setattr(settings, "auth_required", True)
 

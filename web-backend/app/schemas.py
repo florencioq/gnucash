@@ -858,6 +858,15 @@ class AuthRefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=1)
 
 
+class AuthChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=8, max_length=256)
+
+
+class AuthResetPasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=256)
+
+
 class AuthTokenOut(BaseModel):
     access_token: str
     refresh_token: str

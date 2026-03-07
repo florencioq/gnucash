@@ -16,6 +16,7 @@ import InvoiceSettlementReportPage from "./pages/InvoiceSettlementReportPage.jsx
 import FinancialDashboardPage from "./pages/FinancialDashboardPage.jsx";
 import ReceivablesPage from "./pages/ReceivablesPage.jsx";
 import PayablesPage from "./pages/PayablesPage.jsx";
+import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
 import {
   api,
   apiBase,
@@ -46,6 +47,7 @@ const baseTabs = [
   { id: "customers", label: "Clientes", component: CustomersPage },
   { id: "vendors", label: "Fornecedores", component: VendorsPage },
   { id: "users", label: "Usuários", component: UsersPage },
+  { id: "profile", label: "Alterar Senha", component: ChangePasswordPage },
   { id: "ledger", label: "Razão", component: LedgerPage },
   { id: "income-statement", label: "DRE Mensal", component: IncomeStatementPage },
   {
@@ -84,7 +86,7 @@ const primaryNavSectionsConfig = [
   {
     id: "administration",
     label: "Administração",
-    itemIds: ["users"]
+    itemIds: ["profile", "users"]
   }
 ];
 
@@ -102,7 +104,8 @@ const navIconByTabId = {
   accounts: "🏦",
   customers: "👥",
   vendors: "🚚",
-  users: "🛡"
+  users: "🛡",
+  profile: "🔐"
 };
 
 function normalizeLabel(prefix, documentId, guid) {
@@ -895,6 +898,8 @@ export default function App() {
         ? buildWorkspaceTabProps("invoicing-list")
       : activeTab === "billing-list"
         ? buildWorkspaceTabProps("billing-list")
+      : activeTab === "profile"
+        ? { currentUser }
       : isInvoiceTab(activeTab)
         ? buildInvoiceTabProps(activeTab)
       : isBillTab(activeTab)

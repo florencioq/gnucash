@@ -10,9 +10,11 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Book, BookAccessRole, User, UserBookAccess
 from app.schemas import (
+    AuthChangePasswordRequest,
     AuthLoginRequest,
     AuthRefreshRequest,
     AuthRegisterRequest,
+    AuthResetPasswordRequest,
     AuthTokenOut,
     AuthUserOut,
     UserBookAccessOut,
@@ -85,6 +87,20 @@ def refresh_tokens(payload: AuthRefreshRequest, db: Session = Depends(get_db)) -
     return issue_auth_tokens(user)
 
 
+@router.post("/change-password", status_code=204)
+def change_password(
+    payload: AuthChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise api_error(401, "INVALID_CREDENTIALS", "invalid current password")
+    if payload.current_password == payload.new_password:
+        raise api_error(400, "PASSWORD_REUSE", "new password must differ from current password")
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()
+
+
 @router.get("/me", response_model=AuthUserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
@@ -113,6 +129,22 @@ def list_user_book_access(
     return db.execute(
         select(UserBookAccess).where(UserBookAccess.user_id == user_id).order_by(UserBookAccess.book_id.asc())
     ).scalars().all()
+
+
+@router.post("/users/{user_id}/reset-password", status_code=204)
+def reset_user_password(
+    user_id: str,
+    payload: AuthResetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    if not current_user.is_superuser:
+        raise api_error(403, "FORBIDDEN", "superuser privileges required")
+    target = db.get(User, user_id)
+    if target is None:
+        raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    target.password_hash = hash_password(payload.new_password)
+    db.commit()
 
 
 @router.put("/users/{user_id}/books/{book_id}", response_model=UserBookAccessOut)

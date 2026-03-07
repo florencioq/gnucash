@@ -9,6 +9,10 @@ const INITIAL_FORM = {
 };
 
 const DEFAULT_ACCESS_ROLE = "EDITOR";
+const INITIAL_RESET_PASSWORD_FORM = {
+  newPassword: "",
+  confirmPassword: ""
+};
 
 function normalizeRole(value) {
   return value === "VIEWER" ? "VIEWER" : "EDITOR";
@@ -27,12 +31,16 @@ export default function UsersPage() {
   const [accessByUser, setAccessByUser] = useState({});
   const [accessFormByUser, setAccessFormByUser] = useState({});
   const [accessBusyByUser, setAccessBusyByUser] = useState({});
+  const [resetPasswordFormByUser, setResetPasswordFormByUser] = useState({});
+  const [resetPasswordBusyByUser, setResetPasswordBusyByUser] = useState({});
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(INITIAL_FORM);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [accessError, setAccessError] = useState(null);
   const [accessSuccess, setAccessSuccess] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const loadUsers = async () => {
@@ -97,6 +105,13 @@ export default function UsersPage() {
       });
       return next;
     });
+    setResetPasswordFormByUser((current) => {
+      const next = {};
+      usersData.forEach((user) => {
+        next[user.id] = current[user.id] || INITIAL_RESET_PASSWORD_FORM;
+      });
+      return next;
+    });
 
     const nonSuperusers = usersData.filter((user) => !user.is_superuser);
     if (nonSuperusers.length === 0) {
@@ -136,6 +151,8 @@ export default function UsersPage() {
     setSuccess(null);
     setAccessError(null);
     setAccessSuccess(null);
+    setPasswordError(null);
+    setPasswordSuccess(null);
 
     const fullName = String(form.full_name || "").trim();
     const email = String(form.email || "").trim();
@@ -194,6 +211,19 @@ export default function UsersPage() {
     });
   };
 
+  const setResetPasswordForm = (userId, patch) => {
+    setResetPasswordFormByUser((current) => {
+      const base = current[userId] || INITIAL_RESET_PASSWORD_FORM;
+      return {
+        ...current,
+        [userId]: {
+          newPassword: patch.newPassword !== undefined ? patch.newPassword : base.newPassword,
+          confirmPassword: patch.confirmPassword !== undefined ? patch.confirmPassword : base.confirmPassword
+        }
+      };
+    });
+  };
+
   const handleGrantAccess = async (userId) => {
     setAccessError(null);
     setAccessSuccess(null);
@@ -243,6 +273,45 @@ export default function UsersPage() {
       userId,
       message: `Acesso removido do livro ${label}.`
     });
+  };
+
+  const handleResetPassword = async (user) => {
+    setPasswordError(null);
+    setPasswordSuccess(null);
+    setError(null);
+    setSuccess(null);
+
+    const payload = resetPasswordFormByUser[user.id] || INITIAL_RESET_PASSWORD_FORM;
+    const newPassword = String(payload.newPassword || "");
+    const confirmPassword = String(payload.confirmPassword || "");
+    if (newPassword.length < 8) {
+      setPasswordError({ code: "VALIDATION_ERROR", message: "A nova senha deve ter pelo menos 8 caracteres." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError({ code: "VALIDATION_ERROR", message: "A confirmação de senha não confere." });
+      return;
+    }
+
+    const shouldContinue =
+      typeof window === "undefined"
+        ? true
+        : window.confirm(`Redefinir senha do usuário "${user.email}"?`);
+    if (!shouldContinue) return;
+
+    setResetPasswordBusyByUser((current) => ({ ...current, [user.id]: true }));
+    const res = await api.post(`/auth/users/${user.id}/reset-password`, { new_password: newPassword });
+    setResetPasswordBusyByUser((current) => ({ ...current, [user.id]: false }));
+    if (!res.ok) {
+      setPasswordError(res.error);
+      return;
+    }
+
+    setResetPasswordFormByUser((current) => ({
+      ...current,
+      [user.id]: INITIAL_RESET_PASSWORD_FORM
+    }));
+    setPasswordSuccess(`Senha redefinida para ${user.email}.`);
   };
 
   return (
@@ -332,6 +401,19 @@ export default function UsersPage() {
         </div>
       ) : null}
 
+      {passwordError ? (
+        <div className="alert alert-danger" role="alert">
+          {passwordError.code ? `${passwordError.code}: ` : ""}
+          {passwordError.message || "Falha ao redefinir senha do usuário."}
+        </div>
+      ) : null}
+
+      {passwordSuccess ? (
+        <div className="alert alert-success" role="alert">
+          {passwordSuccess}
+        </div>
+      ) : null}
+
       <div className="d-flex align-items-center justify-content-between mb-2">
         <h5 className="mb-0">Usuários cadastrados</h5>
         <button
@@ -352,6 +434,7 @@ export default function UsersPage() {
               <th>E-mail</th>
               <th>Ativo</th>
               <th>Perfil</th>
+              <th>Senha</th>
               <th>Acesso a livros</th>
               <th>Criado em</th>
             </tr>
@@ -359,7 +442,7 @@ export default function UsersPage() {
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td className="small-muted" colSpan={6}>
+                <td className="small-muted" colSpan={7}>
                   {loading ? "Carregando usuários..." : "Nenhum usuário cadastrado."}
                 </td>
               </tr>
@@ -376,6 +459,38 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td>{user.is_superuser ? "Superusuário" : "Padrão"}</td>
+                  <td style={{ minWidth: "280px" }}>
+                    <div className="d-flex gap-2 flex-wrap align-items-center">
+                      <input
+                        className="form-control form-control-sm"
+                        style={{ maxWidth: "180px" }}
+                        type="password"
+                        minLength={8}
+                        value={resetPasswordFormByUser[user.id]?.newPassword || ""}
+                        onChange={(event) => setResetPasswordForm(user.id, { newPassword: event.target.value })}
+                        placeholder="Nova senha"
+                        disabled={Boolean(resetPasswordBusyByUser[user.id])}
+                      />
+                      <input
+                        className="form-control form-control-sm"
+                        style={{ maxWidth: "180px" }}
+                        type="password"
+                        minLength={8}
+                        value={resetPasswordFormByUser[user.id]?.confirmPassword || ""}
+                        onChange={(event) => setResetPasswordForm(user.id, { confirmPassword: event.target.value })}
+                        placeholder="Confirmar senha"
+                        disabled={Boolean(resetPasswordBusyByUser[user.id])}
+                      />
+                      <button
+                        className="btn btn-sm btn-outline-warning"
+                        type="button"
+                        onClick={() => handleResetPassword(user)}
+                        disabled={Boolean(resetPasswordBusyByUser[user.id])}
+                      >
+                        {resetPasswordBusyByUser[user.id] ? "Salvando..." : "Redefinir"}
+                      </button>
+                    </div>
+                  </td>
                   <td style={{ minWidth: "360px" }}>
                     {user.is_superuser ? (
                       <span className="small-muted">Acesso total (superusuário).</span>
