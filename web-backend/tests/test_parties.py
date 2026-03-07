@@ -466,17 +466,10 @@ def test_create_vendor_missing_required_fields(client):
 
 
 def test_customer_invalid_data_types(client):
-    """Test validation errors with wrong data types for customer."""
     book_id = create_book(client)
     currency = create_commodity(client)
-    
-    # NOTE: The API currently coerces many types automatically due to Pydantic
-    # - Numbers to strings for text fields
-    # - String "yes"/"true" may be coerced to boolean True
-    # This is expected Pydantic behavior but could be made stricter
-    # with custom validators if needed
-    
-    # active as string "yes" (may be coerced)
+
+    # Pydantic v2 lax mode coerces "yes" → True for bool fields.
     resp = client.post("/customers", json={
         "book_id": book_id,
         "name": "Test",
@@ -484,5 +477,5 @@ def test_customer_invalid_data_types(client):
         "currency_guid": currency,
         "active": "yes",
     })
-    # Pydantic may coerce this
-    assert resp.status_code in (201, 400, 422)
+    assert resp.status_code == 201
+    assert resp.json()["active"] is True

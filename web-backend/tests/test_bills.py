@@ -693,6 +693,46 @@ def test_vendor_delete_rejected_when_has_bills(client):
     assert delete_vendor.json()["code"] == "VENDOR_HAS_BILLS"
 
 
+def test_bill_list_isolated_by_book(client):
+    currency_guid = create_currency(client, "BRL")
+    book_a = create_book(client, "Book A Bills")
+    book_b = create_book(client, "Book B Bills")
+
+    vendor_a = create_vendor(client, book_id=book_a, currency_guid=currency_guid, vendor_id="VA01")
+    vendor_b = create_vendor(client, book_id=book_b, currency_guid=currency_guid, vendor_id="VB01")
+
+    bill_a = client.post(
+        "/bills",
+        json={"book_id": book_a, "id": "B00001", "currency_guid": currency_guid, "vendor_guid": vendor_a},
+    )
+    assert bill_a.status_code == 201
+    assert bill_a.json()["book_id"] == book_a
+
+    bill_b = client.post(
+        "/bills",
+        json={"book_id": book_b, "id": "B00001", "currency_guid": currency_guid, "vendor_guid": vendor_b},
+    )
+    assert bill_b.status_code == 201
+
+    # Flat list: book A returns only its own bill
+    list_a = client.get(f"/bills?book_id={book_a}")
+    assert list_a.status_code == 200
+    assert len(list_a.json()) == 1
+    assert list_a.json()[0]["book_id"] == book_a
+
+    # Paginated list: same isolation
+    page_a = client.get(f"/bills/list?book_id={book_a}&sort_key=id&sort_direction=asc&page=1&page_size=25")
+    assert page_a.status_code == 200
+    assert page_a.json()["total_items"] == 1
+    assert page_a.json()["items"][0]["book_id"] == book_a
+
+    # Book B only sees its own bill
+    list_b = client.get(f"/bills?book_id={book_b}")
+    assert list_b.status_code == 200
+    assert len(list_b.json()) == 1
+    assert list_b.json()[0]["book_id"] == book_b
+
+
 def test_bill_source_links_include_post_and_payment_transactions(client):
     book_id = create_book(client, "Bills Source Links")
     currency_guid = create_currency(client, "BRL")

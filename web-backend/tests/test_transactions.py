@@ -472,6 +472,45 @@ def test_cannot_delete_account_or_commodity_in_use_by_transactions(client):
     assert delete_tx.status_code == 204
 
 
+def test_transactions_ordered_by_post_date_then_enter_date(client):
+    book_id = create_book(client)
+    commodity_id = create_commodity(client)
+    root_id = create_root_account(client, book_id=book_id, commodity_id=commodity_id)
+    asset_id = create_child_account(
+        client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Cash", account_type="ASSET"
+    )
+    equity_id = create_child_account(
+        client, book_id=book_id, commodity_id=commodity_id, parent_id=root_id, name="Equity", account_type="EQUITY"
+    )
+
+    def _tx(description, post_date, enter_date=None):
+        payload = {
+            "currency_guid": commodity_id,
+            "post_date": post_date,
+            "description": description,
+            "splits": [
+                {"account_guid": asset_id, "memo": "", "action": "", "reconcile_state": "n", "value_num": 10, "value_denom": 1, "quantity_num": 10, "quantity_denom": 1},
+                {"account_guid": equity_id, "memo": "", "action": "", "reconcile_state": "n", "value_num": -10, "value_denom": 1, "quantity_num": -10, "quantity_denom": 1},
+            ],
+        }
+        if enter_date is not None:
+            payload["enter_date"] = enter_date
+        r = client.post("/transactions", json=payload)
+        assert r.status_code == 201
+        return r.json()["guid"]
+
+    # Different post_dates: A (Feb 10) → C-early (Feb 15, entered 09h) → C-late (Feb 15, entered 11h) → B (Feb 20)
+    _tx("B", "2026-02-20T10:00:00Z")
+    _tx("A", "2026-02-10T10:00:00Z")
+    _tx("C-late",  "2026-02-15T10:00:00Z", enter_date="2026-02-15T11:00:00Z")
+    _tx("C-early", "2026-02-15T10:00:00Z", enter_date="2026-02-15T09:00:00Z")
+
+    listed = client.get(f"/transactions?book_id={book_id}")
+    assert listed.status_code == 200
+    descriptions = [tx["description"] for tx in listed.json()]
+    assert descriptions == ["A", "C-early", "C-late", "B"]
+
+
 def test_create_transaction_missing_required_fields(client):
     """Test validation errors when creating transaction without required fields."""
     book_id = create_book(client)

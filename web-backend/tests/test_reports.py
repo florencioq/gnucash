@@ -657,8 +657,9 @@ def test_invoice_settlement_by_customer_report(client):
     expected_open_days = (datetime.now(UTC).date() - datetime(2026, 2, 28, tzinfo=UTC).date()).days
     assert summaries_by_customer[customer_b]["invoice_count"] == 2
     assert summaries_by_customer[customer_b]["avg_days_difference"] == pytest.approx((0 + expected_open_days) / 2)
-    assert summaries_by_customer[customer_b]["min_days_difference"] == expected_open_days
-    assert summaries_by_customer[customer_b]["max_days_difference"] == 0
+    # invoice 000201 was paid on the month-end date (days_difference=0); 000202 is still open (days_difference=expected_open_days)
+    assert summaries_by_customer[customer_b]["min_days_difference"] == 0
+    assert summaries_by_customer[customer_b]["max_days_difference"] == expected_open_days
 
     by_customer_response = client.get(
         f"/reports/invoices/settlement-by-customer?book_id={book_id}&customer_guid={customer_a}"

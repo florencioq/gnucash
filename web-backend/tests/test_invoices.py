@@ -1275,6 +1275,46 @@ def test_invoice_unpost_rejected_when_lot_has_payment_split(client):
     assert unpost.json()["code"] == "INVOICE_HAS_PAYMENTS"
 
 
+def test_invoice_list_isolated_by_book(client):
+    currency_guid = create_currency(client, "BRL")
+    book_a = create_book(client, "Book A")
+    book_b = create_book(client, "Book B")
+
+    customer_a = create_customer(client, book_id=book_a, currency_guid=currency_guid, customer_id="CA01")
+    customer_b = create_customer(client, book_id=book_b, currency_guid=currency_guid, customer_id="CB01")
+
+    inv_a = client.post(
+        "/invoices",
+        json={"book_id": book_a, "id": "000001", "currency_guid": currency_guid, "customer_guid": customer_a},
+    )
+    assert inv_a.status_code == 201
+    assert inv_a.json()["book_id"] == book_a
+
+    inv_b = client.post(
+        "/invoices",
+        json={"book_id": book_b, "id": "000001", "currency_guid": currency_guid, "customer_guid": customer_b},
+    )
+    assert inv_b.status_code == 201
+
+    # Flat list: book A returns only its own invoice
+    list_a = client.get(f"/invoices?book_id={book_a}")
+    assert list_a.status_code == 200
+    assert len(list_a.json()) == 1
+    assert list_a.json()[0]["book_id"] == book_a
+
+    # Paginated list: same isolation
+    page_a = client.get(f"/invoices/list?book_id={book_a}&sort_key=id&sort_direction=asc&page=1&page_size=25")
+    assert page_a.status_code == 200
+    assert page_a.json()["total_items"] == 1
+    assert page_a.json()["items"][0]["book_id"] == book_a
+
+    # Book B only sees its own invoice
+    list_b = client.get(f"/invoices?book_id={book_b}")
+    assert list_b.status_code == 200
+    assert len(list_b.json()) == 1
+    assert list_b.json()[0]["book_id"] == book_b
+
+
 def uuid_entry_like() -> str:
     return "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
