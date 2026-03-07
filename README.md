@@ -108,15 +108,47 @@ AUTH_PASSWORD_ITERATIONS=210000
 SEED_ON_STARTUP=false
 ```
 
-## 5) Primeiro deploy remoto
+## 5) Deploy local e remoto (com exemplos)
 
-Na raiz do projeto local:
+Todos os comandos abaixo sao executados na sua maquina local, na raiz do projeto.
+
+### 5.1) Deploy local (Docker local)
+
+Modo manual:
+
+```bash
+docker compose --env-file .env.prod up -d --build
+docker compose --env-file .env.prod ps
+```
+
+Modo script:
+
+```bash
+scripts/update-docker-stack.sh --env-file .env.prod
+```
+
+### 5.2) Deploy remoto (Docker Context `cash`)
+
+Modo manual:
 
 ```bash
 docker --context cash compose --env-file .env.prod up -d --build
+docker --context cash compose --env-file .env.prod ps
 ```
 
-Validacao:
+Modo script:
+
+```bash
+scripts/update-docker-stack.sh --context cash --env-file .env.prod
+```
+
+Opcional (validar sem executar):
+
+```bash
+scripts/update-docker-stack.sh --context cash --env-file .env.prod --dry-run
+```
+
+### 5.3) Validacao de deploy remoto
 
 ```bash
 docker --context cash compose --env-file .env.prod ps
