@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const REPORT_STATE_KEY = "gnucash.account-transfers-report-state.v1";
@@ -323,6 +325,72 @@ export default function AccountTransfersReportPage({ onOpenInvoicing = null, onO
     return sum;
   }, [items]);
 
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+
+  const downloadPdf = () => {
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    const bookName = activeBook?.name || activeBook?.id || "";
+    const srcNames = sourceIds.map((id) => accountById.get(id)?.name || id).join(", ") || "-";
+    const dstNames = destIds.map((id) => accountById.get(id)?.name || id).join(", ") || "Todas";
+    const period = [startDate, endDate].filter(Boolean).join(" a ") || "Todos os períodos";
+
+    doc.setFontSize(14);
+    doc.text("Pagamentos por Conta", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Livro: ${bookName}`, 14, 23);
+    doc.text(`Conta devedora: ${srcNames}`, 14, 28);
+    doc.text(`Conta de pagamento: ${dstNames}`, 14, 33);
+    doc.text(`Período: ${period}`, 14, 38);
+    doc.text(`Total de registros: ${totalItems}`, 14, 43);
+
+    const fmt = (num) =>
+      new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num));
+
+    const rows = items.map((item) => {
+      const srcSplits = item.source_splits || [];
+      const srcTotal = splitsTotal(srcSplits);
+      const ownerType = item.linked_owner_type || "";
+      const docLabel = ownerType === "CUSTOMER"
+        ? `Fatura ${item.linked_invoice_id || ""}`.trim()
+        : ownerType === "VENDOR"
+        ? `Compra ${item.linked_invoice_id || ""}`.trim()
+        : "-";
+      const memos = srcSplits.map((s) => s.memo).filter(Boolean).join("; ");
+      return [
+        formatDateDisplay(item.post_date),
+        item.description || "-",
+        splitsSummary(srcSplits),
+        srcTotal !== null ? fmt(srcTotal) : "-",
+        docLabel,
+        memos || "-",
+      ];
+    });
+
+    // Page total row
+    if (totalSrc !== null) {
+      rows.push(["", "Total (página)", "", fmt(totalSrc), "", ""]);
+    }
+
+    autoTable(doc, {
+      startY: 48,
+      head: [["Data", "Descrição", "Conta de pagamento", "Valor pago", "Compra / Fatura", "Memo"]],
+      body: rows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [52, 73, 94] },
+      columnStyles: { 3: { halign: "right" } },
+      didParseCell: (data) => {
+        if (data.row.index === rows.length - 1 && totalSrc !== null) {
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    doc.save(`pagamentos-por-conta-${dateStr}.pdf`);
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -332,6 +400,16 @@ export default function AccountTransfersReportPage({ onOpenInvoicing = null, onO
             Pagamentos de compras/faturas cujo lançamento de postagem débita a conta de despesa selecionada, filtrados pela conta de pagamento.
           </div>
         </div>
+        {hasSearched && items.length > 0 ? (
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={downloadPdf}
+            title="Baixar PDF da página atual"
+          >
+            ⬇ PDF
+          </button>
+        ) : null}
       </div>
 
       {activeBook ? (
