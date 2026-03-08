@@ -751,7 +751,12 @@ export default function App() {
   const closeDynamicTab = (tabId, preferredFallbackTabId = "") => {
     const currentIds = tabs.map((tab) => tab.id);
     const currentIndex = currentIds.indexOf(tabId);
-    const defaultFallbackTab = currentIndex > 0 ? currentIds[currentIndex - 1] : "books";
+    const detailTabIdSet = new Set(detailTabs.map((t) => t.id));
+    const prevTabId = currentIndex > 0 ? currentIds[currentIndex - 1] : null;
+    const defaultFallbackTab =
+      prevTabId && detailTabIdSet.has(prevTabId) && prevTabId !== tabId
+        ? prevTabId
+        : DEFAULT_AUTH_TAB_ID;
     const fallbackTab =
       preferredFallbackTabId && tabIds.has(preferredFallbackTabId)
         ? preferredFallbackTabId
