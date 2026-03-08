@@ -59,7 +59,7 @@ const baseTabs = [
   },
   {
     id: "account-transfers-report",
-    label: "Transferências",
+    label: "Pagamentos por Conta",
     component: AccountTransfersReportPage
   },
   { id: "financial-dashboard", label: "Painel Financeiro", component: FinancialDashboardPage },
@@ -237,7 +237,7 @@ function sanitizeReportTabs(items) {
         ? ACCOUNT_TRANSFERS_DETAIL_TAB_ID
         : INCOME_STATEMENT_DETAIL_TAB_ID;
     const fallbackLabel =
-      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Transferências" : "DRE Mensal";
+      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Pagamentos por Conta" : "DRE Mensal";
 
     const label =
       typeof item?.label === "string" && item.label.trim().length > 0
@@ -514,7 +514,7 @@ export default function App() {
         ? ACCOUNT_TRANSFERS_DETAIL_TAB_ID
         : INCOME_STATEMENT_DETAIL_TAB_ID;
     const fallbackLabel =
-      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Transferências" : "DRE Mensal";
+      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Pagamentos por Conta" : "DRE Mensal";
     const normalizedLabel = String(label || "").trim() || fallbackLabel;
     setOpenReportTabs((current) => {
       const existing = current.find((tab) => tab.id === tabId);
@@ -552,7 +552,7 @@ export default function App() {
   }, [handleOpenReportTab]);
 
   const handleOpenAccountTransfersTab = useCallback(() => {
-    handleOpenReportTab({ reportId: "account-transfers", label: "Transferências" });
+    handleOpenReportTab({ reportId: "account-transfers", label: "Pagamentos por Conta" });
   }, [handleOpenReportTab]);
 
   const handleOpenWorkspaceTab = useCallback(({ workspaceId, label }) => {
