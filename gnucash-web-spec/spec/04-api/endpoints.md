@@ -201,7 +201,31 @@ Protection rule:
   - `margin_percent` and `growth_percent` are `null` when denominator is zero.
   - query window covers the selected year and the previous year (for YoY comparisons).
 
+- `GET /reports/account-transfers?book_id=&source_account_id=&dest_account_id=&start_date=&end_date=&sort_direction=&page=&page_size=`
+  - **Pagamentos por Conta** report: invoice/bill lot-based payment report.
+  - Query logic (three steps):
+    1. Find all invoices/bills in `book_id` whose **posting transaction** contains a split that debits one of the `source_account_id` accounts (i.e. the expense/debit account recorded at posting time).
+    2. Collect the `post_lot` of each matched invoice/bill.
+    3. Return all **payment transactions** that contain a split referencing one of those lots — explicitly excluding the posting transactions themselves.
+  - `source_account_id` — repeatable; at least one required; identifies the expense account debited at posting (e.g. Despesas / Florêncio Queiroz).
+  - `dest_account_id` — repeatable; optional; when provided, further filters to payment transactions that also include a split in one of the given payment accounts (e.g. Banco C6); when empty, all payment transactions for matching lots are returned.
+  - `start_date` / `end_date` — optional ISO date strings; filter by transaction date of the payment transaction.
+  - `sort_direction` — `asc` (default) or `desc`.
+  - `page` / `page_size` — 1-based pagination; `page_size` max 200.
+  - Returns `{items, page, page_size, total_items, total_pages}`.
+  - Each item: `tx_date`, `description`, `source_splits` (list of `{account_guid, account_name, value_num, value_denom}`), `linked_invoice_id`, `linked_invoice_type` (`INVOICE`|`BILL`|null), `memo`.
+- `GET /reports/transfers?book_id=&source_account_id=&dest_account_id=&start_date=&end_date=&sort_direction=&page=&page_size=`
+  - **Transferências entre Contas** report: generic source→destination account transfer report.
+  - `source_account_id` — repeatable; at least one required; selects transactions that include a split in one of the given accounts.
+  - `dest_account_id` — repeatable; optional; when provided, additionally requires a split in one of the destination accounts in the same transaction; when empty, all counterpart (non-source) splits are returned.
+  - `start_date` / `end_date` — optional ISO date strings; filter by transaction date.
+  - `sort_direction` — `asc` (default) or `desc`.
+  - `page` / `page_size` — 1-based pagination; `page_size` max 200.
+  - Returns `{items, page, page_size, total_items, total_pages}`.
+  - Each item: `tx_date`, `description`, `source_splits` (list of `{account_guid, account_name, value_num, value_denom}`), `dest_splits` (list of `{account_guid, account_name, value_num, value_denom}`), `linked_invoice_id`, `linked_invoice_type` (`INVOICE`|`BILL`|null), `memo`.
+
 Validation notes:
 - month format and range limits are enforced.
 - drill-down account must belong to selected book and be `INCOME` or `EXPENSE`.
 - `year` must be in range 1900–3000.
+- `source_account_id` is required (at least one) for both `/reports/account-transfers` and `/reports/transfers`; returns `400` if absent.
