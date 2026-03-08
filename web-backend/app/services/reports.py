@@ -1012,3 +1012,205 @@ def build_account_transfers_report(
         "page": current_page,
         "page_size": page_size,
     }
+
+
+def build_transfers_report(
+    db: Session,
+    *,
+    book_id: str,
+    source_account_ids: list[str],
+    dest_account_ids: list[str],
+    start_date: date | None,
+    end_date: date | None,
+    sort_direction: Literal["asc", "desc"],
+    page: int,
+    page_size: int,
+) -> dict:
+    """Generic account-to-account transfer report.
+
+    Finds transactions that have at least one split in any source account.
+    When dest_account_ids are provided, further restricts to transactions
+    that also have at least one split in any destination account.
+    """
+    empty = {"items": [], "total_items": 0, "total_pages": 1, "page": page, "page_size": page_size}
+
+    if not source_account_ids:
+        return empty
+
+    dest_mode = bool(dest_account_ids)
+
+    src_rows = db.execute(
+        select(Account.id, Account.name).where(
+            Account.id.in_(source_account_ids),
+            Account.book_id == book_id,
+        )
+    ).all()
+    account_name_by_id: dict[str, str] = {row.id: row.name for row in src_rows}
+    valid_source_ids = [i for i in source_account_ids if i in account_name_by_id]
+
+    if not valid_source_ids:
+        return empty
+
+    valid_dest_ids: list[str] = []
+    if dest_mode:
+        dst_rows = db.execute(
+            select(Account.id, Account.name).where(
+                Account.id.in_(dest_account_ids),
+                Account.book_id == book_id,
+            )
+        ).all()
+        for row in dst_rows:
+            account_name_by_id[row.id] = row.name
+        valid_dest_ids = [i for i in dest_account_ids if i in account_name_by_id]
+        if not valid_dest_ids:
+            return empty
+
+    SrcSplit = aliased(Split)
+    movement_date = func.coalesce(Transaction.post_date, Transaction.enter_date)
+
+    qualifying_subq = (
+        select(Transaction.guid.label("tx_guid"))
+        .distinct()
+        .join(SrcSplit, SrcSplit.tx_guid == Transaction.guid)
+        .where(SrcSplit.account_guid.in_(valid_source_ids))
+    )
+    if dest_mode:
+        DstSplit = aliased(Split)
+        qualifying_subq = (
+            qualifying_subq
+            .join(DstSplit, DstSplit.tx_guid == Transaction.guid)
+            .where(DstSplit.account_guid.in_(valid_dest_ids))
+        )
+    if start_date is not None:
+        start_dt = datetime.combine(start_date, time.min, tzinfo=UTC)
+        qualifying_subq = qualifying_subq.where(movement_date >= start_dt)
+    if end_date is not None:
+        end_dt = datetime.combine(end_date, time.max, tzinfo=UTC)
+        qualifying_subq = qualifying_subq.where(movement_date <= end_dt)
+
+    qualifying_subq = qualifying_subq.subquery()
+
+    total_items = db.execute(
+        select(func.count()).select_from(qualifying_subq)
+    ).scalar_one()
+
+    if total_items == 0:
+        return empty
+
+    total_pages = max(1, ceil(total_items / page_size))
+    current_page = min(page, total_pages)
+
+    order = (
+        func.coalesce(Transaction.post_date, Transaction.enter_date).asc()
+        if sort_direction == "asc"
+        else func.coalesce(Transaction.post_date, Transaction.enter_date).desc()
+    )
+    paged_ids = db.execute(
+        select(Transaction.guid)
+        .where(Transaction.guid.in_(select(qualifying_subq.c.tx_guid)))
+        .order_by(order, Transaction.guid.asc())
+        .offset((current_page - 1) * page_size)
+        .limit(page_size)
+    ).scalars().all()
+
+    if not paged_ids:
+        return {**empty, "total_items": total_items, "total_pages": total_pages, "page": current_page}
+
+    tx_rows = db.execute(
+        select(Transaction).where(Transaction.guid.in_(paged_ids))
+    ).scalars().all()
+    tx_by_id = {tx.guid: tx for tx in tx_rows}
+
+    if dest_mode:
+        relevant_ids = set(valid_source_ids) | set(valid_dest_ids)
+        splits_rows = db.execute(
+            select(Split).where(
+                Split.tx_guid.in_(paged_ids),
+                Split.account_guid.in_(relevant_ids),
+            )
+        ).scalars().all()
+    else:
+        splits_rows = db.execute(
+            select(Split).where(Split.tx_guid.in_(paged_ids))
+        ).scalars().all()
+        unknown_ids = {s.account_guid for s in splits_rows if s.account_guid not in account_name_by_id}
+        if unknown_ids:
+            extra_rows = db.execute(
+                select(Account.id, Account.name).where(Account.id.in_(unknown_ids))
+            ).all()
+            for row in extra_rows:
+                account_name_by_id[row.id] = row.name
+
+    splits_by_tx: dict[str, list[Split]] = defaultdict(list)
+    for sp in splits_rows:
+        splits_by_tx[sp.tx_guid].append(sp)
+
+    src_set = set(valid_source_ids)
+    dst_set = set(valid_dest_ids)
+
+    # Detect linked invoices/bills: posting transactions
+    posting_rows = db.execute(
+        select(Invoice.post_txn, Invoice.guid, Invoice.id, Invoice.owner_type)
+        .where(Invoice.post_txn.in_(paged_ids))
+    ).all()
+    linked_by_tx: dict[str, tuple[str, str, str]] = {}
+    for row in posting_rows:
+        if row.post_txn:
+            linked_by_tx[row.post_txn] = (row.guid, row.id or "", row.owner_type or "")
+
+    # Detect linked invoices/bills: payment transactions
+    payment_rows = db.execute(
+        select(Invoice.guid, Invoice.id, Invoice.owner_type, Split.tx_guid)
+        .join(Split, Split.lot_guid == Invoice.post_lot)
+        .where(Split.tx_guid.in_(paged_ids))
+        .where(Invoice.post_lot.is_not(None))
+    ).all()
+    for row in payment_rows:
+        if row.tx_guid and row.tx_guid not in linked_by_tx:
+            linked_by_tx[row.tx_guid] = (row.guid, row.id or "", row.owner_type or "")
+
+    def _split_info(s: Split) -> dict:
+        return {
+            "account_id": s.account_guid,
+            "account_name": account_name_by_id.get(s.account_guid, ""),
+            "value_num": s.value_num,
+            "value_denom": s.value_denom,
+            "memo": s.memo or "",
+        }
+
+    items = []
+    for tx_guid in paged_ids:
+        tx = tx_by_id.get(tx_guid)
+        if tx is None:
+            continue
+        tx_splits = splits_by_tx.get(tx_guid, [])
+        src_splits = [s for s in tx_splits if s.account_guid in src_set]
+        dst_splits = (
+            [s for s in tx_splits if s.account_guid in dst_set]
+            if dest_mode
+            else [s for s in tx_splits if s.account_guid not in src_set]
+        )
+
+        post_date = tx.post_date
+        if post_date is not None and post_date.tzinfo is None:
+            post_date = post_date.replace(tzinfo=UTC)
+
+        linked = linked_by_tx.get(tx_guid)
+        items.append({
+            "tx_guid": tx.guid,
+            "post_date": post_date,
+            "description": tx.description,
+            "linked_invoice_guid": linked[0] if linked else None,
+            "linked_invoice_id": linked[1] if linked else None,
+            "linked_owner_type": linked[2] if linked else None,
+            "source_splits": [_split_info(s) for s in src_splits],
+            "dest_splits": [_split_info(s) for s in dst_splits],
+        })
+
+    return {
+        "items": items,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "page": current_page,
+        "page_size": page_size,
+    }

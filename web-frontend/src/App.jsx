@@ -14,6 +14,7 @@ import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import InvoiceSettlementReportPage from "./pages/InvoiceSettlementReportPage.jsx";
 import AccountTransfersReportPage from "./pages/AccountTransfersReportPage.jsx";
+import TransfersBetweenAccountsPage from "./pages/TransfersBetweenAccountsPage.jsx";
 import FinancialDashboardPage from "./pages/FinancialDashboardPage.jsx";
 import ReceivablesPage from "./pages/ReceivablesPage.jsx";
 import PayablesPage from "./pages/PayablesPage.jsx";
@@ -33,6 +34,7 @@ const DEFAULT_AUTH_TAB_ID = "income-statement";
 const INCOME_STATEMENT_DETAIL_TAB_ID = "report:income-statement";
 const LEDGER_DETAIL_TAB_ID = "report:ledger";
 const ACCOUNT_TRANSFERS_DETAIL_TAB_ID = "report:account-transfers";
+const TRANSFERS_DETAIL_TAB_ID = "report:transfers";
 const WORKSPACE_DETAIL_TAB_BY_ID = {
   accounts: "workspace:accounts",
   receivables: "workspace:receivables",
@@ -62,6 +64,11 @@ const baseTabs = [
     label: "Pagamentos por Conta",
     component: AccountTransfersReportPage
   },
+  {
+    id: "transfers-report",
+    label: "Transferências",
+    component: TransfersBetweenAccountsPage
+  },
   { id: "financial-dashboard", label: "Painel Financeiro", component: FinancialDashboardPage },
   { id: "receivables", label: "Contas a Receber", component: ReceivablesPage },
   { id: "payables", label: "Contas a Pagar", component: PayablesPage },
@@ -83,7 +90,7 @@ const primaryNavSectionsConfig = [
   {
     id: "reports",
     label: "Relatórios",
-    itemIds: ["income-statement", "invoice-settlement-report", "account-transfers-report", "financial-dashboard"]
+    itemIds: ["income-statement", "invoice-settlement-report", "account-transfers-report", "transfers-report", "financial-dashboard"]
   },
   {
     id: "masters",
@@ -106,6 +113,7 @@ const navIconByTabId = {
   "income-statement": "📈",
   "invoice-settlement-report": "⏱",
   "account-transfers-report": "🔄",
+  "transfers-report": "↔",
   "financial-dashboard": "🏦",
   books: "📚",
   commodities: "💱",
@@ -139,6 +147,10 @@ function isLedgerDetailTab(tabId) {
 
 function isAccountTransfersDetailTab(tabId) {
   return tabId === ACCOUNT_TRANSFERS_DETAIL_TAB_ID;
+}
+
+function isTransfersDetailTab(tabId) {
+  return tabId === TRANSFERS_DETAIL_TAB_ID;
 }
 
 function workspaceIdFromDetailTabId(tabId) {
@@ -226,7 +238,7 @@ function sanitizeReportTabs(items) {
     const reportId =
       explicitReportId ||
       (rawId.startsWith("report:") ? rawId.slice("report:".length) : "");
-    if (reportId !== "income-statement" && reportId !== "ledger" && reportId !== "account-transfers") continue;
+    if (reportId !== "income-statement" && reportId !== "ledger" && reportId !== "account-transfers" && reportId !== "transfers") continue;
     if (seenReportIds.has(reportId)) continue;
     seenReportIds.add(reportId);
 
@@ -235,9 +247,14 @@ function sanitizeReportTabs(items) {
         ? LEDGER_DETAIL_TAB_ID
         : reportId === "account-transfers"
         ? ACCOUNT_TRANSFERS_DETAIL_TAB_ID
+        : reportId === "transfers"
+        ? TRANSFERS_DETAIL_TAB_ID
         : INCOME_STATEMENT_DETAIL_TAB_ID;
     const fallbackLabel =
-      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Pagamentos por Conta" : "DRE Mensal";
+      reportId === "ledger" ? "Razão"
+      : reportId === "account-transfers" ? "Pagamentos por Conta"
+      : reportId === "transfers" ? "Transferências"
+      : "DRE Mensal";
 
     const label =
       typeof item?.label === "string" && item.label.trim().length > 0
@@ -370,6 +387,8 @@ export default function App() {
             ? LedgerPage
             : tab.reportId === "account-transfers"
             ? AccountTransfersReportPage
+            : tab.reportId === "transfers"
+            ? TransfersBetweenAccountsPage
             : IncomeStatementPage,
         closable: true
       })),
@@ -512,9 +531,14 @@ export default function App() {
         ? LEDGER_DETAIL_TAB_ID
         : reportId === "account-transfers"
         ? ACCOUNT_TRANSFERS_DETAIL_TAB_ID
+        : reportId === "transfers"
+        ? TRANSFERS_DETAIL_TAB_ID
         : INCOME_STATEMENT_DETAIL_TAB_ID;
     const fallbackLabel =
-      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Pagamentos por Conta" : "DRE Mensal";
+      reportId === "ledger" ? "Razão"
+      : reportId === "account-transfers" ? "Pagamentos por Conta"
+      : reportId === "transfers" ? "Transferências"
+      : "DRE Mensal";
     const normalizedLabel = String(label || "").trim() || fallbackLabel;
     setOpenReportTabs((current) => {
       const existing = current.find((tab) => tab.id === tabId);
@@ -553,6 +577,10 @@ export default function App() {
 
   const handleOpenAccountTransfersTab = useCallback(() => {
     handleOpenReportTab({ reportId: "account-transfers", label: "Pagamentos por Conta" });
+  }, [handleOpenReportTab]);
+
+  const handleOpenTransfersTab = useCallback(() => {
+    handleOpenReportTab({ reportId: "transfers", label: "Transferências" });
   }, [handleOpenReportTab]);
 
   const handleOpenWorkspaceTab = useCallback(({ workspaceId, label }) => {
@@ -735,7 +763,7 @@ export default function App() {
     if (isBillTab(tabId)) {
       setOpenBillTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
-    if (isIncomeStatementDetailTab(tabId) || isLedgerDetailTab(tabId) || isAccountTransfersDetailTab(tabId)) {
+    if (isIncomeStatementDetailTab(tabId) || isLedgerDetailTab(tabId) || isAccountTransfersDetailTab(tabId) || isTransfersDetailTab(tabId)) {
       setOpenReportTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
     if (isWorkspaceDetailTab(tabId)) {
@@ -912,6 +940,10 @@ export default function App() {
       acc[tab.id] = { onOpenInvoicing: handleOpenInvoicing, onOpenBilling: handleOpenBilling, onOpenLedger: handleOpenLedger };
       return acc;
     }
+    if (isTransfersDetailTab(tab.id)) {
+      acc[tab.id] = { onOpenInvoicing: handleOpenInvoicing, onOpenBilling: handleOpenBilling, onOpenLedger: handleOpenLedger };
+      return acc;
+    }
     acc[tab.id] = {};
     return acc;
   }, {});
@@ -926,6 +958,8 @@ export default function App() {
       : activeTab === "invoice-settlement-report"
         ? { onOpenInvoicing: handleOpenInvoicing }
       : activeTab === "account-transfers-report" || isAccountTransfersDetailTab(activeTab)
+        ? { onOpenInvoicing: handleOpenInvoicing, onOpenBilling: handleOpenBilling, onOpenLedger: handleOpenLedger }
+      : activeTab === "transfers-report" || isTransfersDetailTab(activeTab)
         ? { onOpenInvoicing: handleOpenInvoicing, onOpenBilling: handleOpenBilling, onOpenLedger: handleOpenLedger }
       : activeTab === "receivables"
         ? buildWorkspaceTabProps("receivables")
@@ -1015,6 +1049,7 @@ export default function App() {
                         const isIncomeStatementNav = tab.id === "income-statement";
                         const isLedgerNav = tab.id === "ledger";
                         const isAccountTransfersNav = tab.id === "account-transfers-report";
+                        const isTransfersNav = tab.id === "transfers-report";
                         const workspaceDetailTabId = detailTabIdFromWorkspaceId(tab.id);
                         const isWorkspaceNav = Boolean(workspaceDetailTabId);
                         const isActive =
@@ -1022,6 +1057,7 @@ export default function App() {
                           (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab)) ||
                           (isLedgerNav && isLedgerDetailTab(activeTab)) ||
                           (isAccountTransfersNav && isAccountTransfersDetailTab(activeTab)) ||
+                          (isTransfersNav && isTransfersDetailTab(activeTab)) ||
                           (isWorkspaceNav && activeTab === workspaceDetailTabId);
                         return (
                         <button
@@ -1041,6 +1077,10 @@ export default function App() {
                             }
                             if (isAccountTransfersNav) {
                               handleOpenAccountTransfersTab();
+                              return;
+                            }
+                            if (isTransfersNav) {
+                              handleOpenTransfersTab();
                               return;
                             }
                             if (isWorkspaceNav) {
