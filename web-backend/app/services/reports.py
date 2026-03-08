@@ -8,7 +8,7 @@ from math import ceil
 from typing import Literal
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.models import Account, AccountType, Commodity, Customer, Invoice, InvoiceEntry, Split, Transaction
 
@@ -796,4 +796,219 @@ def build_financial_dashboard(
         "quarters": quarters,
         "all_quarters_positive": positive_quarters_count == 4,
         "positive_quarters_count": positive_quarters_count,
+    }
+
+
+def build_account_transfers_report(
+    db: Session,
+    *,
+    book_id: str,
+    source_account_ids: list[str],
+    dest_account_ids: list[str],
+    start_date: date | None,
+    end_date: date | None,
+    sort_direction: Literal["asc", "desc"],
+    page: int,
+    page_size: int,
+) -> dict:
+    # source_account_ids = debit (expense) accounts in the posting transaction
+    # dest_account_ids   = payment accounts (e.g. C6) — optional
+    empty = {"items": [], "total_items": 0, "total_pages": 1, "page": page, "page_size": page_size}
+
+    if not source_account_ids:
+        return empty
+
+    # Validate debit (expense) accounts
+    debit_rows = db.execute(
+        select(Account.id, Account.name).where(
+            Account.id.in_(source_account_ids),
+            Account.book_id == book_id,
+        )
+    ).all()
+    account_name_by_id: dict[str, str] = {row.id: row.name for row in debit_rows}
+    valid_debit_ids = [i for i in source_account_ids if i in account_name_by_id]
+
+    if not valid_debit_ids:
+        return empty
+
+    # Validate payment accounts (optional)
+    valid_payment_ids: list[str] = []
+    if dest_account_ids:
+        pay_rows = db.execute(
+            select(Account.id, Account.name).where(
+                Account.id.in_(dest_account_ids),
+                Account.book_id == book_id,
+            )
+        ).all()
+        for row in pay_rows:
+            account_name_by_id[row.id] = row.name
+        valid_payment_ids = [i for i in dest_account_ids if i in account_name_by_id]
+        if not valid_payment_ids:
+            return empty
+
+    # Find lots from invoices/bills whose posting tx debits the selected expense accounts
+    DebitSplit = aliased(Split)
+    debit_lot_subq = (
+        select(Invoice.post_lot)
+        .join(DebitSplit, DebitSplit.tx_guid == Invoice.post_txn)
+        .where(DebitSplit.account_guid.in_(valid_debit_ids))
+        .where(Invoice.post_lot.is_not(None))
+        .distinct()
+    ).subquery()
+
+    # Payment transactions: those with an A/P split (lot_guid in invoice lots)
+    # Exclude the posting transactions themselves
+    posting_tx_subq = (
+        select(Invoice.post_txn).where(Invoice.post_txn.is_not(None))
+    ).subquery()
+
+    payment_tx_subq = (
+        select(Split.tx_guid)
+        .where(Split.lot_guid.in_(select(debit_lot_subq.c.post_lot)))
+        .where(Split.tx_guid.not_in(select(posting_tx_subq.c.post_txn)))
+        .distinct()
+    ).subquery()
+
+    # Filter further by payment accounts when specified
+    if valid_payment_ids:
+        pay_filter_subq = (
+            select(Split.tx_guid)
+            .where(Split.tx_guid.in_(select(payment_tx_subq.c.tx_guid)))
+            .where(Split.account_guid.in_(valid_payment_ids))
+            .distinct()
+        ).subquery()
+        qualifying_tx_inner = select(pay_filter_subq.c.tx_guid)
+    else:
+        qualifying_tx_inner = select(payment_tx_subq.c.tx_guid)
+
+    # Apply date filters
+    movement_date = func.coalesce(Transaction.post_date, Transaction.enter_date)
+    date_filtered_q = select(Transaction.guid).where(Transaction.guid.in_(qualifying_tx_inner))
+    if start_date is not None:
+        start_dt = datetime.combine(start_date, time.min, tzinfo=UTC)
+        date_filtered_q = date_filtered_q.where(movement_date >= start_dt)
+    if end_date is not None:
+        end_dt = datetime.combine(end_date, time.max, tzinfo=UTC)
+        date_filtered_q = date_filtered_q.where(movement_date <= end_dt)
+
+    qualifying_subq = date_filtered_q.subquery()
+
+    total_items = db.execute(
+        select(func.count()).select_from(qualifying_subq)
+    ).scalar_one()
+
+    if total_items == 0:
+        return empty
+
+    total_pages = max(1, ceil(total_items / page_size))
+    current_page = min(page, total_pages)
+
+    order = (
+        func.coalesce(Transaction.post_date, Transaction.enter_date).asc()
+        if sort_direction == "asc"
+        else func.coalesce(Transaction.post_date, Transaction.enter_date).desc()
+    )
+    paged_ids = db.execute(
+        select(Transaction.guid)
+        .where(Transaction.guid.in_(select(qualifying_subq.c.guid)))
+        .order_by(order, Transaction.guid.asc())
+        .offset((current_page - 1) * page_size)
+        .limit(page_size)
+    ).scalars().all()
+
+    if not paged_ids:
+        return {**empty, "total_items": total_items, "total_pages": total_pages, "page": current_page}
+
+    tx_rows = db.execute(
+        select(Transaction).where(Transaction.guid.in_(paged_ids))
+    ).scalars().all()
+    tx_by_id = {tx.guid: tx for tx in tx_rows}
+
+    # Fetch all splits for paged payment transactions
+    splits_rows = db.execute(
+        select(Split).where(Split.tx_guid.in_(paged_ids))
+    ).scalars().all()
+
+    # Resolve names for any account not yet in the map
+    unknown_ids = {s.account_guid for s in splits_rows if s.account_guid not in account_name_by_id}
+    if unknown_ids:
+        extra_rows = db.execute(
+            select(Account.id, Account.name).where(Account.id.in_(unknown_ids))
+        ).all()
+        for row in extra_rows:
+            account_name_by_id[row.id] = row.name
+
+    splits_by_tx: dict[str, list[Split]] = defaultdict(list)
+    for sp in splits_rows:
+        splits_by_tx[sp.tx_guid].append(sp)
+
+    # Find which lot each paged tx is paying (A/P split has lot_guid)
+    lot_guid_by_tx: dict[str, str] = {}
+    lot_account_set_by_tx: dict[str, set[str]] = defaultdict(set)
+    for sp in splits_rows:
+        if sp.lot_guid:
+            lot_guid_by_tx.setdefault(sp.tx_guid, sp.lot_guid)
+            lot_account_set_by_tx[sp.tx_guid].add(sp.account_guid)
+
+    # Map lot → invoice/bill
+    lot_guids = list(set(lot_guid_by_tx.values()))
+    lot_to_invoice: dict[str, tuple[str, str, str]] = {}
+    if lot_guids:
+        inv_rows = db.execute(
+            select(Invoice.post_lot, Invoice.guid, Invoice.id, Invoice.owner_type)
+            .where(Invoice.post_lot.in_(lot_guids))
+            .where(Invoice.post_lot.is_not(None))
+        ).all()
+        for row in inv_rows:
+            lot_to_invoice[row.post_lot] = (row.guid, row.id or "", row.owner_type or "")
+
+    payment_set = set(valid_payment_ids)
+
+    items = []
+    for tx_guid in paged_ids:
+        tx = tx_by_id.get(tx_guid)
+        if tx is None:
+            continue
+        tx_splits = splits_by_tx.get(tx_guid, [])
+        # lot_accounts = A/P side (splits that carry the lot_guid)
+        lot_accounts = lot_account_set_by_tx.get(tx_guid, set())
+        # source_splits = payment account splits (C6 etc.): those without lot_guid
+        if payment_set:
+            src_splits = [s for s in tx_splits if s.account_guid in payment_set]
+        else:
+            src_splits = [s for s in tx_splits if s.account_guid not in lot_accounts]
+        dst_splits: list = []
+
+        post_date = tx.post_date
+        if post_date is not None and post_date.tzinfo is None:
+            post_date = post_date.replace(tzinfo=UTC)
+
+        lot_guid = lot_guid_by_tx.get(tx_guid)
+        linked = lot_to_invoice.get(lot_guid) if lot_guid else None
+        items.append({
+            "tx_guid": tx.guid,
+            "post_date": post_date,
+            "description": tx.description,
+            "linked_invoice_guid": linked[0] if linked else None,
+            "linked_invoice_id": linked[1] if linked else None,
+            "linked_owner_type": linked[2] if linked else None,
+            "source_splits": [
+                {
+                    "account_id": s.account_guid,
+                    "account_name": account_name_by_id.get(s.account_guid, ""),
+                    "value_num": s.value_num,
+                    "value_denom": s.value_denom,
+                    "memo": s.memo or "",
+                }
+                for s in src_splits
+            ],
+            "dest_splits": dst_splits,
+        })
+
+    return {
+        "items": items,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "page": current_page,
+        "page_size": page_size,
     }

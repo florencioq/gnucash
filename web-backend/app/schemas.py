@@ -842,6 +842,33 @@ class FinancialDashboardOut(BaseModel):
     all_quarters_positive: bool
     positive_quarters_count: int
 
+class AccountTransferSplitInfo(BaseModel):
+    account_id: str
+    account_name: str
+    value_num: int
+    value_denom: int
+    memo: str
+
+
+class AccountTransferItemOut(BaseModel):
+    tx_guid: str
+    post_date: datetime | None
+    description: str | None
+    source_splits: list[AccountTransferSplitInfo]
+    dest_splits: list[AccountTransferSplitInfo]
+    linked_invoice_guid: str | None
+    linked_invoice_id: str | None
+    linked_owner_type: str | None
+
+
+class AccountTransfersReportOut(BaseModel):
+    items: list[AccountTransferItemOut]
+    total_items: int
+    total_pages: int
+    page: int
+    page_size: int
+
+
 class AuthRegisterRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=256)

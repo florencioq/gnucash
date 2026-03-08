@@ -13,6 +13,7 @@ import BillingListPage from "./pages/BillingListPage.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import IncomeStatementPage from "./pages/IncomeStatementPage.jsx";
 import InvoiceSettlementReportPage from "./pages/InvoiceSettlementReportPage.jsx";
+import AccountTransfersReportPage from "./pages/AccountTransfersReportPage.jsx";
 import FinancialDashboardPage from "./pages/FinancialDashboardPage.jsx";
 import ReceivablesPage from "./pages/ReceivablesPage.jsx";
 import PayablesPage from "./pages/PayablesPage.jsx";
@@ -31,6 +32,7 @@ const NEW_BILL_TAB_GUID = "new";
 const DEFAULT_AUTH_TAB_ID = "income-statement";
 const INCOME_STATEMENT_DETAIL_TAB_ID = "report:income-statement";
 const LEDGER_DETAIL_TAB_ID = "report:ledger";
+const ACCOUNT_TRANSFERS_DETAIL_TAB_ID = "report:account-transfers";
 const WORKSPACE_DETAIL_TAB_BY_ID = {
   accounts: "workspace:accounts",
   receivables: "workspace:receivables",
@@ -55,6 +57,11 @@ const baseTabs = [
     label: "Prazo Quitação",
     component: InvoiceSettlementReportPage
   },
+  {
+    id: "account-transfers-report",
+    label: "Transferências",
+    component: AccountTransfersReportPage
+  },
   { id: "financial-dashboard", label: "Painel Financeiro", component: FinancialDashboardPage },
   { id: "receivables", label: "Contas a Receber", component: ReceivablesPage },
   { id: "payables", label: "Contas a Pagar", component: PayablesPage },
@@ -76,7 +83,7 @@ const primaryNavSectionsConfig = [
   {
     id: "reports",
     label: "Relatórios",
-    itemIds: ["income-statement", "invoice-settlement-report", "financial-dashboard"]
+    itemIds: ["income-statement", "invoice-settlement-report", "account-transfers-report", "financial-dashboard"]
   },
   {
     id: "masters",
@@ -98,6 +105,7 @@ const navIconByTabId = {
   ledger: "📒",
   "income-statement": "📈",
   "invoice-settlement-report": "⏱",
+  "account-transfers-report": "🔄",
   "financial-dashboard": "🏦",
   books: "📚",
   commodities: "💱",
@@ -127,6 +135,10 @@ function isIncomeStatementDetailTab(tabId) {
 
 function isLedgerDetailTab(tabId) {
   return tabId === LEDGER_DETAIL_TAB_ID;
+}
+
+function isAccountTransfersDetailTab(tabId) {
+  return tabId === ACCOUNT_TRANSFERS_DETAIL_TAB_ID;
 }
 
 function workspaceIdFromDetailTabId(tabId) {
@@ -214,12 +226,18 @@ function sanitizeReportTabs(items) {
     const reportId =
       explicitReportId ||
       (rawId.startsWith("report:") ? rawId.slice("report:".length) : "");
-    if (reportId !== "income-statement" && reportId !== "ledger") continue;
+    if (reportId !== "income-statement" && reportId !== "ledger" && reportId !== "account-transfers") continue;
     if (seenReportIds.has(reportId)) continue;
     seenReportIds.add(reportId);
 
-    const tabId = reportId === "ledger" ? LEDGER_DETAIL_TAB_ID : INCOME_STATEMENT_DETAIL_TAB_ID;
-    const fallbackLabel = reportId === "ledger" ? "Razão" : "DRE Mensal";
+    const tabId =
+      reportId === "ledger"
+        ? LEDGER_DETAIL_TAB_ID
+        : reportId === "account-transfers"
+        ? ACCOUNT_TRANSFERS_DETAIL_TAB_ID
+        : INCOME_STATEMENT_DETAIL_TAB_ID;
+    const fallbackLabel =
+      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Transferências" : "DRE Mensal";
 
     const label =
       typeof item?.label === "string" && item.label.trim().length > 0
@@ -347,7 +365,12 @@ export default function App() {
       })),
       ...openReportTabs.map((tab) => ({
         ...tab,
-        component: tab.reportId === "ledger" ? LedgerPage : IncomeStatementPage,
+        component:
+          tab.reportId === "ledger"
+            ? LedgerPage
+            : tab.reportId === "account-transfers"
+            ? AccountTransfersReportPage
+            : IncomeStatementPage,
         closable: true
       })),
       ...openInvoiceTabs.map((tab) => ({ ...tab, component: InvoicingPage, closable: true })),
@@ -484,8 +507,14 @@ export default function App() {
 
   const handleOpenReportTab = useCallback(({ reportId, label }) => {
     if (!reportId) return;
-    const tabId = reportId === "ledger" ? LEDGER_DETAIL_TAB_ID : INCOME_STATEMENT_DETAIL_TAB_ID;
-    const fallbackLabel = reportId === "ledger" ? "Razão" : "DRE Mensal";
+    const tabId =
+      reportId === "ledger"
+        ? LEDGER_DETAIL_TAB_ID
+        : reportId === "account-transfers"
+        ? ACCOUNT_TRANSFERS_DETAIL_TAB_ID
+        : INCOME_STATEMENT_DETAIL_TAB_ID;
+    const fallbackLabel =
+      reportId === "ledger" ? "Razão" : reportId === "account-transfers" ? "Transferências" : "DRE Mensal";
     const normalizedLabel = String(label || "").trim() || fallbackLabel;
     setOpenReportTabs((current) => {
       const existing = current.find((tab) => tab.id === tabId);
@@ -520,6 +549,10 @@ export default function App() {
 
   const handleOpenIncomeStatementTab = useCallback(() => {
     handleOpenReportTab({ reportId: "income-statement", label: "DRE Mensal" });
+  }, [handleOpenReportTab]);
+
+  const handleOpenAccountTransfersTab = useCallback(() => {
+    handleOpenReportTab({ reportId: "account-transfers", label: "Transferências" });
   }, [handleOpenReportTab]);
 
   const handleOpenWorkspaceTab = useCallback(({ workspaceId, label }) => {
@@ -702,7 +735,7 @@ export default function App() {
     if (isBillTab(tabId)) {
       setOpenBillTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
-    if (isIncomeStatementDetailTab(tabId) || isLedgerDetailTab(tabId)) {
+    if (isIncomeStatementDetailTab(tabId) || isLedgerDetailTab(tabId) || isAccountTransfersDetailTab(tabId)) {
       setOpenReportTabs((current) => current.filter((tab) => tab.id !== tabId));
     }
     if (isWorkspaceDetailTab(tabId)) {
@@ -875,6 +908,10 @@ export default function App() {
       acc[tab.id] = { onOpenLedger: handleOpenLedger };
       return acc;
     }
+    if (isAccountTransfersDetailTab(tab.id)) {
+      acc[tab.id] = { onOpenInvoicing: handleOpenInvoicing, onOpenBilling: handleOpenBilling, onOpenLedger: handleOpenLedger };
+      return acc;
+    }
     acc[tab.id] = {};
     return acc;
   }, {});
@@ -888,6 +925,8 @@ export default function App() {
         ? { onOpenLedger: handleOpenLedger }
       : activeTab === "invoice-settlement-report"
         ? { onOpenInvoicing: handleOpenInvoicing }
+      : activeTab === "account-transfers-report" || isAccountTransfersDetailTab(activeTab)
+        ? { onOpenInvoicing: handleOpenInvoicing, onOpenBilling: handleOpenBilling, onOpenLedger: handleOpenLedger }
       : activeTab === "receivables"
         ? buildWorkspaceTabProps("receivables")
       : activeTab === "payables"
@@ -975,12 +1014,14 @@ export default function App() {
                       {section.items.map((tab) => {
                         const isIncomeStatementNav = tab.id === "income-statement";
                         const isLedgerNav = tab.id === "ledger";
+                        const isAccountTransfersNav = tab.id === "account-transfers-report";
                         const workspaceDetailTabId = detailTabIdFromWorkspaceId(tab.id);
                         const isWorkspaceNav = Boolean(workspaceDetailTabId);
                         const isActive =
                           activeTab === tab.id ||
                           (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab)) ||
                           (isLedgerNav && isLedgerDetailTab(activeTab)) ||
+                          (isAccountTransfersNav && isAccountTransfersDetailTab(activeTab)) ||
                           (isWorkspaceNav && activeTab === workspaceDetailTabId);
                         return (
                         <button
@@ -996,6 +1037,10 @@ export default function App() {
                             }
                             if (isLedgerNav) {
                               handleOpenLedger({});
+                              return;
+                            }
+                            if (isAccountTransfersNav) {
+                              handleOpenAccountTransfersTab();
                               return;
                             }
                             if (isWorkspaceNav) {

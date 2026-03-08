@@ -11,6 +11,7 @@ from app.db import get_db
 from app.errors import api_error
 from app.models import Account, AccountType, Book
 from app.schemas import (
+    AccountTransfersReportOut,
     FinancialDashboardOut,
     IncomeStatementAccountEntriesOut,
     IncomeStatementMatrixOut,
@@ -19,6 +20,7 @@ from app.schemas import (
 )
 from app.services.authorization import ensure_book_read_access
 from app.services.reports import (
+    build_account_transfers_report,
     build_financial_dashboard,
     build_income_statement,
     build_income_statement_matrix,
@@ -200,6 +202,44 @@ def get_invoice_settlement_by_customer_report(
         posted_start_date=posted_start_date,
         posted_end_date=posted_end_date,
         sort_key=sort_key,
+        sort_direction=sort_direction,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/account-transfers", response_model=AccountTransfersReportOut)
+def get_account_transfers_report(
+    book_id: UUID = Query(...),
+    source_account_id: list[UUID] = Query(default=[]),
+    dest_account_id: list[UUID] = Query(default=[]),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    sort_direction: Literal["asc", "desc"] = Query(default="asc"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> dict:
+    book_id_str = str(book_id)
+    ensure_book_read_access(db, book_id=book_id_str)
+    if db.get(Book, book_id_str) is None:
+        raise api_error(400, "INVALID_BOOK", "book_id must reference an existing book", {"book_id": book_id_str})
+
+    if start_date and end_date and start_date > end_date:
+        raise api_error(
+            400,
+            "INVALID_DATE_RANGE",
+            "start_date must be less than or equal to end_date",
+            {"start_date": str(start_date), "end_date": str(end_date)},
+        )
+
+    return build_account_transfers_report(
+        db,
+        book_id=book_id_str,
+        source_account_ids=[str(i) for i in source_account_id],
+        dest_account_ids=[str(i) for i in dest_account_id],
+        start_date=start_date,
+        end_date=end_date,
         sort_direction=sort_direction,
         page=page,
         page_size=page_size,
