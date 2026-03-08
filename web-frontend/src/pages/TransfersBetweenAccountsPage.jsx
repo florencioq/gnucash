@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const REPORT_STATE_KEY = "gnucash.transfers-between-accounts-state.v1";
@@ -300,6 +302,76 @@ export default function TransfersBetweenAccountsPage({ onOpenInvoicing, onOpenBi
     );
   }, [sourceIds, destIds, startDate, endDate, sortDirection, page, pageSize]);
 
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+
+  const downloadPdf = () => {
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    const bookName = activeBook?.name || activeBook?.id || "";
+    const srcNames = sourceIds.map((id) => accountById.get(id)?.name || id).join(", ") || "-";
+    const dstNames = destIds.length > 0
+      ? destIds.map((id) => accountById.get(id)?.name || id).join(", ")
+      : "Todas";
+    const period = [startDate, endDate].filter(Boolean).join(" a ") || "Todos os períodos";
+
+    const fmt = (num) =>
+      new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num));
+
+    doc.setFontSize(14);
+    doc.text("Transferências entre Contas", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Livro: ${bookName}`, 14, 23);
+    doc.text(`Contas de origem: ${srcNames}`, 14, 28);
+    doc.text(`Contas de destino: ${dstNames}`, 14, 33);
+    doc.text(`Período: ${period}`, 14, 38);
+    doc.text(`Total de registros: ${totalItems}`, 14, 43);
+
+    const rows = items.map((item) => {
+      const srcSplits = item.source_splits || [];
+      const dstSplits = item.dest_splits || [];
+      const srcTotal = splitsTotal(srcSplits);
+      const dstTotal = splitsTotal(dstSplits);
+      const ownerType = item.linked_owner_type || "";
+      const docLabel = ownerType === "CUSTOMER"
+        ? `Fatura ${item.linked_invoice_id || ""}`.trim()
+        : ownerType === "VENDOR"
+        ? `Compra ${item.linked_invoice_id || ""}`.trim()
+        : "-";
+      const memos = [...srcSplits, ...dstSplits].map((s) => s.memo).filter(Boolean).join("; ");
+      return [
+        formatDateDisplay(item.post_date),
+        item.description || "-",
+        splitsSummary(srcSplits),
+        srcTotal !== null ? fmt(srcTotal) : "-",
+        splitsSummary(dstSplits),
+        dstTotal !== null ? fmt(dstTotal) : "-",
+        docLabel,
+        memos || "-",
+      ];
+    });
+
+    const totalRow = ["", "Total (página)", "", totalSrc !== null ? fmt(totalSrc) : "-", "", totalDst !== null ? fmt(totalDst) : "-", "", ""];
+    rows.push(totalRow);
+
+    autoTable(doc, {
+      startY: 48,
+      head: [["Data", "Descrição", "Conta(s) de Origem", "Valor Origem", "Conta(s) de Destino", "Valor Destino", "Doc", "Memo"]],
+      body: rows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [52, 73, 94] },
+      columnStyles: { 3: { halign: "right" }, 5: { halign: "right" } },
+      didParseCell: (data) => {
+        if (data.row.index === rows.length - 1) {
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    doc.save(`transferencias-${dateStr}.pdf`);
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -309,6 +381,16 @@ export default function TransfersBetweenAccountsPage({ onOpenInvoicing, onOpenBi
             Transações que envolvem as contas de origem selecionadas, filtradas opcionalmente por contas de destino.
           </div>
         </div>
+        {hasSearched && items.length > 0 ? (
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={downloadPdf}
+            title="Baixar PDF da página atual"
+          >
+            ⬇ PDF
+          </button>
+        ) : null}
       </div>
 
       {activeBook ? (
