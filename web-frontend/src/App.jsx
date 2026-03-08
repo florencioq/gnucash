@@ -47,7 +47,7 @@ const baseTabs = [
   { id: "login", label: "Login", component: LoginPage },
   { id: "books", label: "Livros", component: BooksPage },
   { id: "commodities", label: "Moedas", component: CommoditiesPage },
-  { id: "accounts", label: "Contas", component: AccountsPage },
+  { id: "accounts", label: "Saldos", component: AccountsPage },
   { id: "customers", label: "Clientes", component: CustomersPage },
   { id: "vendors", label: "Fornecedores", component: VendorsPage },
   { id: "users", label: "Usuários", component: UsersPage },
@@ -288,7 +288,7 @@ function sanitizeWorkspaceTabs(items) {
 
     const fallbackLabel =
       workspaceId === "accounts"
-        ? "Contas"
+        ? "Saldos"
         : workspaceId === "receivables"
         ? "Contas a Receber"
         : workspaceId === "payables"
@@ -590,7 +590,7 @@ export default function App() {
     const normalizedLabel = String(label || "").trim();
     const fallbackLabel =
       workspaceId === "accounts"
-        ? "Contas"
+        ? "Saldos"
         : workspaceId === "receivables"
         ? "Contas a Receber"
         : workspaceId === "payables"
