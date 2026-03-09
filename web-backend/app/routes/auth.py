@@ -15,6 +15,7 @@ from app.schemas import (
     AuthRefreshRequest,
     AuthRegisterRequest,
     AuthResetPasswordRequest,
+    AuthSetAdminRequest,
     AuthTokenOut,
     AuthUserOut,
     UserBookAccessOut,
@@ -29,6 +30,7 @@ from app.services.auth import (
     normalize_email,
     verify_password,
 )
+from app.services.authorization import _is_privileged
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -48,7 +50,7 @@ def register_user(
     if not bootstrap_mode:
         if request_user is None:
             raise api_error(401, "AUTH_REQUIRED", "authentication required")
-        if not request_user.is_superuser:
+        if not _is_privileged(request_user):
             raise api_error(403, "FORBIDDEN", "superuser privileges required")
 
     existing = db.execute(select(User.id).where(User.email == email).limit(1)).scalar_one_or_none()
@@ -63,6 +65,7 @@ def register_user(
         full_name=full_name or None,
         is_active=True,
         is_superuser=True if bootstrap_mode else bool(payload.is_superuser),
+        is_admin=False if bootstrap_mode else bool(payload.is_admin),
     )
     db.add(user)
     db.commit()
@@ -111,7 +114,7 @@ def list_users(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[User]:
-    if not current_user.is_superuser:
+    if not _is_privileged(current_user):
         raise api_error(403, "FORBIDDEN", "superuser privileges required")
     return db.execute(select(User).order_by(User.created_at.asc(), User.email.asc())).scalars().all()
 
@@ -122,7 +125,7 @@ def list_user_book_access(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[UserBookAccess]:
-    if not current_user.is_superuser:
+    if not _is_privileged(current_user):
         raise api_error(403, "FORBIDDEN", "superuser privileges required")
     if db.get(User, user_id) is None:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
@@ -138,13 +141,33 @@ def reset_user_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> None:
-    if not current_user.is_superuser:
+    if not _is_privileged(current_user):
         raise api_error(403, "FORBIDDEN", "superuser privileges required")
     target = db.get(User, user_id)
     if target is None:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
     target.password_hash = hash_password(payload.new_password)
     db.commit()
+
+
+@router.post("/users/{user_id}/set-admin", response_model=AuthUserOut)
+def set_user_admin(
+    user_id: str,
+    payload: AuthSetAdminRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    if not current_user.is_superuser:
+        raise api_error(403, "FORBIDDEN", "superuser privileges required")
+    target = db.get(User, user_id)
+    if target is None:
+        raise api_error(404, "NOT_FOUND", "requested resource was not found")
+    if target.is_superuser:
+        raise api_error(400, "INVALID_OPERATION", "cannot change admin status of a superuser")
+    target.is_admin = payload.is_admin
+    db.commit()
+    db.refresh(target)
+    return target
 
 
 @router.put("/users/{user_id}/books/{book_id}", response_model=UserBookAccessOut)
@@ -155,7 +178,7 @@ def upsert_user_book_access(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserBookAccess:
-    if not current_user.is_superuser:
+    if not _is_privileged(current_user):
         raise api_error(403, "FORBIDDEN", "superuser privileges required")
     if db.get(User, user_id) is None:
         raise api_error(404, "NOT_FOUND", "requested resource was not found")
@@ -181,7 +204,7 @@ def delete_user_book_access(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> None:
-    if not current_user.is_superuser:
+    if not _is_privileged(current_user):
         raise api_error(403, "FORBIDDEN", "superuser privileges required")
     access = db.get(UserBookAccess, {"user_id": user_id, "book_id": book_id})
     if access is None:

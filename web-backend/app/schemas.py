@@ -874,6 +874,7 @@ class AuthRegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=256)
     full_name: str | None = Field(default=None, max_length=120)
     is_superuser: bool = False
+    is_admin: bool = False
 
 
 class AuthLoginRequest(BaseModel):
@@ -894,6 +895,10 @@ class AuthResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=256)
 
 
+class AuthSetAdminRequest(BaseModel):
+    is_admin: bool
+
+
 class AuthTokenOut(BaseModel):
     access_token: str
     refresh_token: str
@@ -907,6 +912,7 @@ class AuthUserOut(BaseOut):
     full_name: str | None
     is_active: bool
     is_superuser: bool
+    is_admin: bool
     created_at: datetime
     updated_at: datetime
 

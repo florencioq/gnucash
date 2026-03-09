@@ -25,7 +25,7 @@ function formatCreatedAt(value) {
   return parsed.toLocaleString();
 }
 
-export default function UsersPage() {
+export default function UsersPage({ currentUser }) {
   const [users, setUsers] = useState([]);
   const [books, setBooks] = useState([]);
   const [accessByUser, setAccessByUser] = useState({});
@@ -33,6 +33,7 @@ export default function UsersPage() {
   const [accessBusyByUser, setAccessBusyByUser] = useState({});
   const [resetPasswordFormByUser, setResetPasswordFormByUser] = useState({});
   const [resetPasswordBusyByUser, setResetPasswordBusyByUser] = useState({});
+  const [adminBusyByUser, setAdminBusyByUser] = useState({});
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(INITIAL_FORM);
   const [error, setError] = useState(null);
@@ -42,6 +43,7 @@ export default function UsersPage() {
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const isSuperuser = Boolean(currentUser?.is_superuser);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -81,6 +83,22 @@ export default function UsersPage() {
     return true;
   };
 
+  const handleToggleAdmin = async (user) => {
+    const newValue = !user.is_admin;
+    const label = user.email;
+    const action = newValue ? `Conceder role admin a "${label}"?` : `Revogar role admin de "${label}"?`;
+    if (!window.confirm(action)) return;
+
+    setAdminBusyByUser((current) => ({ ...current, [user.id]: true }));
+    const res = await api.post(`/auth/users/${user.id}/set-admin`, { is_admin: newValue });
+    setAdminBusyByUser((current) => ({ ...current, [user.id]: false }));
+    if (!res.ok) {
+      setAccessError(res.error);
+      return;
+    }
+    await refreshUsersAndAccess();
+  };
+
   const refreshUsersAndAccess = async () => {
     setAccessError(null);
     setAccessSuccess(null);
@@ -96,7 +114,7 @@ export default function UsersPage() {
     setAccessFormByUser((current) => {
       const next = {};
       usersData.forEach((user) => {
-        if (user.is_superuser) return;
+        if (user.is_superuser || user.is_admin) return;
         const existing = current[user.id] || {};
         next[user.id] = {
           book_id: existing.book_id || defaultBookId,
@@ -113,7 +131,7 @@ export default function UsersPage() {
       return next;
     });
 
-    const nonSuperusers = usersData.filter((user) => !user.is_superuser);
+    const nonSuperusers = usersData.filter((user) => !user.is_superuser && !user.is_admin);
     if (nonSuperusers.length === 0) {
       setAccessByUser({});
       return;
@@ -458,7 +476,39 @@ export default function UsersPage() {
                       <span className="badge text-bg-secondary">Inativo</span>
                     )}
                   </td>
-                  <td>{user.is_superuser ? "Superusuário" : "Padrão"}</td>
+                  <td>
+                    {user.is_superuser ? (
+                      <span className="badge text-bg-danger">Superusuário</span>
+                    ) : user.is_admin ? (
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="badge text-bg-warning text-dark">Admin</span>
+                        {isSuperuser && (
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            type="button"
+                            onClick={() => handleToggleAdmin(user)}
+                            disabled={Boolean(adminBusyByUser[user.id])}
+                          >
+                            {adminBusyByUser[user.id] ? "..." : "Revogar"}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="badge text-bg-secondary">Padrão</span>
+                        {isSuperuser && (
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            type="button"
+                            onClick={() => handleToggleAdmin(user)}
+                            disabled={Boolean(adminBusyByUser[user.id])}
+                          >
+                            {adminBusyByUser[user.id] ? "..." : "Tornar admin"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   <td style={{ minWidth: "280px" }}>
                     <div className="d-flex gap-2 flex-wrap align-items-center">
                       <input
@@ -494,6 +544,8 @@ export default function UsersPage() {
                   <td style={{ minWidth: "360px" }}>
                     {user.is_superuser ? (
                       <span className="small-muted">Acesso total (superusuário).</span>
+                    ) : user.is_admin ? (
+                      <span className="small-muted">Acesso total (admin).</span>
                     ) : (
                       <div className="d-flex flex-column gap-2">
                         <div className="d-flex flex-column gap-1">

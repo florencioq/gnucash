@@ -362,7 +362,7 @@ export default function App() {
   );
   const [currentUser, setCurrentUser] = useState(null);
   const [hasAuthSession, setHasAuthSession] = useState(() => Boolean(initialAuthSession));
-  const canManageUsers = currentUser == null || Boolean(currentUser.is_superuser);
+  const canManageUsers = currentUser == null || Boolean(currentUser.is_superuser) || Boolean(currentUser.is_admin);
 
   const detailTabs = useMemo(
     () => [
@@ -976,6 +976,8 @@ export default function App() {
         ? buildWorkspaceTabProps("invoicing-list")
       : activeTab === "billing-list"
         ? buildWorkspaceTabProps("billing-list")
+      : activeTab === "users"
+        ? { currentUser }
       : activeTab === "profile"
         ? { currentUser }
       : isInvoiceTab(activeTab)

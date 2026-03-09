@@ -16,13 +16,18 @@ def _current_user_or_none(db: Session | None = None):
     return get_request_user()
 
 
+def _is_privileged(user) -> bool:
+    """Returns True if user has superuser or admin privileges."""
+    return bool(user.is_superuser or user.is_admin)
+
+
 def require_superuser(db: Session | None = None, *, strict: bool = False) -> None:
     user = _current_user_or_none(db)
     if user is None:
         if strict:
             raise api_error(401, "AUTH_REQUIRED", "authentication required")
         return
-    if not user.is_superuser:
+    if not _is_privileged(user):
         raise api_error(403, "FORBIDDEN", "superuser privileges required")
 
 
@@ -38,7 +43,7 @@ def _user_book_role(db: Session, *, user_id: str, book_id: str) -> BookAccessRol
 
 def ensure_book_read_access(db: Session, *, book_id: str) -> None:
     user = _current_user_or_none(db)
-    if user is None or user.is_superuser:
+    if user is None or _is_privileged(user):
         return
 
     role = _user_book_role(db, user_id=user.id, book_id=book_id)
@@ -48,7 +53,7 @@ def ensure_book_read_access(db: Session, *, book_id: str) -> None:
 
 def ensure_book_write_access(db: Session, *, book_id: str) -> None:
     user = _current_user_or_none(db)
-    if user is None or user.is_superuser:
+    if user is None or _is_privileged(user):
         return
 
     role = _user_book_role(db, user_id=user.id, book_id=book_id)
@@ -63,7 +68,7 @@ def ensure_book_write_access(db: Session, *, book_id: str) -> None:
 
 def accessible_book_ids(db: Session) -> set[str] | None:
     user = _current_user_or_none(db)
-    if user is None or user.is_superuser:
+    if user is None or _is_privileged(user):
         return None
     rows = db.execute(
         select(UserBookAccess.book_id).where(UserBookAccess.user_id == user.id)
