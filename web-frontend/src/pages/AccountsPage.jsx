@@ -340,9 +340,14 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
           <h2 className="mb-1">Contas</h2>
           <div className="small-muted">Gerencie a hierarquia de contas por livro.</div>
         </div>
-        <button className="btn btn-accent" type="button" onClick={openCreateAccountModal} disabled={!activeBookId}>
-          Nova conta
-        </button>
+        <div className="d-flex gap-2">
+          <button className="btn btn-outline-secondary" type="button" onClick={() => loadAll(activeBookId)} disabled={!activeBookId}>
+            Atualizar
+          </button>
+          <button className="btn btn-accent" type="button" onClick={openCreateAccountModal} disabled={!activeBookId}>
+            Nova conta
+          </button>
+        </div>
       </div>
 
       {activeBook ? (
