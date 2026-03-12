@@ -60,6 +60,18 @@
 - Contas a Pagar MUST consume `/bills/list` with `posted_filter=POSTED` and
   `payment_filter=OPEN`, and MUST expose direct navigation links to each compra.
 
+## PDF export
+
+- The Compra detail view MUST expose a `⬇ PDF` action whenever a bill is selected.
+- The generated PDF MUST use portrait orientation and MUST include:
+  - A header section with: book name, bill number, vendor name, date opened, date posted,
+    due date, status, and notes (when present).
+  - An items table with columns: date, description, expense account, quantity, unit price,
+    discount, subtotal, tax, and total.
+  - A totals line with total amount and open balance.
+  - A payments table (when payments exist) with columns: date, account, memo, and amount.
+- The PDF file MUST be saved as `compra-{id}-{YYYY-MM-DD}.pdf`.
+
 ## Refresh
 
 - Faturamentos, Compras, Contas a Receber, and Contas a Pagar screens MUST expose an

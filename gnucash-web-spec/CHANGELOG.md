@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.4.26 - 2026-03-12
+
+Razão date range filter and Compra PDF export:
+- documented `Data inicial` / `Data final` date inputs on the Razão screen, rendered inline
+  alongside the account selector, to restrict visible rows to a date range
+- specified that date filtering is client-side and preserves the cumulative `Saldo` column
+  (balance includes all prior transactions regardless of the active filter)
+- specified that changing either date input resets pagination to page 1 and that a
+  `Limpar filtro` action MUST appear whenever at least one date is active
+- documented `⬇ PDF` export action on the Compra detail view, including required header
+  fields, items table columns, totals line, and optional payments table
+- specified PDF filename convention: `compra-{id}-{YYYY-MM-DD}.pdf`
+
 ## v0.4.25 - 2026-03-02
 
 Financial Dashboard (Painel Financeiro):
