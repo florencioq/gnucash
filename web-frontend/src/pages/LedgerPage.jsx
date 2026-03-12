@@ -102,6 +102,8 @@ export default function LedgerPage({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [chronologicalOrder, setChronologicalOrder] = useState("desc");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [ledgerForm, setLedgerForm] = useState({
     counterAccountId: "",
     date: todayIsoDate(),
@@ -397,17 +399,30 @@ export default function LedgerPage({
     () => (chronologicalOrder === "asc" ? ledgerRows : [...ledgerRows].reverse()),
     [ledgerRows, chronologicalOrder]
   );
-  const totalItems = orderedLedgerRows.length;
+  const dateFilteredRows = useMemo(() => {
+    if (!filterDateFrom && !filterDateTo) return orderedLedgerRows;
+    return orderedLedgerRows.filter((row) => {
+      const d = (row.date || "").slice(0, 10);
+      if (filterDateFrom && d < filterDateFrom) return false;
+      if (filterDateTo && d > filterDateTo) return false;
+      return true;
+    });
+  }, [orderedLedgerRows, filterDateFrom, filterDateTo]);
+  const totalItems = dateFilteredRows.length;
   const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / pageSize);
   const currentPage = totalItems === 0 ? 1 : Math.min(page, totalPages);
   const pagedLedgerRows = useMemo(() => {
     const offset = (currentPage - 1) * pageSize;
-    return orderedLedgerRows.slice(offset, offset + pageSize);
-  }, [orderedLedgerRows, currentPage, pageSize]);
+    return dateFilteredRows.slice(offset, offset + pageSize);
+  }, [dateFilteredRows, currentPage, pageSize]);
   const enteredAmount = parseDecimal(ledgerForm.amount);
   const projectedBalance = Number.isFinite(enteredAmount)
     ? currentBalance + enteredAmount
     : currentBalance;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterDateFrom, filterDateTo]);
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -788,8 +803,8 @@ export default function LedgerPage({
         </div>
       )}
 
-      <div className="row g-3 mb-4">
-        <div className="col-md-12">
+      <div className="row g-3 mb-4 align-items-end">
+        <div className="col-md-6">
           <label className="form-label">Conta do razão</label>
           <div className="tree-select">
             <button
@@ -819,6 +834,37 @@ export default function LedgerPage({
             ) : null}
           </div>
         </div>
+        <div className="col-auto">
+          <label className="form-label">Data inicial</label>
+          <input
+            type="date"
+            className="form-control"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            disabled={!activeBookId}
+          />
+        </div>
+        <div className="col-auto">
+          <label className="form-label">Data final</label>
+          <input
+            type="date"
+            className="form-control"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            disabled={!activeBookId}
+          />
+        </div>
+        {(filterDateFrom || filterDateTo) && (
+          <div className="col-auto">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
+            >
+              Limpar filtro
+            </button>
+          </div>
+        )}
       </div>
 
       {error ? (
