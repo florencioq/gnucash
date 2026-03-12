@@ -313,7 +313,7 @@ export default function AccountTransfersReportPage({ onOpenInvoicing = null, onO
     loadReport(activeBookId);
   }, [page, pageSize, sortDirection]);
 
-  const canSearch = activeBookId && accountsLoaded && sourceIds.length > 0;
+  const canSearch = activeBookId && accountsLoaded && sourceIds.length > 0 && destIds.length > 0;
 
   const totalSrc = useMemo(() => {
     if (items.length === 0) return null;
