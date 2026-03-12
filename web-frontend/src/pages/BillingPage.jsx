@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
 
@@ -1235,6 +1237,114 @@ export default function BillingPage({
     await loadBookData(activeBookId, selectedInvoice.guid);
   };
 
+  const downloadBillPdf = () => {
+    if (!selectedInvoice) return;
+
+    const doc = new jsPDF({ orientation: "portrait" });
+    const bookName = activeBook?.name || activeBook?.id || "";
+    const vendorName = selectedInvoiceVendor?.name || "-";
+    const mn = selectedInvoiceMnemonic;
+    const fmt = (num, denom) => {
+      const value = rationalToNumber(num, denom);
+      return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    };
+
+    // Cabeçalho
+    doc.setFontSize(16);
+    doc.text("Compra", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+    doc.text(`Livro: ${bookName}`, 14, 24);
+    doc.text(`Número: ${selectedInvoice.id || "-"}`, 14, 29);
+    doc.text(`Fornecedor: ${vendorName}`, 14, 34);
+    doc.text(`Abertura: ${formatDateDisplay(selectedInvoice.date_opened)}`, 14, 39);
+    doc.text(`Postagem: ${formatDateDisplay(selectedInvoice.date_posted)}`, 80, 39);
+    doc.text(`Vencimento: ${formatDateDisplay(selectedInvoice.date_due)}`, 150, 39);
+    doc.text(`Status: ${invoiceStatusLabel(selectedInvoice.status)}`, 14, 44);
+    if (selectedInvoice.notes) {
+      doc.text(`Notas: ${selectedInvoice.notes}`, 14, 49);
+    }
+
+    // Itens
+    const startY = selectedInvoice.notes ? 55 : 50;
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.text("Itens", 14, startY);
+
+    const entryRows = (selectedInvoice.entries || []).map((entry) => {
+      const account = accountsById.get(entry.income_account_guid);
+      const accountName = account ? accountFullNameById.get(account.id) || account.name : "-";
+      const qty = rationalToNumber(entry.quantity_num, entry.quantity_denom);
+      const discountValue = entry.discount_type === "VALUE"
+        ? rationalToNumber(entry.discount_num, entry.discount_denom)
+        : rationalToNumber(entry.discount_num, entry.discount_denom) * 100;
+      const discountLabel = entry.discount_type === "VALUE"
+        ? `${mn} ${fmt(entry.discount_num, entry.discount_denom)}`
+        : `${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(discountValue)}%`;
+      return [
+        formatDateDisplay(entry.date),
+        entry.description || "-",
+        accountName,
+        new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(qty),
+        `${mn} ${fmt(entry.unit_price_num, entry.unit_price_denom)}`,
+        discountLabel,
+        `${mn} ${fmt(entry.subtotal_num, entry.subtotal_denom)}`,
+        `${mn} ${fmt(entry.tax_num, entry.tax_denom)}`,
+        `${mn} ${fmt(entry.total_num, entry.total_denom)}`
+      ];
+    });
+
+    autoTable(doc, {
+      startY: startY + 3,
+      head: [["Data", "Descrição", "Conta Despesa", "Qtd", "Preço Unit.", "Desconto", "Subtotal", "Imposto", "Total"]],
+      body: entryRows,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [52, 73, 94] },
+      columnStyles: {
+        3: { halign: "right" },
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right" },
+        7: { halign: "right" },
+        8: { halign: "right" }
+      }
+    });
+
+    // Totais
+    const afterEntries = doc.lastAutoTable.finalY + 4;
+    doc.setFontSize(9);
+    doc.setTextColor(0);
+    doc.text(`Total: ${mn} ${fmt(selectedInvoice.total_num, selectedInvoice.total_denom)}`, 14, afterEntries);
+    doc.text(`Em aberto: ${mn} ${fmt(selectedInvoice.open_amount_num, selectedInvoice.open_amount_denom)}`, 80, afterEntries);
+
+    // Pagamentos
+    const payments = selectedInvoice.payments || [];
+    if (payments.length > 0) {
+      doc.setFontSize(10);
+      doc.text("Pagamentos", 14, afterEntries + 8);
+      const paymentRows = payments.map((payment) => {
+        const account = accountsById.get(payment.transfer_account_guid);
+        const accountName = account ? accountFullNameById.get(account.id) || account.name : "-";
+        return [
+          formatDateDisplay(payment.payment_date),
+          accountName,
+          payment.memo || "-",
+          `${mn} ${fmt(payment.amount_num, payment.amount_denom)}`
+        ];
+      });
+      autoTable(doc, {
+        startY: afterEntries + 11,
+        head: [["Data", "Conta", "Memória", "Valor"]],
+        body: paymentRows,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [52, 73, 94] },
+        columnStyles: { 3: { halign: "right" } }
+      });
+    }
+
+    doc.save(`compra-${selectedInvoice.id || selectedInvoice.guid}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1243,6 +1353,16 @@ export default function BillingPage({
           <div className="small-muted">Edição de compra, postagem, pagamentos e itens.</div>
         </div>
         <div className="d-flex gap-2">
+          {selectedInvoice ? (
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={downloadBillPdf}
+              title="Baixar PDF desta compra"
+            >
+              ⬇ PDF
+            </button>
+          ) : null}
           {typeof onOpenBillingList === "function" ? (
             <button
               type="button"
