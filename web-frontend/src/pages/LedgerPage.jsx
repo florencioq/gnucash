@@ -14,9 +14,13 @@ function todayIsoDate() {
 
 function parseDecimal(input) {
   if (typeof input !== "string") return Number.NaN;
-  const normalized = input.trim().replace(",", ".");
-  if (!normalized) return Number.NaN;
-  return Number(normalized);
+  const trimmed = input.trim();
+  if (!trimmed) return Number.NaN;
+  // pt-BR: dots are thousands separators, comma is decimal separator
+  if (trimmed.includes(",")) {
+    return Number(trimmed.replace(/\./g, "").replace(",", "."));
+  }
+  return Number(trimmed);
 }
 
 function formatDate(iso) {
