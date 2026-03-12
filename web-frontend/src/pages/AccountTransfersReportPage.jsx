@@ -433,7 +433,7 @@ export default function AccountTransfersReportPage({ onOpenInvoicing = null, onO
         </div>
         <div className="col-md-4">
           <AccountMultiSelect
-            label="Conta de pagamento (opcional)"
+            label="Conta de pagamento"
             selectorId="dst"
             accounts={accounts}
             selected={destIds}
@@ -498,7 +498,7 @@ export default function AccountTransfersReportPage({ onOpenInvoicing = null, onO
 
       {!hasSearched && !loading ? (
         <div className="small-muted">
-          Selecione a conta devedora (despesa) e clique em Buscar. A conta de pagamento é opcional.
+          Selecione a conta devedora (despesa) e a conta de pagamento, e clique em Buscar.
         </div>
       ) : null}
 
