@@ -40,7 +40,9 @@ const WORKSPACE_DETAIL_TAB_BY_ID = {
   receivables: "workspace:receivables",
   payables: "workspace:payables",
   "invoicing-list": "workspace:invoicing-list",
-  "billing-list": "workspace:billing-list"
+  "billing-list": "workspace:billing-list",
+  customers: "workspace:customers",
+  vendors: "workspace:vendors"
 };
 
 const baseTabs = [
@@ -295,7 +297,11 @@ function sanitizeWorkspaceTabs(items) {
           ? "Contas a Pagar"
           : workspaceId === "invoicing-list"
             ? "Faturamentos"
-            : "Compras";
+            : workspaceId === "customers"
+              ? "Clientes"
+              : workspaceId === "vendors"
+                ? "Fornecedores"
+                : "Compras";
 
     const label =
       typeof item?.label === "string" && item.label.trim().length > 0
@@ -377,7 +383,11 @@ export default function App() {
               ? PayablesPage
               : tab.workspaceId === "invoicing-list"
                 ? InvoicingListPage
-                : BillingListPage,
+                : tab.workspaceId === "customers"
+                  ? CustomersPage
+                  : tab.workspaceId === "vendors"
+                    ? VendorsPage
+                    : BillingListPage,
         closable: true
       })),
       ...openReportTabs.map((tab) => ({
@@ -597,7 +607,11 @@ export default function App() {
           ? "Contas a Pagar"
           : workspaceId === "invoicing-list"
             ? "Faturamentos"
-            : "Compras";
+            : workspaceId === "customers"
+              ? "Clientes"
+              : workspaceId === "vendors"
+                ? "Fornecedores"
+                : "Compras";
     setOpenWorkspaceTabs((current) => {
       const existing = current.find((tab) => tab.id === tabId);
       if (existing) {
