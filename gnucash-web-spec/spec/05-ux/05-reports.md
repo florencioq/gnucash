@@ -43,9 +43,9 @@
 - Screen opens as a closable dynamic tab in the Relatórios section of the sidebar.
 - Filters (persisted in session storage):
   - **Contas devedoras na postagem (despesa)** — required multi-select account tree picker; user must select at least one account before searching.
-  - **Contas de pagamento** — optional multi-select account tree picker; when empty, all payment transactions for matching lots are returned regardless of payment account.
+  - **Contas de pagamento** — required multi-select account tree picker; user must select at least one payment account before searching.
   - **Data início** / **Data fim** — optional date range filter applied to transaction date.
-  - **Buscar** button — enabled only when at least one expense account is selected; triggers API call.
+  - **Buscar** button — enabled only when at least one expense account and at least one payment account are selected; triggers API call.
 - Results table columns: Data | Descrição | Conta de pagamento | Valor pago | Compra/Fatura | Memo | Ações.
   - **Compra/Fatura** — shows the linked bill or invoice number when the payment is associated with a known document; otherwise empty.
   - **Ações** — action links to navigate to the related document (e.g. open the bill/invoice tab).
