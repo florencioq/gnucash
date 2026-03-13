@@ -27,6 +27,9 @@ import {
   getAuthSession
 } from "./api/client.js";
 
+const APP_VERSION = "v0.4.27";
+const APP_RELEASE_DATE = "2026-03-13";
+
 const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
 const NEW_INVOICE_TAB_GUID = "new";
 const NEW_BILL_TAB_GUID = "new";
@@ -1029,7 +1032,7 @@ export default function App() {
             </button>
             <div>
               <h1 className="brand-title">IgeosCash</h1>
-              <div className="small-muted">API: {apiBase()}</div>
+              <div className="small-muted">API: {apiBase()} · {APP_VERSION} · {APP_RELEASE_DATE}</div>
             </div>
           </div>
           <div className="d-flex align-items-center gap-2">
