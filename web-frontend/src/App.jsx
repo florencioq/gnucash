@@ -21,7 +21,6 @@ import PayablesPage from "./pages/PayablesPage.jsx";
 import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
 import {
   api,
-  apiBase,
   authSessionChangedEvent,
   clearAuthSession,
   getAuthSession
@@ -1032,7 +1031,7 @@ export default function App() {
             </button>
             <div>
               <h1 className="brand-title">IgeosCash</h1>
-              <div className="small-muted">API: {apiBase()} · {APP_VERSION} · {APP_RELEASE_DATE}</div>
+              <div className="small-muted">{APP_VERSION} · {APP_RELEASE_DATE}</div>
             </div>
           </div>
           <div className="d-flex align-items-center gap-2">
