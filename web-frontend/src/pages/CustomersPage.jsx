@@ -49,6 +49,14 @@ function reverseAccountPath(path) {
   return parts.reverse().join(" / ");
 }
 
+function nextCustomerId(customers) {
+  const numericIds = customers
+    .map((customer) => Number.parseInt(String(customer.id || ""), 10))
+    .filter((value) => Number.isFinite(value));
+  const next = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
+  return String(next).padStart(6, "0");
+}
+
 export default function CustomersPage() {
   const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
   const [commodities, setCommodities] = useState([]);
@@ -210,7 +218,25 @@ export default function CustomersPage() {
 
   const openCreateCustomerModal = () => {
     setEditingGuid("");
-    resetForm(form.currency_guid || (commodities[0] || {}).id || "");
+    const currencyGuid = form.currency_guid || (commodities[0] || {}).id || "";
+    setForm({
+      name: "",
+      id: nextCustomerId(customers),
+      currency_guid: currencyGuid,
+      notes: "",
+      active: true,
+      discount_num: "0",
+      discount_denom: "1",
+      credit_num: "0",
+      credit_denom: "1",
+      income_account_guid: "",
+      addr_name: "",
+      addr_phone: "",
+      addr_email: "",
+      shipaddr_name: "",
+      shipaddr_phone: "",
+      shipaddr_email: ""
+    });
     setError(null);
     setCustomerModalOpen(true);
   };
