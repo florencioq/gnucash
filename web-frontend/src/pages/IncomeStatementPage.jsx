@@ -287,6 +287,30 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
             onChange={(event) => setMatrixStartMonth(event.target.value)}
           />
         </div>
+        <div className="col-auto d-flex align-items-end gap-1">
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            title="Avançar 1 mês"
+            onClick={() => {
+              setMatrixStartMonth((current) => shiftMonth(current, -1));
+              setMatrixEndMonth((current) => shiftMonth(current, -1));
+            }}
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            title="Recuar 1 mês"
+            onClick={() => {
+              setMatrixStartMonth((current) => shiftMonth(current, 1));
+              setMatrixEndMonth((current) => shiftMonth(current, 1));
+            }}
+          >
+            →
+          </button>
+        </div>
         <div className="col-md-3">
           <label className="form-label">Período final</label>
           <input
