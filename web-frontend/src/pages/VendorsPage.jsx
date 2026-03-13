@@ -49,6 +49,14 @@ function reverseAccountPath(path) {
   return parts.reverse().join(" / ");
 }
 
+function nextVendorId(vendors) {
+  const numericIds = vendors
+    .map((vendor) => Number.parseInt(String(vendor.id || ""), 10))
+    .filter((value) => Number.isFinite(value));
+  const next = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
+  return String(next).padStart(6, "0");
+}
+
 export default function VendorsPage() {
   const VENDOR_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
   const [commodities, setCommodities] = useState([]);
@@ -200,7 +208,20 @@ export default function VendorsPage() {
 
   const openCreateVendorModal = () => {
     setEditingGuid("");
-    resetForm(form.currency_guid || (commodities[0] || {}).id || "");
+    const currencyGuid = form.currency_guid || (commodities[0] || {}).id || "";
+    setForm({
+      name: "",
+      id: nextVendorId(vendors),
+      currency_guid: currencyGuid,
+      notes: "",
+      expense_account_guid: "",
+      active: true,
+      tax_override: false,
+      addr_name: "",
+      addr_phone: "",
+      addr_email: "",
+      tax_inc: ""
+    });
     setError(null);
     setVendorModalOpen(true);
   };
