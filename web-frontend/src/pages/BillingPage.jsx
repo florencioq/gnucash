@@ -248,6 +248,7 @@ export default function BillingPage({
   const [error, setError] = useState(null);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
+  const [createVendorSearch, setCreateVendorSearch] = useState("");
   const [createForm, setCreateForm] = useState({
     type: "INVOICE",
     id: "000001",
@@ -266,6 +267,11 @@ export default function BillingPage({
     () => new Map(vendors.map((vendor) => [vendor.guid, vendor])),
     [vendors]
   );
+  const filteredCreateVendors = useMemo(() => {
+    const q = createVendorSearch.trim().toLowerCase();
+    if (!q) return vendors;
+    return vendors.filter((vendor) => String(vendor.name || "").toLowerCase().includes(q));
+  }, [vendors, createVendorSearch]);
   const accountsById = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts]
@@ -970,6 +976,7 @@ export default function BillingPage({
 
   const closeCreateDialog = () => {
     setCreateOpen(false);
+    setCreateVendorSearch("");
   };
 
   const submitCreate = async (event) => {
@@ -1000,6 +1007,7 @@ export default function BillingPage({
     }
 
     setCreateOpen(false);
+    setCreateVendorSearch("");
     await loadBookData(activeBookId, response.data.guid);
   };
 
@@ -1454,6 +1462,12 @@ export default function BillingPage({
                 <div className="row g-2">
                   <div className="col-md-6">
                     <label className="form-label">Fornecedor</label>
+                    <input
+                      className="form-control mb-1"
+                      value={createVendorSearch}
+                      onChange={(event) => setCreateVendorSearch(event.target.value)}
+                      placeholder="Buscar fornecedor..."
+                    />
                     <select
                       className="form-select"
                       value={createForm.vendor_guid}
@@ -1463,7 +1477,7 @@ export default function BillingPage({
                       required
                     >
                       <option value="">Selecione...</option>
-                      {vendors.map((vendor) => (
+                      {filteredCreateVendors.map((vendor) => (
                         <option key={vendor.guid} value={vendor.guid}>
                           {vendor.name}
                         </option>
