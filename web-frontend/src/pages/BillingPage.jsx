@@ -250,6 +250,7 @@ export default function BillingPage({
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [createOpen, setCreateOpen] = useState(false);
   const [createVendorSearch, setCreateVendorSearch] = useState("");
+  const [createVendorPickerOpen, setCreateVendorPickerOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     type: "INVOICE",
     id: "000001",
@@ -978,6 +979,7 @@ export default function BillingPage({
   const closeCreateDialog = () => {
     setCreateOpen(false);
     setCreateVendorSearch("");
+    setCreateVendorPickerOpen(false);
   };
 
   const submitCreate = async (event) => {
@@ -1009,6 +1011,7 @@ export default function BillingPage({
 
     setCreateOpen(false);
     setCreateVendorSearch("");
+    setCreateVendorPickerOpen(false);
     if (typeof onBillCreated === "function") {
       onBillCreated({ billGuid: response.data.guid, billId: response.data.id });
     } else {
@@ -1467,27 +1470,54 @@ export default function BillingPage({
                 <div className="row g-2">
                   <div className="col-md-6">
                     <label className="form-label">Fornecedor</label>
-                    <input
-                      className="form-control mb-1"
-                      value={createVendorSearch}
-                      onChange={(event) => setCreateVendorSearch(event.target.value)}
-                      placeholder="Buscar fornecedor..."
-                    />
-                    <select
-                      className="form-select"
-                      value={createForm.vendor_guid}
-                      onChange={(event) =>
-                        setCreateForm((current) => ({ ...current, vendor_guid: event.target.value }))
-                      }
-                      required
-                    >
-                      <option value="">Selecione...</option>
-                      {filteredCreateVendors.map((vendor) => (
-                        <option key={vendor.guid} value={vendor.guid}>
-                          {vendor.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="tree-select">
+                      <button
+                        type="button"
+                        className="form-select tree-select-toggle"
+                        onClick={() => {
+                          setCreateVendorPickerOpen((current) => {
+                            if (!current) setCreateVendorSearch("");
+                            return !current;
+                          });
+                        }}
+                      >
+                        <span className="tree-select-label">
+                          {vendorsById.get(createForm.vendor_guid)?.name || "Selecione o fornecedor"}
+                        </span>
+                        <span className="tree-select-caret">{createVendorPickerOpen ? "▲" : "▼"}</span>
+                      </button>
+                      {createVendorPickerOpen ? (
+                        <div className="tree-select-menu">
+                          <input
+                            className="form-control mb-2"
+                            value={createVendorSearch}
+                            onChange={(event) => setCreateVendorSearch(event.target.value)}
+                            placeholder="Buscar fornecedor..."
+                            autoFocus
+                          />
+                          <div className="counter-tree-panel">
+                            {filteredCreateVendors.length > 0 ? (
+                              filteredCreateVendors.map((vendor) => (
+                                <button
+                                  key={vendor.guid}
+                                  type="button"
+                                  className={`counter-tree-node ${createForm.vendor_guid === vendor.guid ? "is-selected" : ""}`}
+                                  onClick={() => {
+                                    setCreateForm((current) => ({ ...current, vendor_guid: vendor.guid }));
+                                    setCreateVendorPickerOpen(false);
+                                    setCreateVendorSearch("");
+                                  }}
+                                >
+                                  <span className="counter-tree-name">{vendor.name}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="small-muted">Nenhum fornecedor encontrado.</div>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Trabalho</label>
