@@ -929,6 +929,20 @@ export default function App() {
                 tab.id === tabId && tab.openCreate ? { ...tab, openCreate: false } : tab
               )
             )
+        : null,
+      onBillCreated: currentTab?.billGuid === NEW_BILL_TAB_GUID
+        ? ({ billGuid, billId }) => {
+            const newTabId = `bill:${billGuid}`;
+            const label = normalizeLabel("Compra", billId, billGuid);
+            setOpenBillTabs((current) =>
+              current.map((tab) =>
+                tab.id === tabId
+                  ? { id: newTabId, label, billGuid, openCreate: false, initialPostingAccountGuid: "" }
+                  : tab
+              )
+            );
+            setActiveTab(newTabId);
+          }
         : null
     };
   };

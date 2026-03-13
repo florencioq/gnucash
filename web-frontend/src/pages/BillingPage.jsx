@@ -221,6 +221,7 @@ export default function BillingPage({
   onOpenBillingList = null,
   onOpenBillTab = null,
   onBillDeleted = null,
+  onBillCreated = null,
   initialPostingAccountGuid = "",
   openCreateOnMount = false,
   onCreateMountHandled = null
@@ -1008,7 +1009,11 @@ export default function BillingPage({
 
     setCreateOpen(false);
     setCreateVendorSearch("");
-    await loadBookData(activeBookId, response.data.guid);
+    if (typeof onBillCreated === "function") {
+      onBillCreated({ billGuid: response.data.guid, billId: response.data.id });
+    } else {
+      await loadBookData(activeBookId, response.data.guid);
+    }
   };
 
   const submitInvoicePatch = async (event) => {
