@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.27 - 2026-03-13
+
+UX improvements — auto IDs, vendor picker, tab rename, DRE navigation, version banner:
+- auto-generate next sequential ID (zero-padded, 6 digits) when opening the new-vendor or new-customer modal; field remains editable
+- replaced the two-field (search input + native select) vendor selector in the new-bill dialog with a single unified `tree-select` picker consistent with the account pickers used elsewhere
+- after creating a new bill in the "Nova Compra" tab, the tab is renamed to "Compra {id}" in place — no separate tab is opened
+- added `←` / `→` navigation buttons between the period inputs on the DRE Mensal screen to shift the entire date range by one month at a time
+- added app version (`v0.4.27`) and release date to the top banner alongside the API URL
+
 ## v0.4.26 - 2026-03-12
 
 Razão date range filter and Compra PDF export:
