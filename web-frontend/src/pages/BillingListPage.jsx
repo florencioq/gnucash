@@ -31,6 +31,14 @@ function paymentStateLabel(state) {
   return "Não paga";
 }
 
+function todayIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const BILLING_LIST_STATE_KEY = "gnucash.billing-list-state.v1";
 
@@ -74,6 +82,7 @@ export default function BillingListPage({
   });
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [rebuyingGuid, setRebuyingGuid] = useState(null);
 
   const commoditiesById = useMemo(
     () => new Map(commodities.map((commodity) => [commodity.id, commodity])),
@@ -211,6 +220,83 @@ export default function BillingListPage({
     page,
     pageSize
   ]);
+
+  const rebuyToday = async (invoice) => {
+    if (!activeBookId || !invoice?.guid || rebuyingGuid) return;
+    const today = todayIsoDate();
+    setRebuyingGuid(invoice.guid);
+    setError(null);
+    try {
+      const detailResponse = await api.get(`/bills/${invoice.guid}`);
+      if (!detailResponse.ok) {
+        setError(detailResponse.error);
+        return;
+      }
+      const sourceBill = detailResponse.data;
+
+      const createPayload = {
+        book_id: activeBookId,
+        type: sourceBill.type || "INVOICE",
+        id: "",
+        date_opened: `${today}T00:00:00Z`,
+        notes: sourceBill.notes || "",
+        currency_guid: sourceBill.currency_guid,
+        vendor_guid: sourceBill.vendor_guid,
+        billing_id: sourceBill.billing_id || null,
+        terms: sourceBill.terms || null
+      };
+      const createResponse = await api.post("/bills", createPayload);
+      if (!createResponse.ok) {
+        setError(createResponse.error);
+        return;
+      }
+      const newBill = createResponse.data;
+
+      for (const entry of sourceBill.entries || []) {
+        const entryPayload = {
+          date: `${today}T00:00:00Z`,
+          description: entry.description || null,
+          action: entry.action || null,
+          notes: entry.notes || null,
+          income_account_guid: entry.income_account_guid,
+          quantity_num: entry.quantity_num,
+          quantity_denom: entry.quantity_denom,
+          unit_price_num: entry.unit_price_num,
+          unit_price_denom: entry.unit_price_denom,
+          discount_num: entry.discount_num,
+          discount_denom: entry.discount_denom,
+          discount_type: entry.discount_type,
+          discount_how: entry.discount_how,
+          taxable: Boolean(entry.taxable),
+          tax_included: Boolean(entry.tax_included)
+        };
+        const entryResponse = await api.post(`/bills/${newBill.guid}/entries`, entryPayload);
+        if (!entryResponse.ok) {
+          setError(entryResponse.error);
+          return;
+        }
+      }
+
+      const postAccountGuid = sourceBill.post_account_guid || activeBook?.default_payables_account_guid || "";
+      if (postAccountGuid) {
+        const postResponse = await api.post(`/bills/${newBill.guid}/post`, {
+          post_account_guid: postAccountGuid,
+          post_date: `${today}T00:00:00Z`,
+          due_date: `${today}T00:00:00Z`
+        });
+        if (!postResponse.ok) {
+          setError(postResponse.error);
+        }
+      }
+
+      setRefreshToken((t) => t + 1);
+      if (typeof onOpenBilling === "function") {
+        onOpenBilling({ billGuid: newBill.guid, billId: newBill.id || "" });
+      }
+    } finally {
+      setRebuyingGuid(null);
+    }
+  };
 
   return (
     <div>
@@ -420,26 +506,37 @@ export default function BillingListPage({
                     {formatMoney(invoice.open_amount_num, invoice.open_amount_denom, mnemonic)}
                   </td>
                   <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm"
-                      onClick={() => {
-                        if (!invoice.guid) return;
-                        if (typeof onOpenBilling === "function") {
-                          onOpenBilling({ billGuid: invoice.guid, billId: invoice.id || "" });
-                          return;
+                    <div className="d-flex gap-1 justify-content-end">
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm py-0 px-1"
+                        onClick={() => {
+                          if (!invoice.guid) return;
+                          if (typeof onOpenBilling === "function") {
+                            onOpenBilling({ billGuid: invoice.guid, billId: invoice.id || "" });
+                            return;
+                          }
+                          if (typeof onOpenInvoicing === "function") {
+                            onOpenInvoicing({ invoiceGuid: invoice.guid, invoiceId: invoice.id || "" });
+                          }
+                        }}
+                        disabled={
+                          !invoice.guid ||
+                          (typeof onOpenBilling !== "function" && typeof onOpenInvoicing !== "function")
                         }
-                        if (typeof onOpenInvoicing === "function") {
-                          onOpenInvoicing({ invoiceGuid: invoice.guid, invoiceId: invoice.id || "" });
-                        }
-                      }}
-                      disabled={
-                        !invoice.guid ||
-                        (typeof onOpenBilling !== "function" && typeof onOpenInvoicing !== "function")
-                      }
-                    >
-                      Abrir
-                    </button>
+                      >
+                        Abrir
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm py-0 px-1"
+                        onClick={() => rebuyToday(invoice)}
+                        disabled={!invoice.guid || rebuyingGuid === invoice.guid}
+                        title="Cria e posta uma nova compra com os mesmos valores, com data de hoje"
+                      >
+                        {rebuyingGuid === invoice.guid ? "..." : "Recomprar hoje"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
