@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.28 - 2026-03-18
+
+Botão "Recomprar hoje" na lista de compras:
+- adicionado botão "Recomprar hoje" ao lado do botão "Abrir" em cada linha da lista de Compras
+- ao clicar, cria automaticamente uma nova compra com os mesmos campos (fornecedor, moeda, tipo, notas, billing_id, termos) e todas as linhas da compra original, com data de abertura, postagem, vencimento e data de cada linha definidas para a data atual
+- a nova compra é postada automaticamente usando a conta de postagem da compra original ou a conta padrão de contas a pagar do livro
+- a lista é recarregada e a nova compra é aberta em uma nova aba após a operação
+
 ## v0.4.27 - 2026-03-13
 
 UX improvements — auto IDs, vendor picker, tab rename, DRE navigation, version banner:
