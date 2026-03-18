@@ -26,8 +26,8 @@ import {
   getAuthSession
 } from "./api/client.js";
 
-const APP_VERSION = "v0.4.27";
-const APP_RELEASE_DATE = "2026-03-13";
+const APP_VERSION = "v0.4.28";
+const APP_RELEASE_DATE = "2026-03-18";
 
 const APP_TABS_STATE_KEY = "gnucash.app-tabs-state.v1";
 const NEW_INVOICE_TAB_GUID = "new";
