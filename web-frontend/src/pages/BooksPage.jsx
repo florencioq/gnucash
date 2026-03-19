@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function emptyToNull(value) {
   const trimmed = String(value ?? "").trim();
@@ -48,7 +49,7 @@ function reverseAccountPath(path) {
   return parts.reverse().join(" / ");
 }
 
-export default function BooksPage() {
+export default function BooksPage({ isActive = false }) {
   const [books, setBooks] = useState([]);
   const [name, setName] = useState("");
   const [createIsActive, setCreateIsActive] = useState(false);
@@ -361,15 +362,21 @@ export default function BooksPage() {
     });
   };
 
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div>
+        <h2 className="mb-1">Livros</h2>
+        <div className="small-muted">Crie e gerencie seus livros.</div>
+      </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar]);
+
   return (
     <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Livros</h2>
-          <div className="small-muted">Crie e gerencie seus livros.</div>
-        </div>
-      </div>
-
       <form className="row g-2 align-items-end mb-4" onSubmit={create}>
         <div className="col-md-6">
           <label className="form-label">Nome</label>

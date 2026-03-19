@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const REPORT_STATE_KEY = "gnucash.invoice-settlement-report-state.v2";
@@ -48,7 +49,7 @@ function paymentStatusLabel(status) {
   return status === "PAID" ? "Quitada" : "Não quitada";
 }
 
-export default function InvoiceSettlementReportPage({ onOpenInvoicing = null }) {
+export default function InvoiceSettlementReportPage({ onOpenInvoicing = null, isActive = false }) {
   const persistedState = useMemo(() => loadPersistedState(), []);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [commodities, setCommodities] = useState([]);
@@ -208,17 +209,23 @@ export default function InvoiceSettlementReportPage({ onOpenInvoicing = null }) 
     onOpenInvoicing({ invoiceGuid: item.invoice_guid, invoiceId: item.invoice_id || "" });
   };
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Prazo de Quitação de Faturamentos</h2>
-          <div className="small-muted">
-            Diferença em dias entre o fim do mês da postagem e a data de quitação (ou hoje, para não quitadas), com visão por cliente.
-          </div>
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div>
+        <h2 className="mb-1">Prazo de Quitação de Faturamentos</h2>
+        <div className="small-muted">
+          Diferença em dias entre o fim do mês da postagem e a data de quitação (ou hoje, para não quitadas), com visão por cliente.
         </div>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

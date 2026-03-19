@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 const INITIAL_FORM = {
   full_name: "",
@@ -25,7 +26,7 @@ function formatCreatedAt(value) {
   return parsed.toLocaleString();
 }
 
-export default function UsersPage({ currentUser }) {
+export default function UsersPage({ currentUser, isActive = false }) {
   const [users, setUsers] = useState([]);
   const [books, setBooks] = useState([]);
   const [accessByUser, setAccessByUser] = useState({});
@@ -332,15 +333,21 @@ export default function UsersPage({ currentUser }) {
     setPasswordSuccess(`Senha redefinida para ${user.email}.`);
   };
 
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div>
+        <h2 className="mb-1">Usuários</h2>
+        <div className="small-muted">Cadastre usuários, senha e acesso por livro.</div>
+      </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar]);
+
   return (
     <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Usuários</h2>
-          <div className="small-muted">Cadastre usuários, senha e acesso por livro.</div>
-        </div>
-      </div>
-
       <form className="row g-3 align-items-end mb-3" onSubmit={submit}>
         <div className="col-md-4">
           <label className="form-label">Nome</label>

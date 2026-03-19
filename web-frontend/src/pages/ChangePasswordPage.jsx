@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api/client.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 const INITIAL_FORM = {
   currentPassword: "",
@@ -7,7 +8,7 @@ const INITIAL_FORM = {
   confirmPassword: ""
 };
 
-export default function ChangePasswordPage({ currentUser = null }) {
+export default function ChangePasswordPage({ currentUser = null, isActive = false }) {
   const formAnchorRef = useRef(null);
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -63,17 +64,23 @@ export default function ChangePasswordPage({ currentUser = null }) {
     setSuccess(true);
   };
 
-  return (
-    <div ref={formAnchorRef}>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Alterar senha</h2>
-          <div className="small-muted">
-            {currentUser?.email ? `Usuário: ${currentUser.email}` : "Atualize sua senha de acesso."}
-          </div>
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div>
+        <h2 className="mb-1">Alterar senha</h2>
+        <div className="small-muted">
+          {currentUser?.email ? `Usuário: ${currentUser.email}` : "Atualize sua senha de acesso."}
         </div>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, currentUser]);
 
+  return (
+    <div ref={formAnchorRef}>
       <form className="row g-3 align-items-end" onSubmit={handleSubmit}>
         <div className="col-md-4">
           <label className="form-label">Senha atual</label>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function currentYear() {
   return new Date().getFullYear();
@@ -75,7 +76,7 @@ function formatPercent(value) {
   }).format(numeric)}%`;
 }
 
-export default function FinancialDashboardPage() {
+export default function FinancialDashboardPage({ isActive = false }) {
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [year, setYear] = useState(() => currentYear());
   const [data, setData] = useState(null);
@@ -98,6 +99,48 @@ export default function FinancialDashboardPage() {
     setData(res.data);
     setLoading(false);
   };
+
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
+        <div>
+          <h2 className="mb-1">Painel Financeiro</h2>
+          <div className="small-muted">
+            Livro ativo: <span className="fw-semibold">{activeBook?.name || activeBook?.id}</span>
+          </div>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <div>
+            <label className="form-label mb-0 me-1 small-muted">Ano</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              style={{ width: "90px", display: "inline-block" }}
+              value={year}
+              min={1900}
+              max={3000}
+              onChange={(event) => {
+                const v = parseInt(event.target.value, 10);
+                if (v >= 1900 && v <= 3000) setYear(v);
+              }}
+            />
+          </div>
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            type="button"
+            onClick={load}
+            disabled={loading}
+          >
+            {loading ? "Atualizando..." : "Atualizar"}
+          </button>
+        </div>
+      </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBook, year, loading, load, setYear]);
 
   useEffect(() => {
     if (!activeBookId) return;
@@ -134,40 +177,6 @@ export default function FinancialDashboardPage() {
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-          <h2 className="mb-1">Painel Financeiro</h2>
-          <div className="small-muted">
-            Livro ativo: <span className="fw-semibold">{activeBook?.name || activeBook?.id}</span>
-          </div>
-        </div>
-        <div className="d-flex align-items-center gap-2">
-          <div>
-            <label className="form-label mb-0 me-1 small-muted">Ano</label>
-            <input
-              type="number"
-              className="form-control form-control-sm"
-              style={{ width: "90px", display: "inline-block" }}
-              value={year}
-              min={1900}
-              max={3000}
-              onChange={(event) => {
-                const v = parseInt(event.target.value, 10);
-                if (v >= 1900 && v <= 3000) setYear(v);
-              }}
-            />
-          </div>
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            type="button"
-            onClick={load}
-            disabled={loading}
-          >
-            {loading ? "Atualizando..." : "Atualizar"}
-          </button>
-        </div>
-      </div>
-
       {error ? (
         <div className="alert alert-danger" role="alert">
           {error.code}: {error.message}

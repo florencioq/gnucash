@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function rationalToNumber(num, denom) {
   const d = Number(denom) || 1;
@@ -48,7 +49,8 @@ function loadInvoicingListState() {
 export default function InvoicingListPage({
   onOpenInvoicing = null,
   onOpenBilling = null,
-  onCreateInvoicing = null
+  onCreateInvoicing = null,
+  isActive = false
 }) {
   const persistedState = useMemo(() => loadInvoicingListState(), []);
   const [commodities, setCommodities] = useState([]);
@@ -178,6 +180,40 @@ export default function InvoicingListPage({
     pageSize
   ]);
   const refreshing = loading || !customersLoaded;
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
+        <div>
+          <h2 className="mb-1">Faturamentos</h2>
+          <div className="small-muted">Lista de faturas com filtros e ordenação.</div>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setRefreshToken((current) => current + 1)}
+            disabled={!activeBookId || refreshing}
+          >
+            {refreshing ? "Atualizando..." : "Atualizar"}
+          </button>
+          {typeof onCreateInvoicing === "function" ? (
+            <button
+              type="button"
+              className="btn btn-accent btn-sm"
+              onClick={onCreateInvoicing}
+              disabled={!activeBookId}
+            >
+              Nova Fatura
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBookId, refreshing, onCreateInvoicing]);
 
   useEffect(() => {
     if (!customersLoaded) return;
@@ -214,33 +250,6 @@ export default function InvoicingListPage({
 
   return (
     <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Faturamentos</h2>
-          <div className="small-muted">Lista de faturas com filtros e ordenação.</div>
-        </div>
-        <div className="d-flex align-items-center gap-2">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={() => setRefreshToken((current) => current + 1)}
-            disabled={!activeBookId || refreshing}
-          >
-            {refreshing ? "Atualizando..." : "Atualizar"}
-          </button>
-          {typeof onCreateInvoicing === "function" ? (
-            <button
-              type="button"
-              className="btn btn-accent"
-              onClick={onCreateInvoicing}
-              disabled={!activeBookId}
-            >
-              Nova Fatura
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

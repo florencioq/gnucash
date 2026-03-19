@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -198,7 +199,7 @@ function splitsSummary(splits) {
   return splits.map((s) => s.account_name || s.account_id).join(", ");
 }
 
-export default function TransfersBetweenAccountsPage({ onOpenInvoicing, onOpenBilling, onOpenLedger }) {
+export default function TransfersBetweenAccountsPage({ onOpenInvoicing, onOpenBilling, onOpenLedger, isActive = false }) {
   const persistedState = useMemo(() => loadPersistedState(), []);
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
 
@@ -372,9 +373,12 @@ export default function TransfersBetweenAccountsPage({ onOpenInvoicing, onOpenBi
     doc.save(`transferencias-${dateStr}.pdf`);
   };
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
         <div>
           <h2 className="mb-1">Transferências entre Contas</h2>
           <div className="small-muted">
@@ -392,7 +396,12 @@ export default function TransfersBetweenAccountsPage({ onOpenInvoicing, onOpenBi
           </button>
         ) : null}
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, hasSearched, items.length, downloadPdf]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

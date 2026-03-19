@@ -33,7 +33,7 @@ body {
 .brand-bar {
   background: linear-gradient(135deg, #1b2b24, #2f6b55);
   color: #f4efe6;
-  padding: 1.5rem 2rem;
+  padding: 0.75rem 2rem;
   border-bottom: 4px solid var(--accent-2);
 }
 
@@ -76,52 +76,19 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 58px minmax(0, 1fr);
   gap: 1rem;
 }
 
-.app-layout.is-sidebar-collapsed {
-  grid-template-columns: 58px minmax(0, 1fr);
-}
-
 .app-sidebar {
-  padding: 0.65rem 0.45rem 0.75rem;
+  padding: 0.5rem 0.25rem;
   align-self: start;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   min-height: 70vh;
-}
-
-.app-sidebar-toggle {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f5eee2;
-  color: #2c2a26;
-  font-weight: 700;
-  padding: 0.35rem 0.4rem;
-  margin-bottom: 0.7rem;
-}
-
-.app-sidebar-toggle:hover {
-  background: #ede1cf;
-}
-
-.app-nav-section + .app-nav-section {
-  margin-top: 1rem;
-}
-
-.app-nav-section-title {
-  margin: 0 0 0.45rem;
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #5e5a52;
-}
-
-.app-nav-links {
-  display: grid;
-  gap: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .app-nav-link {
@@ -130,25 +97,12 @@ body {
   background: transparent;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  text-align: left;
-  color: var(--ink);
-  padding: 0.55rem 0.65rem;
-  font-weight: 600;
-}
-
-.app-nav-link-icon {
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  width: 1.15rem;
+  color: var(--ink);
+  padding: 0.55rem 0.2rem;
+  font-size: 1.25rem;
   line-height: 1;
-}
-
-.app-nav-link-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  width: 100%;
 }
 
 .app-nav-link:hover {
@@ -160,27 +114,201 @@ body {
   color: #204134;
 }
 
-.app-sidebar.is-collapsed .app-nav-section-title {
-  display: none;
+/* ============================================================
+   Menu bar tradicional (topo, discreta)
+   ============================================================ */
+.app-menu-bar {
+  display: flex;
+  align-items: stretch;
+  background: #2c2a26;
+  padding: 0 0.5rem;
+  height: 2rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 200;
 }
 
-.app-sidebar.is-collapsed .app-nav-section + .app-nav-section {
-  margin-top: 0.55rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid #e6dccb;
+.app-menu-entry {
+  position: relative;
 }
 
-.app-sidebar.is-collapsed .app-nav-links {
-  gap: 0.35rem;
+.app-menu-trigger {
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: #ddd8cf;
+  padding: 0 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
-.app-sidebar.is-collapsed .app-nav-link {
-  justify-content: center;
-  padding: 0.55rem 0.2rem;
+.app-menu-trigger:hover,
+.app-menu-trigger.is-open {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
 }
 
-.app-sidebar.is-collapsed .app-nav-link-label {
-  display: none;
+.app-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #d9d4cc;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  min-width: 200px;
+  padding: 0.3rem 0;
+}
+
+.app-menu-group + .app-menu-group {
+  border-top: 1px solid #f0ebe3;
+}
+
+.app-menu-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.38rem 0.8rem;
+  font-size: 0.88rem;
+  text-align: left;
+  color: #1e1c18;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.app-menu-item-btn:hover {
+  background: #f5f0ea;
+}
+
+.app-menu-item-icon {
+  font-size: 0.9em;
+  width: 1.2em;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.app-menu-children {
+  /* sub-actions container */
+}
+
+.app-menu-child-row {
+  display: flex;
+  align-items: center;
+}
+
+.app-menu-child-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0.3rem 0.8rem 0.3rem 2rem;
+  font-size: 0.85rem;
+  text-align: left;
+  color: #3d3a34;
+  cursor: pointer;
+}
+
+.app-menu-child-btn:hover {
+  background: #f5f0ea;
+}
+
+.app-menu-child-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.app-menu-pin-btn {
+  border: 0;
+  background: transparent;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  opacity: 0;
+  font-size: 0.78rem;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.app-menu-child-row:hover .app-menu-pin-btn {
+  opacity: 0.55;
+}
+
+.app-menu-pin-btn:hover {
+  opacity: 1 !important;
+}
+
+.app-menu-pin-btn.is-pinned {
+  opacity: 1;
+}
+
+/* ============================================================
+   Barra quente contextual + atalhos fixados
+   ============================================================ */
+.app-hot-toolbar {
+  min-height: 3rem;
+  display: flex;
+  align-items: stretch;
+  border-radius: 12px;
+  background: #fffdf8;
+  overflow: hidden;
+  padding: 0;
+}
+
+.app-pinned-zone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-right: 1px solid #eae4dc;
+  flex-shrink: 0;
+}
+
+.app-pinned-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid #d5cfc7;
+  border-radius: 20px;
+  background: #f5f0ea;
+  color: #2c2a26;
+  padding: 0.18rem 0.65rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.app-pinned-btn:hover:not(:disabled) {
+  background: #ebe4da;
+  border-color: #c5bdb4;
+}
+
+.app-pinned-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.app-toolbar-separator {
+  width: 1px;
+  background: #eae4dc;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.app-contextual-zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  min-width: 0;
 }
 
 .app-content {
@@ -456,28 +584,16 @@ body {
     padding-right: 0.75rem;
   }
 
+  .app-sidebar {
+    min-height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
   .app-layout {
     grid-template-columns: 1fr;
-  }
-
-  .app-layout.is-sidebar-collapsed {
-    grid-template-columns: 1fr;
-  }
-
-  .app-sidebar {
-    padding: 0.65rem;
-    min-height: auto;
-    border-top-left-radius: 16px;
-    border-bottom-left-radius: 16px;
-  }
-
-  .app-sidebar-sections {
-    display: grid;
-    gap: 0.8rem;
-  }
-
-  .app-nav-section + .app-nav-section {
-    margin-top: 0;
   }
 
   .account-tree-row {

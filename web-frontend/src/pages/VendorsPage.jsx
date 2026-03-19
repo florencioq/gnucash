@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function emptyToNull(value) {
   const trimmed = String(value ?? "").trim();
@@ -57,7 +58,7 @@ function nextVendorId(vendors) {
   return String(next).padStart(6, "0");
 }
 
-export default function VendorsPage() {
+export default function VendorsPage({ isActive = false }) {
   const VENDOR_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -424,18 +425,26 @@ export default function VendorsPage() {
     await loadVendors(activeBookId);
   };
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
         <div>
           <h2 className="mb-1">Fornecedores</h2>
           <div className="small-muted">Cadastro de fornecedores no estilo IgeosCash.</div>
         </div>
-        <button className="btn btn-accent" type="button" onClick={openCreateVendorModal} disabled={!activeBookId}>
+        <button className="btn btn-accent btn-sm" type="button" onClick={openCreateVendorModal} disabled={!activeBookId}>
           Novo fornecedor
         </button>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBookId, openCreateVendorModal]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

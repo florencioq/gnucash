@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -83,7 +84,8 @@ export default function LedgerPage({
   onReturnToTab = () => {},
   onLedgerAccountChange = () => {},
   onOpenInvoicing = () => {},
-  onOpenBilling = () => {}
+  onOpenBilling = () => {},
+  isActive = false
 }) {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -769,9 +771,12 @@ export default function LedgerPage({
     }
   };
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
         <div>
           <h2 className="mb-1">Razão</h2>
           <div className="small-muted">Razão da conta com lançamento direto.</div>
@@ -798,7 +803,12 @@ export default function LedgerPage({
           ) : null}
         </div>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBookId, refreshing, refreshLedgerData, returnToInvoice, returnToBilling, onReturnToTab, returnTab]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

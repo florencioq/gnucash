@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function currentMonth() {
   const now = new Date();
@@ -75,7 +76,7 @@ function splitAccountPath(accountPath) {
     .filter(Boolean);
 }
 
-export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
+export default function IncomeStatementPage({ onOpenLedger = () => {}, isActive = false }) {
   const defaultMonth = currentMonth();
   const { activeBook, activeBookId, activeBookError } = useActiveBook();
   const [search, setSearch] = useState("");
@@ -85,6 +86,7 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
   const [matrixLoading, setMatrixLoading] = useState(false);
   const [matrixStartMonth, setMatrixStartMonth] = useState(shiftMonth(defaultMonth, -5));
   const [matrixEndMonth, setMatrixEndMonth] = useState(defaultMonth);
+  const { registerToolbar } = useToolbar();
 
   const loadMatrix = async () => {
     if (!activeBookId || !matrixStartMonth || !matrixEndMonth) return;
@@ -109,6 +111,24 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
     setMatrix(res.data);
     setMatrixLoading(false);
   };
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
+        <div>
+          <h2 className="mb-1">DRE Mensal</h2>
+          <div className="small-muted">
+            Livro ativo: <span className="fw-semibold">{activeBook?.name || activeBook?.id}</span>
+          </div>
+        </div>
+        <button className="btn btn-outline-secondary btn-sm" type="button" onClick={loadMatrix} disabled={matrixLoading}>
+          {matrixLoading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBook, loadMatrix, matrixLoading]);
 
   useEffect(() => {
     if (!activeBookId) return;
@@ -265,18 +285,6 @@ export default function IncomeStatementPage({ onOpenLedger = () => {} }) {
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-          <h2 className="mb-1">DRE Mensal</h2>
-          <div className="small-muted">
-            Livro ativo: <span className="fw-semibold">{activeBook?.name || activeBook?.id}</span>
-          </div>
-        </div>
-        <button className="btn btn-outline-secondary" type="button" onClick={loadMatrix} disabled={matrixLoading}>
-          {matrixLoading ? "Atualizando..." : "Atualizar"}
-        </button>
-      </div>
-
       <div className="row g-2 align-items-end mb-3">
         <div className="col-md-3">
           <label className="form-label">Período inicial</label>

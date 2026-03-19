@@ -1,4 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import AppSidebar from "./components/AppSidebar.jsx";
+import AppMenuBar from "./components/AppMenuBar.jsx";
+import { NAV_CONFIG } from "./nav/navConfig.js";
+import useActiveBook from "./hooks/useActiveBook.js";
+import { ToolbarProvider, useToolbar } from "./context/ToolbarContext.jsx";
 import BooksPage from "./pages/BooksPage.jsx";
 import CommoditiesPage from "./pages/CommoditiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
@@ -80,53 +85,6 @@ const baseTabs = [
   { id: "billing-list", label: "Compras", component: BillingListPage }
 ];
 
-const primaryNavSectionsConfig = [
-  {
-    id: "operations",
-    label: "Operações",
-    itemIds: ["invoicing-list", "billing-list", "receivables", "payables"]
-  },
-  {
-    id: "accounting",
-    label: "Contábil",
-    itemIds: ["ledger"]
-  },
-  {
-    id: "reports",
-    label: "Relatórios",
-    itemIds: ["income-statement", "invoice-settlement-report", "account-transfers-report", "transfers-report", "financial-dashboard"]
-  },
-  {
-    id: "masters",
-    label: "Cadastros",
-    itemIds: ["books", "commodities", "accounts", "customers", "vendors"]
-  },
-  {
-    id: "administration",
-    label: "Administração",
-    itemIds: ["profile", "users"]
-  }
-];
-
-const navIconByTabId = {
-  "invoicing-list": "🧾",
-  "billing-list": "🛒",
-  receivables: "💰",
-  payables: "💸",
-  ledger: "📒",
-  "income-statement": "📈",
-  "invoice-settlement-report": "⏱",
-  "account-transfers-report": "🔄",
-  "transfers-report": "↔",
-  "financial-dashboard": "🏦",
-  books: "📚",
-  commodities: "💱",
-  accounts: "🏦",
-  customers: "👥",
-  vendors: "🚚",
-  users: "🛡",
-  profile: "🔐"
-};
 
 function normalizeLabel(prefix, documentId, guid) {
   if (documentId) return `${prefix} ${documentId}`;
@@ -336,11 +294,118 @@ function loadAppTabsState() {
       openBillTabs: sanitizeBillTabs(parsed.openBillTabs),
       openReportTabs: sanitizeReportTabs(parsed.openReportTabs),
       openWorkspaceTabs: sanitizeWorkspaceTabs(parsed.openWorkspaceTabs),
-      sidebarCollapsed: Boolean(parsed.sidebarCollapsed)
+      sidebarCollapsed: Boolean(parsed.sidebarCollapsed),
+      sectionCollapseState:
+        parsed.sectionCollapseState && typeof parsed.sectionCollapseState === "object"
+          ? parsed.sectionCollapseState
+          : null
     };
   } catch {
     return null;
   }
+}
+
+// AppContentArea — área de conteúdo com barra quente contextual.
+// Renderizado dentro de ToolbarProvider para ter acesso ao contexto.
+function AppContentArea({
+  detailTabs,
+  activeTab,
+  setActiveTab,
+  closeDynamicTab,
+  detailTabPropsById,
+  isActiveDetailTab,
+  ActiveComponent,
+  activeProps,
+  pinnedActions,
+  onNavAction,
+  activeBookId
+}) {
+  const { toolbarContent } = useToolbar();
+  const hasPinned = pinnedActions && pinnedActions.length > 0;
+
+  return (
+    <section className="app-content">
+      {detailTabs.length > 0 ? (
+        <ul className="nav nav-pills app-detail-tabs mb-3 flex-wrap gap-1">
+          {detailTabs.map((tab) => (
+            <li key={tab.id} className="nav-item app-tab-item is-closable">
+              <button
+                className={`nav-link ${activeTab === tab.id ? "active" : ""}`}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+              <button
+                type="button"
+                className="app-tab-close"
+                aria-label={`Fechar ${tab.label}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closeDynamicTab(tab.id);
+                }}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {(hasPinned || toolbarContent) ? (
+        <div className="app-hot-toolbar section-card mb-3">
+          {hasPinned && (
+            <div className="app-pinned-zone">
+              {pinnedActions.map((action) => {
+                const disabled = action.requiresActiveBook && !activeBookId;
+                return (
+                  <button
+                    key={action.id}
+                    className="app-pinned-btn"
+                    type="button"
+                    disabled={disabled}
+                    title={disabled ? `${action.label} (requer livro ativo)` : action.label}
+                    onClick={() => !disabled && onNavAction(action)}
+                  >
+                    <span aria-hidden="true">{action.icon}</span>
+                    <span>{action.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {hasPinned && toolbarContent && (
+            <div className="app-toolbar-separator" aria-hidden="true" />
+          )}
+          {toolbarContent && (
+            <div className="app-contextual-zone">{toolbarContent}</div>
+          )}
+        </div>
+      ) : null}
+
+      <div className="section-card">
+        {detailTabs.map((tab) => {
+          const DetailComponent = tab.component;
+          return (
+            <div
+              key={tab.id}
+              style={{ display: activeTab === tab.id ? "block" : "none" }}
+              aria-hidden={activeTab === tab.id ? "false" : "true"}
+            >
+              <DetailComponent
+                {...(detailTabPropsById[tab.id] || {})}
+                isActive={activeTab === tab.id}
+              />
+            </div>
+          );
+        })}
+        {!isActiveDetailTab ? (
+          <ActiveComponent key={activeTab} {...activeProps} isActive={true} />
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 export default function App() {
@@ -365,12 +430,47 @@ export default function App() {
   const [openWorkspaceTabs, setOpenWorkspaceTabs] = useState(
     () => persistedTabsState?.openWorkspaceTabs || []
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    () => Boolean(persistedTabsState?.sidebarCollapsed)
-  );
   const [currentUser, setCurrentUser] = useState(null);
   const [hasAuthSession, setHasAuthSession] = useState(() => Boolean(initialAuthSession));
   const canManageUsers = currentUser == null || Boolean(currentUser.is_superuser) || Boolean(currentUser.is_admin);
+  const { activeBookId } = useActiveBook();
+
+  const [pinnedActionIds, setPinnedActionIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem("gnucash.pinned-actions");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("gnucash.pinned-actions", JSON.stringify(pinnedActionIds));
+  }, [pinnedActionIds]);
+
+  const handleTogglePin = useCallback((actionId) => {
+    setPinnedActionIds((prev) =>
+      prev.includes(actionId) ? prev.filter((id) => id !== actionId) : [...prev, actionId]
+    );
+  }, []);
+
+  const allNavActions = useMemo(() => {
+    const result = [];
+    for (const section of NAV_CONFIG) {
+      for (const item of section.items) {
+        result.push(item);
+        if (item.children) result.push(...item.children);
+      }
+    }
+    return result;
+  }, []);
+
+  const pinnedActions = useMemo(
+    () => pinnedActionIds.map((id) => allNavActions.find((a) => a.id === id)).filter(Boolean),
+    [pinnedActionIds, allNavActions]
+  );
 
   const detailTabs = useMemo(
     () => [
@@ -418,19 +518,6 @@ export default function App() {
       return true;
     });
   }, [canManageUsers, hasAuthSession]);
-  const navigationTabsById = useMemo(
-    () => new Map(navigationTabs.map((tab) => [tab.id, tab])),
-    [navigationTabs]
-  );
-  const primaryNavSections = useMemo(() => {
-    if (!hasAuthSession) return [];
-    return primaryNavSectionsConfig
-      .map((section) => ({
-        ...section,
-        items: section.itemIds.map((id) => navigationTabsById.get(id)).filter(Boolean)
-      }))
-      .filter((section) => section.items.length > 0);
-  }, [hasAuthSession, navigationTabsById]);
   const tabs = useMemo(
     () => (hasAuthSession ? [...navigationTabs, ...detailTabs] : navigationTabs),
     [detailTabs, hasAuthSession, navigationTabs]
@@ -521,8 +608,7 @@ export default function App() {
         openInvoiceTabs,
         openBillTabs,
         openReportTabs,
-        openWorkspaceTabs,
-        sidebarCollapsed
+        openWorkspaceTabs
       })
     );
   }, [
@@ -532,8 +618,7 @@ export default function App() {
     openInvoiceTabs,
     openBillTabs,
     openReportTabs,
-    openWorkspaceTabs,
-    sidebarCollapsed
+    openWorkspaceTabs
   ]);
 
   const handleOpenReportTab = useCallback(({ reportId, label }) => {
@@ -594,6 +679,20 @@ export default function App() {
   const handleOpenTransfersTab = useCallback(() => {
     handleOpenReportTab({ reportId: "transfers", label: "Transferências" });
   }, [handleOpenReportTab]);
+
+  // isTabActive — retorna true se o tabId de um item de nav está "ativo"
+  // (leva em conta detail tabs abertas que correspondem ao item)
+  const isTabActive = useCallback((tabId) => {
+    if (!tabId) return false;
+    if (activeTab === tabId) return true;
+    if (tabId === "income-statement" && isIncomeStatementDetailTab(activeTab)) return true;
+    if (tabId === "ledger" && isLedgerDetailTab(activeTab)) return true;
+    if (tabId === "account-transfers-report" && isAccountTransfersDetailTab(activeTab)) return true;
+    if (tabId === "transfers-report" && isTransfersDetailTab(activeTab)) return true;
+    const workspaceDetailTabId = detailTabIdFromWorkspaceId(tabId);
+    if (workspaceDetailTabId && activeTab === workspaceDetailTabId) return true;
+    return false;
+  }, [activeTab]);
 
   const handleOpenWorkspaceTab = useCallback(({ workspaceId, label }) => {
     if (!workspaceId) return;
@@ -763,6 +862,26 @@ export default function App() {
     });
     setActiveTab(tabId);
   };
+
+  // handleNavAction — despacha ações da sidebar (definido após handleCreateInvoicing/handleCreateBilling)
+  const handleNavAction = useCallback((item) => {
+    const { action, tabId, label } = item;
+    if (action === "createInvoicing") { handleCreateInvoicing(); return; }
+    if (action === "createBilling") { handleCreateBilling(); return; }
+    if (action !== "navigate") return;
+    switch (tabId) {
+      case "income-statement": handleOpenIncomeStatementTab(); return;
+      case "ledger": handleOpenLedger({}); return;
+      case "account-transfers-report": handleOpenAccountTransfersTab(); return;
+      case "transfers-report": handleOpenTransfersTab(); return;
+    }
+    if (WORKSPACE_DETAIL_TAB_BY_ID[tabId]) {
+      handleOpenWorkspaceTab({ workspaceId: tabId, label: label || tabId });
+      return;
+    }
+    setActiveTab(tabId);
+  }, [handleCreateInvoicing, handleCreateBilling, handleOpenIncomeStatementTab, handleOpenLedger, handleOpenAccountTransfersTab, handleOpenTransfersTab, handleOpenWorkspaceTab]);
+
 
   const closeDynamicTab = (tabId, preferredFallbackTabId = "") => {
     const currentIds = tabs.map((tab) => tab.id);
@@ -1059,137 +1178,46 @@ export default function App() {
         </div>
       </header>
 
+      {hasAuthSession && (
+        <AppMenuBar
+          navConfig={NAV_CONFIG}
+          canManageUsers={canManageUsers}
+          activeBookId={activeBookId}
+          pinnedActionIds={pinnedActionIds}
+          onNavAction={handleNavAction}
+          onTogglePin={handleTogglePin}
+        />
+      )}
+
       <main
         className={`container-fluid app-main-container py-4 ${isInvoicingTab ? "is-invoicing" : ""} ${
           hasAuthSession ? "is-authenticated" : ""
         }`}
       >
         {hasAuthSession ? (
-          <div className={`app-layout ${sidebarCollapsed ? "is-sidebar-collapsed" : ""}`}>
-            <aside className={`section-card app-sidebar ${sidebarCollapsed ? "is-collapsed" : ""}`}>
-              <button
-                type="button"
-                className="app-sidebar-toggle"
-                aria-label={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
-                title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
-                onClick={() => setSidebarCollapsed((current) => !current)}
-              >
-                {sidebarCollapsed ? ">>" : "<<"}
-              </button>
+          <div className="app-layout">
+            <AppSidebar
+              navConfig={NAV_CONFIG}
+              isTabActive={isTabActive}
+              canManageUsers={canManageUsers}
+              onNavAction={handleNavAction}
+            />
 
-              <div className="app-sidebar-sections">
-                {primaryNavSections.map((section) => (
-                  <section key={section.id} className="app-nav-section">
-                    <h2 className="app-nav-section-title">{section.label}</h2>
-                    <div className="app-nav-links">
-                      {section.items.map((tab) => {
-                        const isIncomeStatementNav = tab.id === "income-statement";
-                        const isLedgerNav = tab.id === "ledger";
-                        const isAccountTransfersNav = tab.id === "account-transfers-report";
-                        const isTransfersNav = tab.id === "transfers-report";
-                        const workspaceDetailTabId = detailTabIdFromWorkspaceId(tab.id);
-                        const isWorkspaceNav = Boolean(workspaceDetailTabId);
-                        const isActive =
-                          activeTab === tab.id ||
-                          (isIncomeStatementNav && isIncomeStatementDetailTab(activeTab)) ||
-                          (isLedgerNav && isLedgerDetailTab(activeTab)) ||
-                          (isAccountTransfersNav && isAccountTransfersDetailTab(activeTab)) ||
-                          (isTransfersNav && isTransfersDetailTab(activeTab)) ||
-                          (isWorkspaceNav && activeTab === workspaceDetailTabId);
-                        return (
-                        <button
-                          key={tab.id}
-                          className={`app-nav-link ${isActive ? "is-active" : ""}`}
-                          type="button"
-                          title={tab.label}
-                          aria-label={tab.label}
-                          onClick={() => {
-                            if (isIncomeStatementNav) {
-                              handleOpenIncomeStatementTab();
-                              return;
-                            }
-                            if (isLedgerNav) {
-                              handleOpenLedger({});
-                              return;
-                            }
-                            if (isAccountTransfersNav) {
-                              handleOpenAccountTransfersTab();
-                              return;
-                            }
-                            if (isTransfersNav) {
-                              handleOpenTransfersTab();
-                              return;
-                            }
-                            if (isWorkspaceNav) {
-                              handleOpenWorkspaceTab({
-                                workspaceId: tab.id,
-                                label: tab.label
-                              });
-                              return;
-                            }
-                            setActiveTab(tab.id);
-                          }}
-                        >
-                          <span className="app-nav-link-icon" aria-hidden="true">
-                            {navIconByTabId[tab.id] || "•"}
-                          </span>
-                          <span className="app-nav-link-label">{tab.label}</span>
-                        </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </aside>
-
-            <section className="app-content">
-              {detailTabs.length > 0 ? (
-                <ul className="nav nav-pills app-detail-tabs mb-3 flex-wrap gap-1">
-                  {detailTabs.map((tab) => (
-                    <li key={tab.id} className="nav-item app-tab-item is-closable">
-                      <button
-                        className={`nav-link ${activeTab === tab.id ? "active" : ""}`}
-                        type="button"
-                        onClick={() => setActiveTab(tab.id)}
-                      >
-                        {tab.label}
-                      </button>
-                      <button
-                        type="button"
-                        className="app-tab-close"
-                        aria-label={`Fechar ${tab.label}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          closeDynamicTab(tab.id);
-                        }}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-
-              <div className="section-card">
-                {detailTabs.map((tab) => {
-                  const DetailComponent = tab.component;
-                  return (
-                    <div
-                      key={tab.id}
-                      style={{ display: activeTab === tab.id ? "block" : "none" }}
-                      aria-hidden={activeTab === tab.id ? "false" : "true"}
-                    >
-                      <DetailComponent {...(detailTabPropsById[tab.id] || {})} />
-                    </div>
-                  );
-                })}
-                {!isActiveDetailTab ? (
-                  <ActiveComponent key={activeTab} {...activeProps} />
-                ) : null}
-              </div>
-            </section>
+            <ToolbarProvider>
+              <AppContentArea
+                detailTabs={detailTabs}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                closeDynamicTab={closeDynamicTab}
+                detailTabPropsById={detailTabPropsById}
+                isActiveDetailTab={isActiveDetailTab}
+                ActiveComponent={ActiveComponent}
+                activeProps={activeProps}
+                pinnedActions={pinnedActions}
+                onNavAction={handleNavAction}
+                activeBookId={activeBookId}
+              />
+            </ToolbarProvider>
           </div>
         ) : (
           <div className="section-card">

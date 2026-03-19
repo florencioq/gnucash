@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function rationalToNumber(num, denom) {
   const d = Number(denom) || 1;
@@ -69,7 +70,8 @@ function loadPayablesState() {
 export default function PayablesPage({
   onOpenBilling = null,
   onOpenInvoicing = null,
-  onCreateBilling = null
+  onCreateBilling = null,
+  isActive = false
 }) {
   const persistedState = useMemo(() => loadPayablesState(), []);
   const [commodities, setCommodities] = useState([]);
@@ -287,10 +289,12 @@ export default function PayablesPage({
     return commoditiesById.get(first.currency_guid)?.mnemonic || "BRL";
   }, [bills, commoditiesById]);
   const refreshing = loading || loadingOpenAmountGrandTotal || !vendorsLoaded;
+  const { registerToolbar } = useToolbar();
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
         <div>
           <h2 className="mb-1">Contas a Pagar</h2>
           <div className="small-muted">Compras postadas e em aberto com acesso direto para edição.</div>
@@ -298,7 +302,7 @@ export default function PayablesPage({
         <div className="d-flex align-items-center gap-2">
           <button
             type="button"
-            className="btn btn-outline-secondary"
+            className="btn btn-outline-secondary btn-sm"
             onClick={() => setRefreshToken((current) => current + 1)}
             disabled={!activeBookId || refreshing}
           >
@@ -307,7 +311,7 @@ export default function PayablesPage({
           {typeof onCreateBilling === "function" ? (
             <button
               type="button"
-              className="btn btn-accent"
+              className="btn btn-accent btn-sm"
               onClick={onCreateBilling}
               disabled={!activeBookId}
             >
@@ -316,7 +320,12 @@ export default function PayablesPage({
           ) : null}
         </div>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBookId, refreshing, onCreateBilling]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

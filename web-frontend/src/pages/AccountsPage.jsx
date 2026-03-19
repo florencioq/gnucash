@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import AccountTree from "../components/AccountTree.jsx";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 const ACCOUNT_TYPE_FILTER_OPTIONS = [
   "ASSET",
@@ -32,7 +33,7 @@ function filterTree(nodes, query, typeFilter = "ALL") {
   return nodes.map(visit).filter(Boolean);
 }
 
-export default function AccountsPage({ onOpenLedger = () => {} }) {
+export default function AccountsPage({ onOpenLedger = () => {}, isActive = false }) {
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [tree, setTree] = useState([]);
@@ -333,23 +334,31 @@ export default function AccountsPage({ onOpenLedger = () => {} }) {
     });
   };
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
         <div>
           <h2 className="mb-1">Contas</h2>
           <div className="small-muted">Gerencie a hierarquia de contas por livro.</div>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary" type="button" onClick={() => loadAll(activeBookId)} disabled={!activeBookId}>
+          <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => loadAll(activeBookId)} disabled={!activeBookId}>
             Atualizar
           </button>
-          <button className="btn btn-accent" type="button" onClick={openCreateAccountModal} disabled={!activeBookId}>
+          <button className="btn btn-accent btn-sm" type="button" onClick={openCreateAccountModal} disabled={!activeBookId}>
             Nova conta
           </button>
         </div>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBookId, loadAll, openCreateAccountModal]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-4">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (

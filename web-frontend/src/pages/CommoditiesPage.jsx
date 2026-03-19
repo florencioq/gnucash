@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/client.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
-export default function CommoditiesPage() {
+export default function CommoditiesPage({ isActive = false }) {
   const [commodities, setCommodities] = useState([]);
   const [form, setForm] = useState({
     namespace: "CURRENCY",
@@ -91,15 +92,21 @@ export default function CommoditiesPage() {
     await load();
   };
 
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div>
+        <h2 className="mb-1">Moedas e commodities</h2>
+        <div className="small-muted">Gerencie moedas e commodities.</div>
+      </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar]);
+
   return (
     <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Moedas e commodities</h2>
-          <div className="small-muted">Gerencie moedas e commodities.</div>
-        </div>
-      </div>
-
       <form className="row g-2 align-items-end mb-4" onSubmit={create}>
         <div className="col-md-3">
           <label className="form-label">Namespace</label>

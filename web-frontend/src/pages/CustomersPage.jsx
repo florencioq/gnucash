@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import useActiveBook from "../hooks/useActiveBook.js";
+import { useToolbar } from "../context/ToolbarContext.jsx";
 
 function emptyToNull(value) {
   const trimmed = String(value ?? "").trim();
@@ -57,7 +58,7 @@ function nextCustomerId(customers) {
   return String(next).padStart(6, "0");
 }
 
-export default function CustomersPage() {
+export default function CustomersPage({ isActive = false }) {
   const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
   const [commodities, setCommodities] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -451,18 +452,26 @@ export default function CustomersPage() {
     await loadCustomers(activeBookId);
   };
 
-  return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between mb-3">
+  const { registerToolbar } = useToolbar();
+
+  useEffect(() => {
+    if (!isActive) return;
+    registerToolbar(
+      <div className="d-flex align-items-center justify-content-between w-100">
         <div>
           <h2 className="mb-1">Clientes</h2>
           <div className="small-muted">Cadastro de clientes no estilo IgeosCash.</div>
         </div>
-        <button className="btn btn-accent" type="button" onClick={openCreateCustomerModal} disabled={!activeBookId}>
+        <button className="btn btn-accent btn-sm" type="button" onClick={openCreateCustomerModal} disabled={!activeBookId}>
           Novo cliente
         </button>
       </div>
+    );
+    return () => registerToolbar(null);
+  }, [isActive, registerToolbar, activeBookId, openCreateCustomerModal]);
 
+  return (
+    <div>
       {activeBook ? (
         <div className="small-muted mb-3">Livro ativo: {activeBook.name || activeBook.id}</div>
       ) : (
