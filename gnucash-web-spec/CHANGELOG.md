@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.29 - 2026-03-19
+
+Menu bar, barra quente configurável e sidebar simplificada:
+- adicionada barra de menus tradicional (discreta, fundo escuro) entre o header e o conteúdo, com dropdowns para cada seção (Operações, Contábil, Relatórios, Cadastros, Administração); garante acesso completo à navegação independente do estado da sidebar
+- barra quente (hot toolbar) agora suporta atalhos fixados pelo usuário: ícone de pin (📍/📌) aparece ao passar o mouse sobre ações-filho no menu bar, permitindo fixar qualquer ação na barra; atalhos fixados são persistidos em `localStorage`
+- barra quente dividida em zona de atalhos fixados (esquerda) e zona contextual da página (direita), separadas por divisor vertical
+- sidebar simplificada: removida a lógica de colapso/expansão e seções recolhíveis; substituída por barra vertical fixa de 58 px com 7 botões de ícone de acesso rápido (Faturamentos, Compras, Contas a Receber, Contas a Pagar, Razão, DRE Mensal, Saldos)
+- campo `sidebar: true` adicionado ao NAV_CONFIG para marcar quais itens aparecem na sidebar
+
 ## v0.4.28 - 2026-03-18
 
 Botão "Recomprar hoje" na lista de compras:
